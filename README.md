@@ -1,8 +1,3 @@
-# Nuvio Providers
-
-A collection of streaming providers for the Nuvio app. Providers are JavaScript modules that fetch streams from various sources.
-
-📖 **[Read the Comprehensive Developer Guide](DOCUMENTATION.md)**
 
 ## Quick Start
 
@@ -13,6 +8,4 @@ A collection of streaming providers for the Nuvio app. Providers are JavaScript 
 
 3. Refresh and enable the providers you want
 
----
 
-## Project Structure
