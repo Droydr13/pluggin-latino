@@ -416,8 +416,8 @@ function resolveLiveMaster(videoId) {
 // devuelvo la version limpia (sin esto) para que no se vea en producción.
 function debugStream(mensaje) {
   return [{
-    name: 'LACartoons [DEBUG]',
-    title: mensaje,
+    name: '[DEBUG] ' + mensaje,
+    title: '[DEBUG] ' + mensaje,
     url: 'https://example.com/no-es-un-video-real.mp4',
   }];
 }
