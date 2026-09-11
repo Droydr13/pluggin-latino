@@ -422,6 +422,83 @@ function debugStream(mensaje) {
   }];
 }
 
+// ==================== Extractor de ok.ru ====================
+// Portado de la logica real de yt-dlp (extractor/odnoklassniki.py) --
+// es puro HTML/JSON, la pagina del embed trae un atributo data-options
+// con toda la data del video adentro. No necesita ningun programa
+// aparte, a diferencia de como lo resolvia el addon original (con
+// yt-dlp como proceso externo).
+
+function unescapeHTML(str) {
+  return str
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+function isOkRuIframe(iframeSrc) {
+  return /(^|\.)ok\.ru\//i.test(iframeSrc) || /(^|\.)odnoklassniki\.ru\//i.test(iframeSrc);
+}
+
+function extractOkRuVideoId(embedUrl) {
+  const m = embedUrl.match(/(?:ok|odnoklassniki)\.ru\/(?:videoembed|video)\/([\d-]+)/i);
+  return m ? m[1] : null;
+}
+
+const OKRU_QUALITY_ORDEN = ['mobile', 'lowest', 'low', 'sd', 'hd', 'full', 'quad', 'ultra'];
+
+function extractOkRuStreams(embedUrl) {
+  const videoId = extractOkRuVideoId(embedUrl);
+  if (!videoId) return Promise.reject(new Error('No pude sacar el id de video de la URL de ok.ru: ' + embedUrl));
+
+  const pageUrl = 'https://ok.ru/videoembed/' + videoId;
+
+  return fetch(pageUrl, { headers: { 'User-Agent': UA } })
+    .then(function (res) { return res.text(); })
+    .then(function (webpage) {
+      const re = new RegExp('data-options=(["\'])({.+?' + videoId + '.+?})\\1');
+      const m = webpage.match(re);
+      if (!m) throw new Error('No se encontro data-options en la pagina de ok.ru (puede haber cambiado el sitio)');
+
+      const player = JSON.parse(unescapeHTML(m[2]));
+
+      if (player.isExternalPlayer && player.url) {
+        throw new Error('Este video de ok.ru en realidad es un embed externo (' + player.url + '), no soportado');
+      }
+
+      const flashvars = player.flashvars || {};
+      if (flashvars.metadata) {
+        return JSON.parse(flashvars.metadata);
+      }
+      if (flashvars.metadataUrl) {
+        const metadataUrl = decodeURIComponent(flashvars.metadataUrl);
+        const body = flashvars.location ? ('st.location=' + encodeURIComponent(flashvars.location)) : '';
+        return fetch(metadataUrl, {
+          method: 'POST',
+          headers: { 'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body,
+        }).then(function (res) { return res.json(); });
+      }
+      throw new Error('El player de ok.ru no trajo ni metadata ni metadataUrl');
+    })
+    .then(function (metadata) {
+      const hlsUrl = metadata.hlsManifestUrl || metadata.ondemandHls;
+      if (hlsUrl) return { url: hlsUrl, quality: 'HD (HLS)' };
+
+      const videos = (metadata.videos || []).filter(function (v) { return v && v.url; });
+      if (!videos.length) {
+        throw new Error('ok.ru no devolvio ningun formato (puede ser un video pago o bloqueado)');
+      }
+      videos.sort(function (a, b) {
+        return OKRU_QUALITY_ORDEN.indexOf(a.name) - OKRU_QUALITY_ORDEN.indexOf(b.name);
+      });
+      const mejor = videos[videos.length - 1];
+      return { url: mejor.url, quality: (mejor.name || 'SD').toUpperCase() };
+    });
+}
+
 function getStreams(tmdbId, mediaType, season, episode) {
   if (mediaType !== 'tv') {
     return Promise.resolve(debugStream('mediaType recibido: "' + mediaType + '" (se esperaba "tv")'));
@@ -442,18 +519,29 @@ function getStreams(tmdbId, mediaType, season, episode) {
           return debugStream('Se encontro el capitulo (' + epUrl + ') pero no hay ningun iframe de reproductor en la pagina');
         }
         const videoId = videoIdFromIframe(embedSrc);
-        if (!videoId) {
-          return debugStream('El reproductor de este capitulo no es cubeembed/rpmvid: ' + embedSrc);
+        if (videoId) {
+          return resolveLiveMaster(videoId).then(function (result) {
+            return [{
+              name: 'LACartoons',
+              title: (result.title || 'HD') + ' - Español Latino',
+              url: result.url,
+              quality: 'HD',
+              headers: RPMVID_HEADERS,
+            }];
+          });
         }
-        return resolveLiveMaster(videoId).then(function (result) {
-          return [{
-            name: 'LACartoons',
-            title: (result.title || 'HD') + ' - Español Latino',
-            url: result.url,
-            quality: 'HD',
-            headers: RPMVID_HEADERS,
-          }];
-        });
+
+        if (isOkRuIframe(embedSrc)) {
+          return extractOkRuStreams(embedSrc).then(function (result) {
+            return [{
+              name: 'LACartoons',
+              title: 'ok.ru - ' + result.quality + ' - Español Latino',
+              url: result.url,
+            }];
+          });
+        }
+
+        return debugStream('El reproductor de este capitulo no es cubeembed/rpmvid ni ok.ru: ' + embedSrc);
       });
     })
     .catch(function (error) {
