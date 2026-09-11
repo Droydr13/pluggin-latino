@@ -274,7 +274,7 @@ function fetchVideoData(hash) {
     .then(function (res) { return res.text(); })
     .then(function (hex) {
       if (!/^[0-9a-f]+$/i.test(String(hex).trim())) {
-        throw new Error('Respuesta rpmvid no es hex cifrado (el sitio pudo haber cambiado)');
+        throw new Error('Respuesta rpmvid no es hex cifrado. Primeros 150 caracteres de lo que contesto: ' + String(hex).slice(0, 150));
       }
       return decryptHex(hex, hash);
     });
