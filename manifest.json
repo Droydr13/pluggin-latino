@@ -24,6 +24,27 @@
       ],
       "limited": false,
       "supportsExternalPlayer": true
+    },
+    {
+      "id": "lacartoons",
+      "name": "LACartoons",
+      "description": "Caricaturas y series animadas clasicas en Español Latino, via lacartoons.com.",
+      "version": "1.0.0",
+      "author": "AddonLatam",
+      "supportedTypes": [
+        "tv"
+      ],
+      "filename": "providers/lacartoons.js",
+      "enabled": true,
+      "logo": "https://raw.githubusercontent.com/masilvasol/stremio-lacartoons/refs/heads/main/logo.png",
+      "contentLanguage": [
+        "es"
+      ],
+      "formats": [
+        "m3u8"
+      ],
+      "limited": false,
+      "supportsExternalPlayer": true
     }
   ]
 }
