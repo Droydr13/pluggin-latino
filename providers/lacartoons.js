@@ -439,7 +439,8 @@ function unescapeHTML(str) {
 }
 
 function isOkRuIframe(iframeSrc) {
-  return /(^|\.)ok\.ru\//i.test(iframeSrc) || /(^|\.)odnoklassniki\.ru\//i.test(iframeSrc);
+  const host = getHostname(iframeSrc);
+  return /(^|\.)ok\.ru$/i.test(host) || /(^|\.)odnoklassniki\.ru$/i.test(host);
 }
 
 function extractOkRuVideoId(embedUrl) {
@@ -528,6 +529,8 @@ function getStreams(tmdbId, mediaType, season, episode) {
               quality: 'HD',
               headers: RPMVID_HEADERS,
             }];
+          }).catch(function (error) {
+            throw new Error('(embed: ' + embedSrc + ' | videoId: ' + videoId + ') ' + (error && error.message ? error.message : String(error)));
           });
         }
 
