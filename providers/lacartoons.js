@@ -226,22 +226,46 @@ function decryptHex(hex, hash) {
   });
 }
 
-function videoIdFromIframe(iframeSrc) {
-  try {
-    const u = new URL(iframeSrc);
-    if (!/rpmvid\.com$/i.test(u.hostname) && !u.hostname.includes('cubeembed')) return null;
-    let id = u.searchParams.get('id');
-    if (!id) id = (u.hash || '').replace(/^#/, '');
-    if (id && id.includes('&')) id = id.split('&')[0];
-    return id && id.length > 1 ? id : null;
-  } catch (e) {
-    if (typeof iframeSrc === 'string' && iframeSrc.includes('#')) {
-      let parts = iframeSrc.split('#')[1];
-      if (parts && parts.includes('&')) parts = parts.split('&')[0];
-      return parts && parts.length > 1 ? parts : null;
-    }
-    return null;
+function getHostname(url) {
+  const m = url.match(/^[a-z]+:\/\/([^\/:?#]+)/i);
+  return m ? m[1] : '';
+}
+
+function getQueryParam(url, name) {
+  const qIndex = url.indexOf('?');
+  if (qIndex === -1) return null;
+  const hashIndex = url.indexOf('#', qIndex);
+  const query = url.slice(qIndex + 1, hashIndex === -1 ? url.length : hashIndex);
+  const parts = query.split('&');
+  for (let i = 0; i < parts.length; i++) {
+    const eq = parts[i].indexOf('=');
+    const k = eq === -1 ? parts[i] : parts[i].slice(0, eq);
+    const v = eq === -1 ? '' : parts[i].slice(eq + 1);
+    if (decodeURIComponent(k) === name) return decodeURIComponent(v || '');
   }
+  return null;
+}
+
+function resolveUrl(relativeOrAbsolute, base) {
+  if (/^https?:\/\//i.test(relativeOrAbsolute)) return relativeOrAbsolute;
+  const originMatch = base.match(/^([a-z]+:\/\/[^\/]+)/i);
+  const origin = originMatch ? originMatch[1] : '';
+  if (relativeOrAbsolute.startsWith('/')) return origin + relativeOrAbsolute;
+  const dir = base.slice(0, base.lastIndexOf('/') + 1);
+  return dir + relativeOrAbsolute;
+}
+
+function videoIdFromIframe(iframeSrc) {
+  const hostname = getHostname(iframeSrc);
+  if (!/rpmvid\.com$/i.test(hostname) && !hostname.includes('cubeembed')) return null;
+
+  let id = getQueryParam(iframeSrc, 'id');
+  if (!id) {
+    const hIndex = iframeSrc.indexOf('#');
+    id = hIndex === -1 ? '' : iframeSrc.slice(hIndex + 1);
+  }
+  if (id && id.includes('&')) id = id.split('&')[0];
+  return id && id.length > 1 ? id : null;
 }
 
 function fetchVideoData(hash) {
@@ -297,7 +321,7 @@ function probeFirstVariant(masterUrl, playlistText) {
   targets.forEach(function (uri) {
     chain = chain.then(function (okSoFar) {
       if (!okSoFar) return false;
-      const childUrl = new URL(uri, masterUrl).href;
+      const childUrl = resolveUrl(uri, masterUrl);
       return fetch(childUrl, { headers: RPMVID_HEADERS }).then(function (res) {
         if (!res.ok) return false;
         return res.text().then(function (text) { return /#EXTM3U/i.test(text); });
