@@ -409,30 +409,41 @@ function resolveLiveMaster(videoId) {
 
 // ==================== Entry point de Nuvio ====================
 
+// Devuelve un "stream" falso con el mensaje de diagnostico como titulo,
+// para poder ver EN LA PROPIA APP en que paso se corta, ya que no
+// tenemos forma de ver la consola/logs de Nuvio desde afuera. Esto es
+// TEMPORAL para diagnosticar -- una vez que ande bien, avisame y te
+// devuelvo la version limpia (sin esto) para que no se vea en producción.
+function debugStream(mensaje) {
+  return [{
+    name: 'LACartoons [DEBUG]',
+    title: mensaje,
+    url: 'https://example.com/no-es-un-video-real.mp4',
+  }];
+}
+
 function getStreams(tmdbId, mediaType, season, episode) {
   if (mediaType !== 'tv') {
-    console.log('[LACartoons] Solo tiene series, se pide "' + mediaType + '", devuelvo vacio');
-    return Promise.resolve([]);
+    return Promise.resolve(debugStream('mediaType recibido: "' + mediaType + '" (se esperaba "tv")'));
   }
 
   const numId = TMDB_TO_LACART[String(tmdbId)];
   if (!numId) {
-    console.log('[LACartoons] No hay equivalencia para TMDB ' + tmdbId);
-    return Promise.resolve([]);
+    return Promise.resolve(debugStream('TMDB ' + tmdbId + ' no esta en el mapeo de LACartoons (510 series)'));
   }
 
   return findEpisodeUrl(numId, parseInt(season), parseInt(episode))
     .then(function (epUrl) {
       if (!epUrl) {
-        console.log('[LACartoons] No se encontro S' + season + 'E' + episode + ' para serie ' + numId);
-        return [];
+        return debugStream('Serie ' + numId + ' encontrada, pero no hay S' + season + 'E' + episode + ' en la pagina');
       }
       return findEmbedUrl(epUrl).then(function (embedSrc) {
-        if (!embedSrc) return [];
+        if (!embedSrc) {
+          return debugStream('Se encontro el capitulo (' + epUrl + ') pero no hay ningun iframe de reproductor en la pagina');
+        }
         const videoId = videoIdFromIframe(embedSrc);
         if (!videoId) {
-          console.log('[LACartoons] El reproductor de este capitulo no es cubeembed/rpmvid -- no soportado en esta version');
-          return [];
+          return debugStream('El reproductor de este capitulo no es cubeembed/rpmvid: ' + embedSrc);
         }
         return resolveLiveMaster(videoId).then(function (result) {
           return [{
@@ -446,8 +457,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
       });
     })
     .catch(function (error) {
-      console.error('[LACartoons] Error:', error.message);
-      return [];
+      return debugStream('ERROR: ' + (error && error.message ? error.message : String(error)));
     });
 }
 
