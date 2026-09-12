@@ -2740,7 +2740,7 @@ function getStreams(tmdbId, mediaType, season, episode, title, year) {
       });
       const data = response.data;
       if (!data || !data.success || !data.languages) {
-        return [];
+        return yield scrapeCuevanaDirecto(title, year, mediaType, season, episode);
       }
       const promises = [];
       const seenLinks = /* @__PURE__ */ new Set();
@@ -2776,9 +2776,95 @@ function getStreams(tmdbId, mediaType, season, episode, title, year) {
       const results = yield Promise.all(promises);
       const rawStreams = results.filter((r) => r !== null);
       if (rawStreams.length === 0) {
-        return [];
+        return yield scrapeCuevanaDirecto(title, year, mediaType, season, episode);
       }
       return yield finalizeStreams(rawStreams, "Cuevana UBD", data.title);
+    } catch (e) {
+      try {
+        return yield scrapeCuevanaDirecto(title, year, mediaType, season, episode);
+      } catch (e2) {
+        return [];
+      }
+    }
+  });
+}
+
+// ==================== Respaldo: scraping directo a wv3.cuevana3.eu ====================
+// Portado de CuevanaProvider.kt (CloudStream) -- se usa SOLO cuando la
+// API de cuevana.unbuendato.com falla o no encuentra nada. Reusa
+// resolveEmbed/finalizeStreams (ya definidos arriba en este mismo
+// archivo) para no reimplementar los resolutores de cada host.
+function scrapeCuevanaDirecto(title, year, mediaType, season, episode) {
+  return __async(this, null, function* () {
+    if (!title) return [];
+    const CUEVANA_BASE = "https://wv3.cuevana3.eu";
+    const axios3 = require("axios");
+    const cheerio3 = require("cheerio-without-node-native");
+    const UA_CUEVANA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+    function getDoc(url) {
+      return axios3.get(url, { headers: { "User-Agent": UA_CUEVANA }, timeout: 15e3 }).then((r) => cheerio3.load(r.data));
+    }
+
+    try {
+      const isMovie = mediaType === "movie" || mediaType === "movies";
+      const $search = yield getDoc(`${CUEVANA_BASE}/search?q=${encodeURIComponent(title)}`);
+      let targetHref = null;
+      $search("li.TPostMv").each(function () {
+        if (targetHref) return;
+        const href = $search(this).find("a").attr("href") || "";
+        const esSerie = href.includes("/serie/");
+        if (isMovie && esSerie) return;
+        if (!isMovie && !esSerie) return;
+        targetHref = href.startsWith("http") ? href : CUEVANA_BASE + "/" + href.replace(/^\//, "");
+      });
+      if (!targetHref) return [];
+
+      let targetUrl = targetHref;
+      if (!isMovie && season && episode) {
+        const $show = yield getDoc(targetHref);
+        const nextData = $show("script#__NEXT_DATA__").html();
+        if (nextData) {
+          try {
+            const parsed = JSON.parse(nextData);
+            const seasons = parsed.props && parsed.props.pageProps && parsed.props.pageProps.thisSerie && parsed.props.pageProps.thisSerie.seasons;
+            if (seasons) {
+              const temporada = seasons.find((s) => s.number === parseInt(season));
+              const ep = temporada && temporada.episodes.find((e) => e.number === parseInt(episode));
+              if (ep && ep.url && ep.url.slug) {
+                targetUrl = CUEVANA_BASE + "/" + ep.url.slug.replace("series/", "serie/").replace("seasons/", "temporada/").replace("episodes/", "episodio/");
+              }
+            }
+          } catch (e) {}
+        }
+      }
+
+      const $content = yield getDoc(targetUrl);
+      const rawUrls = [];
+      const promesasSubmenu = [];
+      $content("li.open_submenu").each(function () {
+        const idioma = $content(this).text().trim().toLowerCase();
+        if (!idioma.includes("latino") && !idioma.includes("espa\xF1ol") && !idioma.includes("castellano")) return;
+        $content(this).find("li.clili").each(function () {
+          const dataTr = $content(this).attr("data-tr");
+          if (!dataTr) return;
+          const iframeUrl = dataTr.startsWith("http") ? dataTr : CUEVANA_BASE + "/" + dataTr.replace(/^\//, "");
+          promesasSubmenu.push(
+            getDoc(iframeUrl).then(($iframe) => {
+              const scriptTxt = $iframe("script").filter(function () { return $iframe(this).html().includes("var url = '"); }).first().html();
+              if (!scriptTxt) return null;
+              const m = scriptTxt.match(/var url = '([^']+)'/);
+              return m ? m[1] : null;
+            }).catch(() => null)
+          );
+        });
+      });
+      const urls = (yield Promise.all(promesasSubmenu)).filter(Boolean);
+      if (!urls.length) return [];
+
+      const resueltos = (yield Promise.all(urls.map((u) => resolveEmbed(u).catch(() => null)))).filter(Boolean);
+      if (!resueltos.length) return [];
+      return yield finalizeStreams(resueltos, "Cuevana (directo)", title);
     } catch (e) {
       return [];
     }
