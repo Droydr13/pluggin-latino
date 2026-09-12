@@ -1,20 +1,12 @@
 # Addon Latam Providers (fork consolidado)
 
-Este repo junta, en un solo lugar, los providers de Nuvio que ya andaban
-bien repartidos en tres forks separados, más el provider propio de
-**LACartoons** armado para Addon Latam.
-
-No tiene GitHub Actions ni ningún workflow de actualización automática
-a propósito — es un fork congelado en el momento en que se armó, pensado
-para no traer cambios de arriba sin que alguien los revise primero.
-
 ## Instalar en Nuvio
 
 Settings → Plugins → agregar esta URL (la de tu propio repo en GitHub,
 una vez que subas esto):
 
 ```
-https://raw.githubusercontent.com/TU-USUARIO/TU-REPO/main
+https://raw.githubusercontent.com/droydr13/pluggin-latino/main
 ```
 
 ## Providers incluidos
@@ -29,17 +21,6 @@ https://raw.githubusercontent.com/TU-USUARIO/TU-REPO/main
 | HackStore | movie, tv | fork "Latino Providers" (Nuvio-Latino) |
 | LACartoons | tv | armado a mano para Addon Latam, portado del addon de Stremio `stremio-lacartoons` sin Playwright ni yt-dlp |
 
-## Nota sobre los duplicados
-
-Varios de estos providers estaban repetidos entre los tres forks
-originales, pero casi siempre uno de los dos era en realidad una
-librería compartida de resolutores (con código de otros sitios
-mezclado adentro), no una versión más avanzada de ESE proveedor en
-particular. Se comparó cada caso a mano y se dejó la versión que
-realmente correspondía a ese sitio y que estaba confirmada como
-funcionando (marcada como `enabled: true` en el manifest de su fork de
-origen), salvo Embed69, donde la versión más grande sí era una versión
-genuinamente más completa (con más dominios espejo).
 
 ## LACartoons — limitaciones conocidas
 
