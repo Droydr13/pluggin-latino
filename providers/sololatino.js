@@ -2792,110 +2792,119 @@ function getDirectStream(id, token, cookie, playerUrl) {
     }
   });
 }
+var SOLOLATINO_BASE = "https://sololatino.net";
+var SOLOLATINO_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+function slugificarSL(s) {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
 function getStreams(tmdbId, mediaType, season, episode, title) {
   return __async(this, null, function* () {
-    if (!tmdbId)
-      return [];
-    const parts = tmdbId.toString().split(":");
-    const realId = parts[0];
-    const s = parseInt(parts[1] || season || 1);
-    const e = parseInt(parts[2] || episode || 1);
+    if (!title) return [];
+    const axios3 = require("axios");
+    const cheerio3 = require("cheerio-without-node-native");
     const isMovie = mediaType === "movie" || mediaType === "movies";
-    setSessionUA(UA3);
-    const imdbId = yield getImdbIdInternal(realId, mediaType);
-    if (!imdbId)
-      return [];
-    const epStr = e < 10 ? `0${e}` : e;
-    const slug = isMovie ? imdbId : `${imdbId}-${s}x${epStr}`;
-    const playerUrl = `${BASE_URL}/f/${slug}`;
-    try {
-      const { data: html, headers: respHeaders } = yield axios3.get(playerUrl, { headers: HEADERS, timeout: 8e3 });
-      const cookie = (respHeaders["set-cookie"] || []).map((c) => c.split(";")[0]).join("; ");
-      const tokenMatch = html.match(/(?:let\s+token|const\s+_t|tok|_t|token)\s*.*['"]([a-f0-9]{32})['"]/);
-      if (!tokenMatch)
-        return [];
-      const token = tokenMatch[1];
-      const postH = __spreadProps(__spreadValues({}, HEADERS), {
-        "Referer": playerUrl,
-        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-      });
-      if (cookie)
-        postH["cookie"] = cookie;
-      yield axios3.post(`${BASE_URL}/s.php`, "a=click&tok=" + token, { headers: postH }).catch(() => {
-      });
-      yield sleep(1e3);
-      const { data: scanData } = yield axios3.post(`${BASE_URL}/s.php`, `a=1&tok=${token}`, { headers: postH });
-      const uniqueServers = /* @__PURE__ */ new Map();
-      if (scanData && scanData.s) {
-        scanData.s.forEach((ser) => {
-          if (ser[1])
-            uniqueServers.set(ser[1], ser);
-        });
-      }
-      if (scanData && scanData.langs_s) {
-        const lat = scanData.langs_s.LAT || [];
-        const esp = scanData.langs_s.ESP || scanData.langs_s.CAS || [];
-        lat.forEach((ser) => {
-          if (ser[1])
-            uniqueServers.set(ser[1], __spreadProps(__spreadValues({}, ser), { lang: "Latino" }));
-        });
-        esp.forEach((ser) => {
-          if (ser[1])
-            uniqueServers.set(ser[1], __spreadProps(__spreadValues({}, ser), { lang: "Castellano" }));
-        });
-      }
-      const servers = Array.from(uniqueServers.values()).filter((ser) => {
-        const name = ser[0];
-        return !["Seek", "Lulu"].some((x) => name.includes(x));
-      }).slice(0, 5);
-      const resultsRaw = yield Promise.all(servers.map((ser) => __async(this, null, function* () {
-        const [name, id] = ser;
-        const lang = ser.lang || "Latino";
-        let finalUrl = yield getDirectStream(id, token, cookie, playerUrl);
-        if (finalUrl) {
-          let resolvedResult = null;
-          let finalHeaders = { "User-Agent": UA3, "Referer": playerUrl, "Origin": BASE_URL };
-          try {
-            const finalRes = yield fetch(finalUrl, {
-              method: "HEAD",
-              headers: { "User-Agent": UA3, "Referer": playerUrl },
-              redirect: "follow"
-            });
-            if (finalRes.url && finalRes.url.includes("mediafire.com")) {
-              return {
-                url: finalRes.url,
-                serverName: `${name} - Directo`,
-                langLabel: lang,
-                quality: "1080p",
-                verified: true,
-                headers: {
-                  "User-Agent": UA3,
-                  "Referer": "https://player.pelisserieshoy.com/"
-                }
-              };
-            }
-            if (finalRes.url)
-              finalUrl = finalRes.url;
-          } catch (e2) {
-          }
-          resolvedResult = yield resolveEmbed(finalUrl);
-          return {
-            url: finalUrl,
-            serverName: ((resolvedResult == null ? void 0 : resolvedResult.serverName) ? `${name} - ${resolvedResult.serverName}` : name).replace(/ - Direct/g, ""),
-            langLabel: lang,
-            quality: "1080p",
-            verified: resolvedResult ? resolvedResult.verified : false,
-            headers: (resolvedResult == null ? void 0 : resolvedResult.headers) || finalHeaders
-          };
-        }
-        return null;
-      })));
-      const resolved = resultsRaw.filter((r) => r !== null);
-      return yield finalizeStreams(resolved, "SoloLatino", title);
-    } catch (e2) {
-      console.log(`[SoloLatino] Error v8.5.0: ${e2.message}`);
+
+    function getDoc(url, opts) {
+      return axios3.get(url, Object.assign({ headers: { "User-Agent": SOLOLATINO_UA } }, opts || {})).then((r) => ({ $: cheerio3.load(r.data), headers: r.headers }));
     }
-    return [];
+
+    try {
+      // 1) buscar el titulo en sololatino.net
+      const { $: $search } = yield getDoc(`${SOLOLATINO_BASE}/buscar?q=${encodeURIComponent(title)}`);
+      let targetHref = null;
+      $search("div.card").each(function () {
+        if (targetHref) return;
+        const href = $search(this).find("a").attr("href") || "";
+        const esPelicula = href.includes("/pelicula/");
+        if (isMovie && !esPelicula) return;
+        if (!isMovie && esPelicula) return;
+        targetHref = href.startsWith("http") ? href : SOLOLATINO_BASE + "/" + href.replace(/^\//, "");
+      });
+      if (!targetHref) return [];
+
+      // 2) si es serie, buscar el episodio correspondiente dentro de la pagina
+      let targetUrl = targetHref;
+      if (!isMovie && season && episode) {
+        const { $: $show } = yield getDoc(targetHref);
+        const panel = $show(`div[data-season-panel="${parseInt(season)}"]`);
+        const episodios = panel.find("a.ep-item");
+        const epIdx = parseInt(episode) - 1;
+        const epHref = episodios.eq(epIdx).attr("href");
+        if (epHref) targetUrl = epHref.startsWith("http") ? epHref : SOLOLATINO_BASE + "/" + epHref.replace(/^\//, "");
+      }
+
+      // 3) sacar el token csrf y los data-player-token de cada boton de servidor
+      const { $: $content } = yield getDoc(targetUrl);
+      const csrf = $content('meta[name="csrf-token"]').attr("content") || "";
+      const tokens = [];
+      $content("button.server-btn").each(function () {
+        const tok = $content(this).attr("data-player-token");
+        if (tok) tokens.push(tok);
+      });
+      if (!tokens.length) return [];
+
+      // 4) cada token se resuelve por separado contra /api/player-url
+      const postHeaders = {
+        "User-Agent": SOLOLATINO_UA,
+        "Content-Type": "application/json",
+        "X-CSRF-TOKEN": csrf,
+        "Accept": "application/json",
+        "Referer": targetUrl,
+      };
+      const crudos = [];
+      yield Promise.all(tokens.map((tok) => {
+        return axios3.post(`${SOLOLATINO_BASE}/api/player-url`, { t: tok }, { headers: postHeaders })
+          .then((res) => {
+            const info = res.data;
+            if (!info || !info.url) return;
+            crudos.push(info.url);
+          })
+          .catch(() => {});
+      }));
+      if (!crudos.length) return [];
+
+      // 5) resolver cada url segun su tipo (mp4 directo, embed69, xupalace, o iframe generico)
+      const resueltos = [];
+      yield Promise.all(crudos.map((url) => __async(this, null, function* () {
+        try {
+          if (/\.mp4(\?|$)/i.test(url)) {
+            resueltos.push({ url, serverName: "SoloLatino", quality: "1080p", headers: { "User-Agent": SOLOLATINO_UA, Referer: SOLOLATINO_BASE } });
+            return;
+          }
+          if (url.startsWith("https://xupalace.org/video")) {
+            const { $: $x } = yield getDoc(url);
+            const html = $x.html();
+            const re = /(?:go_to_player|go_to_playerVast)\('([^']+)'/g;
+            let m;
+            while ((m = re.exec(html)) !== null) {
+              const r = yield resolveEmbed(m[1]).catch(() => null);
+              if (r) resueltos.push(r);
+            }
+            return;
+          }
+          // embed69.org y cualquier otro host: resolveEmbed ya sabe reconocerlos
+          const r = yield resolveEmbed(url).catch(() => null);
+          if (r) resueltos.push(r);
+          else {
+            // ultimo recurso: puede que "url" sea en si una pagina con un iframe adentro
+            const { $: $g } = yield getDoc(url).catch(() => ({ $: null }));
+            const iframeSrc = $g ? $g("iframe").first().attr("src") : null;
+            if (iframeSrc) {
+              const r2 = yield resolveEmbed(iframeSrc).catch(() => null);
+              if (r2) resueltos.push(r2);
+            }
+          }
+        } catch (e) {}
+      })));
+
+      if (!resueltos.length) return [];
+      return yield finalizeStreams(resueltos, "SoloLatino", title);
+    } catch (e) {
+      console.log(`[SoloLatino] Error: ${e.message}`);
+      return [];
+    }
   });
 }
 module.exports = { getStreams };
