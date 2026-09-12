@@ -532,17 +532,25 @@ function processEmbeds(embeds) {
   }
   return next(0);
 }
+function debugStream(mensaje) {
+  return [{
+    name: '[DEBUG LaMovie] ' + mensaje,
+    title: mensaje,
+    url: 'https://example.com/no-es-un-video-real.mp4',
+  }];
+}
+
 function getStreams(tmdbId, mediaType, season, episode) {
   var resolvedType = mediaType === "series" ? "tv" : mediaType || "movie";
   try {
     console.log("[LaMovie] Buscando TMDB:" + tmdbId + " (" + resolvedType + ")" + (season ? " S" + season + "E" + episode : ""));
     return getTmdbInfo(tmdbId, resolvedType).then(function (info) {
-      if (!info || !info.title) return [];
+      if (!info || !info.title) return debugStream('getTmdbInfo no devolvio info/titulo para TMDB ' + tmdbId);
       console.log('[LaMovie] TMDB: "' + info.title + '" (' + info.year + ")");
       return findContent(info.title, info.originalTitle, info.year, resolvedType, info.genres, info.originCountries).then(function (found) {
         if (!found || !found.url) {
           console.log("[LaMovie] No encontrado");
-          return [];
+          return debugStream('findContent no encontro "' + info.title + '" (' + info.year + ') en lamovie.cc');
         }
         var movieUrl = found.url.startsWith('http') ? found.url : BASE_URL + found.url;
 
@@ -572,7 +580,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
         }
 
         return targetUrlPromise.then(function (targetUrl) {
-          if (!targetUrl) return [];
+          if (!targetUrl) return debugStream('No se encontro la URL del ' + (resolvedType === 'tv' ? 'episodio S' + season + 'E' + episode : 'contenido') + ' en la pagina de "' + found.url + '"');
           return get(targetUrl, { "Referer": BASE_URL + "/" }).then(function (html) {
             var $ = cheerio.load(html);
             var embeds = [];
@@ -609,7 +617,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
             });
 
             if (!embeds.length) {
-              return [];
+              return debugStream('Se encontro la pagina (' + targetUrl + ') pero no hay ningun servidor en Latino ahi');
             }
             console.log("[LaMovie] " + embeds.length + " embed(s) encontrados...");
 
@@ -649,53 +657,13 @@ function getStreams(tmdbId, mediaType, season, episode) {
       });
     }).catch(function (err) {
       console.log("[LaMovie] Error: " + err.message);
-      return [];
+      return debugStream('ERROR en la cadena principal: ' + err.message);
     });
   } catch (err) {
     console.log("[LaMovie] Error fatal: " + err.message);
-    return Promise.resolve([]);
+    return Promise.resolve(debugStream('ERROR FATAL (sincronico, antes de cualquier fetch): ' + err.message));
   }
 }
-// ==================== DIAGNOSTICO TEMPORAL ====================
-// Envuelve getStreams para que, si no trae resultados o falla, en vez
-// de devolver una lista vacia en silencio, devuelva un resultado falso
-// con los ultimos logs como titulo -- asi se ve DENTRO de la app en
-// que paso se corta, sin necesitar acceso a ninguna consola. Sacar
-// esto una vez que se entienda por que dejo de andar.
-(function () {
-  var __lamovieLogs = [];
-  var __origConsoleLog = console.log;
-  console.log = function () {
-    try { __lamovieLogs.push(Array.prototype.slice.call(arguments).join(' ')); } catch (e) {}
-    return __origConsoleLog.apply(console, arguments);
-  };
-
-  var __getStreamsOriginal = getStreams;
-  getStreams = function (tmdbId, mediaType, season, episode) {
-    __lamovieLogs = [];
-    return __getStreamsOriginal(tmdbId, mediaType, season, episode)
-      .then(function (results) {
-        if (!results || results.length === 0) {
-          var resumen = __lamovieLogs.length ? __lamovieLogs.join(' || ') : 'sin logs capturados (la funcion no llego a loguear nada)';
-          return [{
-            name: '[DEBUG LaMovie] SIN RESULTADOS: ' + resumen,
-            title: resumen,
-            url: 'https://example.com/no-es-un-video-real.mp4',
-          }];
-        }
-        return results;
-      })
-      .catch(function (err) {
-        var resumen = __lamovieLogs.length ? __lamovieLogs.join(' || ') : '';
-        var msg = (err && err.message ? err.message : String(err)) + (resumen ? ' | logs: ' + resumen : '');
-        return [{
-          name: '[DEBUG LaMovie] ERROR: ' + msg,
-          title: msg,
-          url: 'https://example.com/no-es-un-video-real.mp4',
-        }];
-      });
-  };
-})();
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
