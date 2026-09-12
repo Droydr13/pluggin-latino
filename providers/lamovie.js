@@ -596,9 +596,8 @@ function getStreams(tmdbId, mediaType, season, episode) {
                     var serverName = getServerName(embed.url);
                     var isVerified = result.verified === true;
                     var qualityLabel = embed.quality || result.quality || "1080p";
-                    var checkMark = isVerified ? "." : "";
 
-                    var streamName = "La.movie - " + qualityLabel + checkMark;
+                    var streamName = "La.movie - " + qualityLabel;
                     var streamTitle = embed.language + " - " + serverName + " " + qualityLabel;
 
                     results.push({
