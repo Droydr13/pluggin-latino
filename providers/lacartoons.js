@@ -471,7 +471,7 @@ function extractOkRuStreams(embedUrl) {
 
       const flashvars = player.flashvars || {};
       if (flashvars.metadata) {
-        return JSON.parse(flashvars.metadata);
+        return typeof flashvars.metadata === 'string' ? JSON.parse(flashvars.metadata) : flashvars.metadata;
       }
       if (flashvars.metadataUrl) {
         const metadataUrl = decodeURIComponent(flashvars.metadataUrl);
