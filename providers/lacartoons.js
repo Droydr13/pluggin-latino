@@ -106,19 +106,66 @@ function findEpisodeUrl(numId, season, episode) {
   });
 }
 
+// Alias de hosts que el sitio usa a veces en vez del dominio real del
+// reproductor -- sacado del plugin de CloudStream (LACartoonsProvider,
+// fixHostsLinks), que esta mas actualizado que el addon de Stremio del
+// que portamos el resto. El primero (short.ink) es un acortador que
+// en realidad lleva a abysscdn.com, un reproductor que todavia no
+// soportamos (ver nota en getStreams).
+const HOST_ALIASES = [
+  [/^https:\/\/short\.ink\//i, 'https://abysscdn.com/?v='],
+  [/^https:\/\/hglink\.to/i, 'https://streamwish.to'],
+  [/^https:\/\/swdyu\.com/i, 'https://streamwish.to'],
+  [/^https:\/\/cybervynx\.com/i, 'https://streamwish.to'],
+  [/^https:\/\/dumbalag\.com/i, 'https://streamwish.to'],
+  [/^https:\/\/mivalyo\.com/i, 'https://vidhidepro.com'],
+  [/^https:\/\/dinisglows\.com/i, 'https://vidhidepro.com'],
+  [/^https:\/\/dhtpre\.com/i, 'https://vidhidepro.com'],
+  [/^https:\/\/filemoon\.link/i, 'https://filemoon.sx'],
+  [/^https:\/\/sblona\.com/i, 'https://watchsb.com'],
+  [/^https:\/\/lulu\.st/i, 'https://lulustream.com'],
+  [/^https:\/\/uqload\.io/i, 'https://uqload.com'],
+  [/^https:\/\/do7go\.com/i, 'https://dood.la'],
+];
+
+function normalizarHostEmbed(url) {
+  for (let i = 0; i < HOST_ALIASES.length; i++) {
+    if (HOST_ALIASES[i][0].test(url)) return url.replace(HOST_ALIASES[i][0], HOST_ALIASES[i][1]);
+  }
+  return url;
+}
+
+function isAbyssCdn(url) {
+  return /(^|\.)abysscdn\.com$/i.test(getHostname(url));
+}
+
 function findEmbedUrl(epUrl) {
   return fetchHTML(epUrl).then(function (html) {
     const $ = cheerio.load(html);
+
+    // selector especifico confirmado por el plugin de CloudStream --
+    // mas confiable que "el primer iframe que no sea de google/facebook"
     let embedSrc = null;
-    $('iframe[src]').each(function (_, el) {
+    $('.serie-video-informacion iframe[src]').each(function (_, el) {
+      if (embedSrc) return;
       const src = $(el).attr('src') || '';
-      if (!src) return;
-      const fullSrc = src.startsWith('http') ? src : (BASE_URL + src);
-      if (!embedSrc && !src.includes('google') && !src.includes('facebook')) {
-        embedSrc = fullSrc;
-      }
+      if (src) embedSrc = src.startsWith('http') ? src : (BASE_URL + src);
     });
-    return embedSrc;
+
+    // reserva: si esa seccion no existe (el sitio cambio el maquetado),
+    // volvemos al metodo generico de antes
+    if (!embedSrc) {
+      $('iframe[src]').each(function (_, el) {
+        const src = $(el).attr('src') || '';
+        if (!src) return;
+        const fullSrc = src.startsWith('http') ? src : (BASE_URL + src);
+        if (!embedSrc && !src.includes('google') && !src.includes('facebook')) {
+          embedSrc = fullSrc;
+        }
+      });
+    }
+
+    return embedSrc ? normalizarHostEmbed(embedSrc) : null;
   });
 }
 
@@ -523,7 +570,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
         if (videoId) {
           return resolveLiveMaster(videoId).then(function (result) {
             return [{
-              name: 'LACartoons',
+              name: 'LACartoons - HD - Español Latino',
               title: (result.title || 'HD') + ' - Español Latino',
               url: result.url,
               quality: 'HD',
@@ -537,14 +584,19 @@ function getStreams(tmdbId, mediaType, season, episode) {
         if (isOkRuIframe(embedSrc)) {
           return extractOkRuStreams(embedSrc).then(function (result) {
             return [{
-              name: 'LACartoons',
+              name: 'LACartoons - ' + result.quality + ' - Español Latino (ok.ru)',
               title: 'ok.ru - ' + result.quality + ' - Español Latino',
               url: result.url,
+              quality: result.quality,
             }];
           });
         }
 
-        return debugStream('El reproductor de este capitulo no es cubeembed/rpmvid ni ok.ru: ' + embedSrc);
+        if (isAbyssCdn(embedSrc)) {
+          return debugStream('Reproductor detectado: abysscdn.com (via short.ink) -- resolutor todavia no implementado. embed: ' + embedSrc);
+        }
+
+        return debugStream('El reproductor de este capitulo no es cubeembed/rpmvid, ok.ru ni abysscdn: ' + embedSrc);
       });
     })
     .catch(function (error) {
