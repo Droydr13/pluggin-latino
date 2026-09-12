@@ -366,29 +366,6 @@
       "supportsExternalPlayer": true
     },
     {
-      "id": "lamovie",
-      "name": "LaMovie",
-      "description": "Proveedor premium con enlaces directos en 1080p y enfoque Latino.",
-      "version": "2.5.5",
-      "author": "AdrianJael",
-      "supportedTypes": [
-        "movie",
-        "tv"
-      ],
-      "filename": "providers/lamovie.js",
-      "enabled": true,
-      "logo": "https://lamovie.cc/img/favicon.png",
-      "contentLanguage": [
-        "es"
-      ],
-      "formats": [
-        "m3u8",
-        "mp4"
-      ],
-      "limited": false,
-      "supportsExternalPlayer": true
-    },
-    {
       "id": "videasy",
       "name": "VidEasy Latino",
       "description": "Premium streams via OnionPlay & Cuevana (1080p Latino).",
