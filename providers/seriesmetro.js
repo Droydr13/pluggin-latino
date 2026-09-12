@@ -78,16 +78,17 @@ function L(n) {
   return p(this, null, function* () {
     var t;
     try {
+      let origenEmbed = (n.match(/^https?:\/\/[^\/]+/) || [n])[0] + "/";
       let r = yield (yield fetch(n, { headers: { "User-Agent": M, Referer: "https://www3.seriesmetro.net/" }, redirect: "follow" })).text(), o = O(r);
       if (!o)
         return null;
       let a = (t = o.match(/file:"(https?:\/\/[^"]+\.m3u8[^"]*)"/)) == null ? void 0 : t[1];
       if (!a)
         return null;
-      let s = yield k(a, { Referer: "https://fastream.to/", "User-Agent": M });
-      return { url: a, quality: s, headers: { "User-Agent": M, Referer: "https://fastream.to/" } };
+      let s = yield k(a, { Referer: origenEmbed, "User-Agent": M });
+      return { url: a, quality: s, headers: { "User-Agent": M, Referer: origenEmbed } };
     } catch (e) {
-      return console.error("[Fastream] Error:", e), null;
+      return console.error("[Embed] Error:", e), null;
     }
   });
 }
@@ -150,7 +151,7 @@ function j(n, t) {
     for (let [, l, d] of c) {
       let S = d.replace(/<[^>]+>/g, "").trim().split("-").pop().trim().toLowerCase(), h = H[S] || S;
       try {
-        let y = (u = (yield fetch(`${v}/?trembed=${l}&trid=${a}&trtype=${s}`, { headers: x(m({}, E), { Referer: n }) }).then((T) => T.text())).match(/<iframe[^>]*src="(https?:\/\/fastream\.to\/[^"]+)"/i)) == null ? void 0 : u[1];
+        let y = (u = (yield fetch(`${v}/?trembed=${l}&trid=${a}&trtype=${s}`, { headers: x(m({}, E), { Referer: n }) }).then((T) => T.text())).match(/<iframe[^>]*src="(https?:\/\/[^"]+)"/i)) == null ? void 0 : u[1];
         if (!y)
           continue;
         let w = yield L(y);
