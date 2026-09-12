@@ -295,6 +295,17 @@
       "filename": "providers/areadocumental.js",
       "enabled": true,
       "contentLanguage": ["es"]
+    },
+    {
+      "id": "doramasflix",
+      "name": "Doramasflix",
+      "description": "Doramas y peliculas asiaticas en Latino desde Doramasflix -- API GraphQL directa, con respaldo de scraping HTML propio (Uqload, OkRu, Doodstream, Streamtape, VOE, Primeload).",
+      "version": "2.0.0",
+      "author": "Droydr13 + CloudStream (fusionado)",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/doramasflix.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
     }
   ]
 }
