@@ -1,4 +1,4 @@
-# Addon Latam Providers (fork consolidado)
+# Addon Latam Providers fork
 
 ## Instalar en Nuvio
 
