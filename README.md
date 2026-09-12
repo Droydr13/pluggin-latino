@@ -24,11 +24,10 @@ https://raw.githubusercontent.com/droydr13/pluggin-latino/main
 ## LACartoons — limitaciones conocidas
 
 El sitio usa varios reproductores según el capítulo:
-- `cubeembed.rpmvid.com` — soportado.
+- `cubeembed.rpmvid.com` — no soportado.
 - `ok.ru` — soportado.
 - `abysscdn.com` (a veces detrás de un acortador `short.ink`) — se
-  detecta pero **todavía no está resuelto** (falta escribir el
-  extractor específico para ese reproductor).
+  detecta pero **todavía no está resuelto**
 
 Si un capítulo no reproduce, la app va a mostrar un mensaje de
 `[DEBUG]` con el motivo exacto en vez de fallar en silencio.
