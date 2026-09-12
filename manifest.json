@@ -1,6 +1,6 @@
 {
-  "name": "Addon Latam Providers",
-  "version": "1.0.0",
+  "name": "Nuvio Latino",
+  "version": "13.0.1",
   "scrapers": [
     {
       "id": "lamovie",
@@ -8,84 +8,43 @@
       "description": "Proveedor premium con enlaces directos en 1080p y enfoque Latino.",
       "version": "2.5.5",
       "author": "AdrianJael",
-      "supportedTypes": ["movie", "tv"],
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
       "filename": "providers/lamovie.js",
       "enabled": true,
       "logo": "https://lamovie.cc/img/favicon.png",
-      "contentLanguage": ["es"],
-      "formats": ["m3u8", "mp4"],
+      "contentLanguage": [
+        "es"
+      ],
+      "formats": [
+        "m3u8",
+        "mp4"
+      ],
       "limited": false,
       "supportsExternalPlayer": true
-    },
-    {
-      "id": "embed69",
-      "name": "Embed69",
-      "description": "Movies & Series en Español/Ingles via Embed69, con carrera entre varios espejos de StreamWish/VidHide para mas confiabilidad.",
-      "version": "7.9.4",
-      "author": "AdrianJael",
-      "supportedTypes": ["movie", "tv"],
-      "filename": "providers/embed69.js",
-      "enabled": true,
-      "logo": "https://i.postimg.cc/SK9YMsHG/embed69.png",
-      "contentLanguage": ["en", "es"],
-      "formats": ["mp4", "m3u8"],
-      "limited": false,
-      "supportsExternalPlayer": true
-    },
-    {
-      "id": "cinecalidad",
-      "name": "CineCalidad",
-      "description": "Películas en Latino desde CineCalidad. Vimeos, VOE, StreamWish.",
-      "version": "2.0.0",
-      "author": "KennethJYS",
-      "supportedTypes": ["movie"],
-      "filename": "providers/cinecalidad.js",
-      "enabled": true,
-      "contentLanguage": ["es"]
-    },
-    {
-      "id": "peliserieshoy",
-      "name": "PelisSeriesHoy",
-      "description": "Streams en Latino desde PelisSeriesHoy.",
-      "version": "2.0.0",
-      "author": "KennethJYS",
-      "supportedTypes": ["movie", "tv"],
-      "filename": "providers/peliserieshoy.js",
-      "enabled": true,
-      "contentLanguage": ["es"]
-    },
-    {
-      "id": "seriesmetro",
-      "name": "SeriesMetro",
-      "description": "Streams en Latino desde SeriesMetro. Fastream.",
-      "version": "2.0.0",
-      "author": "KennethJYS",
-      "supportedTypes": ["movie", "tv"],
-      "filename": "providers/seriesmetro.js",
-      "enabled": true,
-      "contentLanguage": ["es"]
-    },
-    {
-      "id": "hackstore",
-      "name": "HackStore",
-      "description": "Streams en Latino desde HackStore.",
-      "version": "2.0.0",
-      "author": "KennethJYS",
-      "supportedTypes": ["movie", "tv"],
-      "filename": "providers/hackstore.js",
-      "enabled": true,
-      "contentLanguage": ["es"]
     },
     {
       "id": "lacartoons",
       "name": "LACartoons",
       "description": "Caricaturas y series animadas clasicas en Español Latino, via lacartoons.com.",
-      "version": "1.1.0",
+      "version": "1.0.0",
       "author": "AddonLatam",
-      "supportedTypes": ["tv"],
+      "supportedTypes": [
+        "tv"
+      ],
       "filename": "providers/lacartoons.js",
       "enabled": true,
-      "contentLanguage": ["es"]
+      "logo": "https://raw.githubusercontent.com/masilvasol/stremio-lacartoons/refs/heads/main/logo.png",
+      "contentLanguage": [
+        "es"
+      ],
+      "formats": [
+        "m3u8"
+      ],
+      "limited": false,
+      "supportsExternalPlayer": true
     }
   ]
 }
