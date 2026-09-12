@@ -602,7 +602,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
                     var isVerified = result.verified === true;
                     var qualityLabel = embed.quality || result.quality || "1080p";
 
-                    var streamName = "La movie";
+                    var streamName = "LaMovie";
                     var streamTitle = embed.language + " - " + serverName + " " + qualityLabel;
 
                     results.push({
