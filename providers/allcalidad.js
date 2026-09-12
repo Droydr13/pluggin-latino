@@ -2717,6 +2717,9 @@ var require_resolvers = __commonJS({
   }
 });
 
+var { finalizeStreams } = require_engine();
+var { resolveEmbed } = require_resolvers();
+
 
 // ==================== AllCalidad (allcalidad.re) ====================
 // Portado de AllCalidadProvider.kt -- el sitio es 100% API JSON, no

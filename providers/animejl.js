@@ -2717,6 +2717,9 @@ var require_resolvers = __commonJS({
   }
 });
 
+var { finalizeStreams } = require_engine();
+var { resolveEmbed } = require_resolvers();
+
 
 // ==================== AnimeJL (anime-jl.net) ====================
 // Portado de AnimeJlProvider.kt.

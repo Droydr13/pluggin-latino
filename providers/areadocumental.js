@@ -2717,6 +2717,9 @@ var require_resolvers = __commonJS({
   }
 });
 
+var { finalizeStreams } = require_engine();
+var { resolveEmbed } = require_resolvers();
+
 
 // ==================== Area Documental (area-documental.com) ====================
 // Portado de AreaDocumentalProvider.kt. Este sitio sirve el video

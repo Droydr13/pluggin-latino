@@ -2717,6 +2717,9 @@ var require_resolvers = __commonJS({
   }
 });
 
+var { finalizeStreams } = require_engine();
+var { resolveEmbed } = require_resolvers();
+
 
 // ==================== AnimeAV1 (animeav1.com) ====================
 // Portado de AnimeAV1Provider.kt.
