@@ -575,22 +575,36 @@ function resolveEmbed69(embedUrl) {
     }
   });
 }
+function buscarEnDominio(dominioBase, title, season, episode) {
+  return __async(this, null, function* () {
+    const url = `${dominioBase}/search?s=${normalizeTitle(title).replace(/\s+/g, "+")}`;
+    const html = yield fetchText2(url);
+    const re = new RegExp(`href="(${dominioBase.replace(/\./g, "\\.")}\\/(pelicula|serie)\\/([^"]+))"`, "gi");
+    const matches = [];
+    let m;
+    while ((m = re.exec(html)) !== null)
+      matches.push({ url: m[1], type: m[2], slug: m[3] });
+    if (matches.length === 0) return null;
+    const best = matches[0];
+    let targetUrl = best.url;
+    if (best.type === "serie")
+      targetUrl = `${dominioBase}/serie/${best.slug}/temporada/${season || 1}/capitulo/${episode || 1}`;
+    return targetUrl;
+  });
+}
+
 function getStreams(tmdbId, mediaType, season, episode, title) {
   return __async(this, null, function* () {
     try {
-      const url = `https://pelispedia.mov/search?s=${normalizeTitle(title).replace(/\s+/g, "+")}`;
-      const html = yield fetchText2(url);
-      const re = /href="(https:\/\/pelispedia\.mov\/(pelicula|serie)\/([^"]+))"/gi;
-      const matches = [];
-      let m;
-      while ((m = re.exec(html)) !== null)
-        matches.push({ url: m[1], type: m[2], slug: m[3] });
-      if (matches.length === 0)
-        return [];
-      const best = matches[0];
-      let targetUrl = best.url;
-      if (best.type === "serie")
-        targetUrl = `${BASE}/serie/${best.slug}/temporada/${season || 1}/capitulo/${episode || 1}`;
+      // pelispedia.mov es el dominio de siempre; pelispedia.is es un
+      // espejo que trajo CloudStream -- si el primero no encuentra
+      // nada (dominio caido/bloqueado, cosa comun en estos sitios),
+      // se prueba el segundo antes de rendirse.
+      let targetUrl = yield buscarEnDominio("https://pelispedia.mov", title, season, episode);
+      if (!targetUrl) {
+        targetUrl = yield buscarEnDominio("https://pelispedia.is", title, season, episode);
+      }
+      if (!targetUrl) return [];
       const { extractStreams: extractStreams2 } = yield Promise.resolve().then(() => (init_extractor(), extractor_exports));
       const rawEmbeds = yield extractStreams2(targetUrl);
       const streams = [];
