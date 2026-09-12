@@ -2,8 +2,7 @@
 
 ## Instalar en Nuvio
 
-Settings → Plugins → agregar esta URL (la de tu propio repo en GitHub,
-una vez que subas esto):
+Settings → Plugins → agregar esta URL 
 
 ```
 https://raw.githubusercontent.com/droydr13/pluggin-latino/main
