@@ -496,6 +496,29 @@ function processOneEmbed(embed) {
     return null;
   });
 }
+// Ningun fetch en todo el archivo tenia limite de tiempo -- si UN SOLO
+// servidor de video estaba colgado (sin contestar nunca, no fallando
+// rapido), Promise.all esperaba a ese uno sin limite antes de devolver
+// nada, aunque los demas ya hubieran contestado hace rato. Esto le pone
+// un tope: si un resolver puntual no termina en 15s, se da por perdido
+// ESE solo y se sigue con los demas normalmente.
+function conTimeout(promesa, ms, etiqueta) {
+  return new Promise(function (resolve) {
+    var terminado = false;
+    var timer = setTimeout(function () {
+      if (!terminado) {
+        terminado = true;
+        console.log("[LaMovie] Timeout (" + ms + "ms) en " + etiqueta + ", se sigue con los demas");
+        resolve(null);
+      }
+    }, ms);
+    promesa.then(function (v) {
+      if (!terminado) { terminado = true; clearTimeout(timer); resolve(v); }
+    }).catch(function () {
+      if (!terminado) { terminado = true; clearTimeout(timer); resolve(null); }
+    });
+  });
+}
 function processEmbeds(embeds) {
   var results = [];
   function next(i) {
@@ -595,10 +618,10 @@ function getStreams(tmdbId, mediaType, season, episode) {
             var promises = embeds.map(function(embed) {
                var resolver = getResolver(embed.url);
                if (!resolver) return Promise.resolve();
+               var serverName = getServerName(embed.url);
 
-               return resolver(embed.url).then(function(result) {
+               return conTimeout(resolver(embed.url), 15000, serverName).then(function(result) {
                   if (result && result.url) {
-                    var serverName = getServerName(embed.url);
                     var isVerified = result.verified === true;
                     var qualityLabel = embed.quality || result.quality || "1080p";
 
