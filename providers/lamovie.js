@@ -297,22 +297,27 @@ function resolveVimeos(embedUrl) {
     if (!m) m = unpacked.match(/["'](https?:\/\/[^"']+\.m3u8[^"']*)['"]/);
     return m ? m[1] : null;
   }
+  var MAX_INTENTOS_VIMEOS = 8;
   function attempt(n) {
+    if (n > MAX_INTENTOS_VIMEOS) {
+      console.log("[Vimeos] Se alcanzo el limite de " + MAX_INTENTOS_VIMEOS + " intentos, se abandona esta fuente");
+      return Promise.resolve(null);
+    }
     return get(embedUrl, fetchOpts).then(function (data) {
       var masterUrl = extractFileUrl(data);
       if (!masterUrl) {
         console.log("[Vimeos] Intento " + n + " sin URL, reintentando...");
-        return attempt(n + 1);
+        return new Promise(function (resolve) { setTimeout(resolve, 400); }).then(function () { return attempt(n + 1); });
       }
       var iParam = (masterUrl.match(/[?&]i=([^&]*)/) || ["", "?"])[1];
       console.log("[Vimeos] Intento " + n + " i=" + iParam + ": " + masterUrl.slice(0, 100));
       if (iParam === "0.0") {
         return { url: masterUrl, quality: "1080p", verified: true, headers: playHeaders };
       }
-      return attempt(n + 1);
+      return new Promise(function (resolve) { setTimeout(resolve, 400); }).then(function () { return attempt(n + 1); });
     }).catch(function (err) {
       console.log("[Vimeos] Error intento " + n + ": " + err.message);
-      return attempt(n + 1);
+      return new Promise(function (resolve) { setTimeout(resolve, 400); }).then(function () { return attempt(n + 1); });
     });
   }
   return attempt(1);
@@ -628,6 +633,47 @@ function getStreams(tmdbId, mediaType, season, episode) {
     return Promise.resolve([]);
   }
 }
+// ==================== DIAGNOSTICO TEMPORAL ====================
+// Envuelve getStreams para que, si no trae resultados o falla, en vez
+// de devolver una lista vacia en silencio, devuelva un resultado falso
+// con los ultimos logs como titulo -- asi se ve DENTRO de la app en
+// que paso se corta, sin necesitar acceso a ninguna consola. Sacar
+// esto una vez que se entienda por que dejo de andar.
+(function () {
+  var __lamovieLogs = [];
+  var __origConsoleLog = console.log;
+  console.log = function () {
+    try { __lamovieLogs.push(Array.prototype.slice.call(arguments).join(' ')); } catch (e) {}
+    return __origConsoleLog.apply(console, arguments);
+  };
+
+  var __getStreamsOriginal = getStreams;
+  getStreams = function (tmdbId, mediaType, season, episode) {
+    __lamovieLogs = [];
+    return __getStreamsOriginal(tmdbId, mediaType, season, episode)
+      .then(function (results) {
+        if (!results || results.length === 0) {
+          var resumen = __lamovieLogs.length ? __lamovieLogs.join(' || ') : 'sin logs capturados (la funcion no llego a loguear nada)';
+          return [{
+            name: '[DEBUG LaMovie] SIN RESULTADOS: ' + resumen,
+            title: resumen,
+            url: 'https://example.com/no-es-un-video-real.mp4',
+          }];
+        }
+        return results;
+      })
+      .catch(function (err) {
+        var resumen = __lamovieLogs.length ? __lamovieLogs.join(' || ') : '';
+        var msg = (err && err.message ? err.message : String(err)) + (resumen ? ' | logs: ' + resumen : '');
+        return [{
+          name: '[DEBUG LaMovie] ERROR: ' + msg,
+          title: msg,
+          url: 'https://example.com/no-es-un-video-real.mp4',
+        }];
+      });
+  };
+})();
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     getStreams: getStreams
