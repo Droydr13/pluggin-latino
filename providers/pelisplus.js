@@ -3174,6 +3174,8 @@ var require_extractor = __commonJS({
 // src/pelisplus/index.js
 var extractor = require_extractor();
 var { getTmdbTitle } = require_tmdb();
+var DOMINIOS_RESPALDO_PELISPLUS = ["https://ww3.pelisplus.to", "https://pelisplushd.bz"];
+
 function getStreams(tmdbId, mediaType, season, episode, title) {
   return __async(this, null, function* () {
     try {
@@ -3187,7 +3189,27 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
         return [];
       }
       console.log(`[PelisPlusHD] Target Title: "${mediaTitle}"`);
-      const streams = yield extractor.extract(tmdbId, mediaType, season, episode, mediaTitle);
+      let streams = yield extractor.extract(tmdbId, mediaType, season, episode, mediaTitle);
+
+      // pelisplushd.la es el dominio principal; ww3.pelisplus.to y
+      // pelisplushd.bz son espejos que trajo CloudStream -- si el
+      // principal no encuentra nada, se prueban antes de rendirse
+      // (son sitios que rotan de dominio seguido por bloqueos).
+      if (!streams || streams.length === 0) {
+        const dominioOriginal = BASE_URL;
+        for (const dominioAlterno of DOMINIOS_RESPALDO_PELISPLUS) {
+          try {
+            BASE_URL = dominioAlterno;
+            console.log(`[PelisPlusHD] Reintentando con espejo: ${dominioAlterno}`);
+            streams = yield extractor.extract(tmdbId, mediaType, season, episode, mediaTitle);
+            if (streams && streams.length > 0) break;
+          } catch (e) {
+            console.log(`[PelisPlusHD] Espejo ${dominioAlterno} fallo: ${e.message}`);
+          }
+        }
+        BASE_URL = dominioOriginal;
+      }
+
       if (!streams || streams.length === 0) {
         console.log(`[PelisPlusHD] No streams found for ${tmdbId}`);
         return [];
