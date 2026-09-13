@@ -32,7 +32,6 @@ var __async = (__this, __arguments, generator) => {
 
 
 var DORAMASFLIX_BASE = 'https://doramasflix.co';
-var DORAMASFLIX_GQL = 'https://doraflix.fluxcedene.net/api/gql';
 var DORAMASFLIX_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 // La clase URL no es confiable dentro de Nuvio (ya lo aprendimos con
@@ -61,108 +60,6 @@ function dfHttpGet(url, extraHeaders) {
     timeout: 15000,
     validateStatus: null,
   }).then(function (res) { return res.status === 200 ? res.data : null; }).catch(function () { return null; });
-}
-
-function dfGql(operationName, query, variables) {
-  var axios3 = require('axios');
-  var body = JSON.stringify({ operationName: operationName, query: query, variables: variables });
-  return axios3.post(DORAMASFLIX_GQL, body, {
-    headers: { 'User-Agent': DORAMASFLIX_UA, 'Content-Type': 'application/json; charset=utf-8' },
-    timeout: 15000,
-    validateStatus: null,
-  }).then(function (res) { return res.status === 200 ? res.data : null; }).catch(function () { return null; });
-}
-
-// ==================== CAMINO PRINCIPAL: API GraphQL ====================
-
-function gqlSearchAll(texto) {
-  var query = 'query searchAll($input: String!) {\n  searchDorama(input: $input, limit: 5) {\n    _id\n slug\n name\n name_es\n poster_path\n isTVShow\n poster\n __typename\n  }\n  searchMovie(input: $input, limit: 5) {\n    _id\n name\n name_es\n slug\n poster_path\n poster\n __typename\n  }\n}\n';
-  return dfGql('searchAll', query, { input: texto }).then(function (r) {
-    return r && r.data ? { doramas: r.data.searchDorama || [], movies: r.data.searchMovie || [] } : { doramas: [], movies: [] };
-  });
-}
-
-function gqlListSeasons(serieId) {
-  var query = 'query listSeasons($serie_id: MongoID!) {\n  listSeasons(sort: NUMBER_ASC, filter: {serie_id: $serie_id}) {\n    slug\n season_number\n poster_path\n air_date\n serie_name\n poster\n backdrop\n __typename\n  }\n}\n';
-  return dfGql('listSeasons', query, { serie_id: serieId }).then(function (r) {
-    return (r && r.data && r.data.listSeasons) || [];
-  });
-}
-
-function gqlListEpisodes(serieId, seasonNumber) {
-  var query = 'query listEpisodesPagination($page: Int!, $serie_id: MongoID!, $season_number: Float!) {\n  paginationEpisode(\n    page: $page\n    perPage: 1000\n    sort: NUMBER_ASC\n    filter: {type_serie: "dorama", serie_id: $serie_id, season_number: $season_number}\n  ) {\n       items {\n      _id\n      name\n      still_path\n   overview\n   episode_number\n      season_number\n      air_date\n      slug\n      serie_id\n   season_poster\n      serie_poster\n      poster\n      backdrop\n      __typename\n    }\n    pageInfo {\n      hasNextPage\n      __typename\n    }\n    __typename\n  }\n}\n';
-  return dfGql('listEpisodesPagination', query, { page: 1, serie_id: serieId, season_number: seasonNumber }).then(function (r) {
-    return (r && r.data && r.data.paginationEpisode && r.data.paginationEpisode.items) || [];
-  });
-}
-
-function gqlGetEpisodeLinks(episodeSlug) {
-  var query = 'query GetEpisodeLinks($episode_slug: String!) {\n  detailEpisode(filter: {slug: $episode_slug, type_serie: "dorama"}) {\n    links_online\n   }\n}\n';
-  return dfGql('GetEpisodeLinks', query, { episode_slug: episodeSlug }).then(function (r) {
-    return (r && r.data && r.data.detailEpisode && r.data.detailEpisode.links_online) || [];
-  });
-}
-
-function gqlDetailMovie(slug) {
-  var query = 'query detailMovieExtra($slug: String!) {\n  detailMovie(filter: {slug: $slug}) {\n    name\n name_es\n overview\n languages\n popularity\n  poster_path\n poster\n  backdrop_path\n    backdrop\n    links_online\n    __typename\n genres {\n      name\n      slug\n      __typename\n    }\n labels {\n      name\n      slug\n      __typename\n    }\n  }\n}\n';
-  return dfGql('detailMovieExtra', query, { slug: slug }).then(function (r) {
-    return r && r.data ? r.data.detailMovie : null;
-  });
-}
-
-var IDIOMA_POR_ID = { '13109': 'Coreano', '13110': 'Japones', '13111': 'Mandarin', '13112': 'Tailandes', '37': 'Castellano', '38': 'Latino', '192': 'Subtitulado' };
-
-function normalizarTituloDF(s) {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-}
-
-function intentarGraphQL(mediaType, title, year, season, episode) {
-  return __async(this, null, function* () {
-    var isMovie = mediaType === 'movie' || mediaType === 'movies';
-    var busqueda = yield gqlSearchAll(title);
-    var candidatos = isMovie ? busqueda.movies : busqueda.doramas;
-    if (!candidatos.length) return [];
-
-    var tituloNorm = normalizarTituloDF(title);
-    var best = candidatos.find(function (c) {
-      return (c.name && normalizarTituloDF(c.name) === tituloNorm) || (c.name_es && normalizarTituloDF(c.name_es) === tituloNorm);
-    }) || candidatos[0];
-
-    var linksOnline = [];
-    if (isMovie) {
-      var detalle = yield gqlDetailMovie(best.slug);
-      linksOnline = (detalle && detalle.links_online) || [];
-    } else {
-      var seasons = yield gqlListSeasons(best._id);
-      var seasonNum = parseInt(season) || 1;
-      var seasonMatch = seasons.find(function (s) { return s.season_number === seasonNum; });
-      if (!seasonMatch) return [];
-      var episodes = yield gqlListEpisodes(best._id, seasonNum);
-      var epNum = parseInt(episode) || 1;
-      var epMatch = episodes.find(function (e) { return e.episode_number === epNum; });
-      if (!epMatch) return [];
-      linksOnline = yield gqlGetEpisodeLinks(epMatch.slug);
-    }
-    if (!linksOnline.length) return [];
-
-    var resueltos = [];
-    yield Promise.all(linksOnline.map(function (entrada) {
-      if (!entrada.link) return Promise.resolve();
-      var link = fixHostsLinksDF(entrada.link);
-      var extractor = elegirExtractorDF(entrada.server, link);
-      return extractor(link).then(function (resultado) {
-        if (resultado) {
-          resueltos.push({
-            name: 'Doramasflix',
-            title: (IDIOMA_POR_ID[entrada.lang] || entrada.lang || 'Latino') + ' \xB7 ' + (formatQualityDF(resultado.url) || 'HD'),
-            url: resultado.url,
-            headers: { 'User-Agent': DORAMASFLIX_UA, 'Referer': resultado.referer, 'Origin': dfGetOrigin(resultado.referer) },
-          });
-        }
-      }).catch(function () {});
-    }));
-    return resueltos;
-  });
 }
 
 // ==================== RESPALDO: scraper HTML propio ====================
@@ -578,19 +475,12 @@ function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     var info = yield getTmdbInfoDF(tmdbId, mediaType);
     var title = info.title;
-    var year = info.year;
     if (!title) return [];
     try {
-      var streams = yield intentarGraphQL(mediaType, title, year, season, episode);
-      if (streams && streams.length) return streams;
+      var streams = yield intentarHTML(mediaType, title, season, episode);
+      return streams || [];
     } catch (e) {
-      console.log('[Doramasflix] GraphQL fallo: ' + e.message);
-    }
-    try {
-      var streams2 = yield intentarHTML(mediaType, title, season, episode);
-      return streams2 || [];
-    } catch (e2) {
-      console.log('[Doramasflix] Respaldo HTML tambien fallo: ' + e2.message);
+      console.log('[Doramasflix] Error: ' + e.message);
       return [];
     }
   });
