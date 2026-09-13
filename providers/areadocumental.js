@@ -2771,7 +2771,7 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
       }];
     } catch (e) {
       console.log(`[AreaDocumental] Error: ${e.message}`);
-      return [];
+      return [{ name: `[AreaDocumental] Error: ${e.message}`, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
     }
   });
 }

@@ -2746,7 +2746,7 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
       return yield finalizeStreams(resueltos, "AnimeFLV", title);
     } catch (e) {
       console.log(`[AnimeFLV] Error: ${e.message}`);
-      return [];
+      return [{ name: `[AnimeFLV] Error: ${e.message}`, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
     }
   });
 }

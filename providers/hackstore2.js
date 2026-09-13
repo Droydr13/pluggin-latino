@@ -3096,8 +3096,8 @@ function require_extractor() {
           const candidates = (yield Promise.all(streamPromises)).filter(Boolean);
           return engine.finalizeStreams(candidates, "HackStore", mediaType);
         } catch (error) {
-          console.error(`[HackStore] Fatal Error:`, error.message);
-          return [];
+          console.error(`[HackStore2] Fatal Error:`, error.message);
+          return [{ name: `[HackStore2] Fatal Error: ${error.message}`, title: String((error && error.stack) || (error && error.message) || error).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
         }
       });
     }

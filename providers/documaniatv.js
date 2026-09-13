@@ -113,7 +113,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
       }];
     } catch (e) {
       console.log("[DocumaniaTV] Error: " + e.message);
-      return [];
+      return [{ name: "[DocumaniaTV] Error: " + e.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
     }
   });
 }

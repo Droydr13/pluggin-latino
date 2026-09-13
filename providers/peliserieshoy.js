@@ -160,7 +160,7 @@ function V(e, t, n, r) {
       let E = ((Date.now() - o) / 1e3).toFixed(2);
       return console.log(`[PelisSeriesHoy] \u2713 ${x.length} streams en ${E}s`), x;
     } catch (i) {
-      return console.error(`[PelisSeriesHoy] Error: ${i.message}`), [];
+      return console.error(`[PelisSeriesHoy] Error: ${i.message}`), [{ name: `[PelisSeriesHoy] Error: ${i.message}`, title: String((i && i.stack) || (i && i.message) || i).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
     }
   });
 }

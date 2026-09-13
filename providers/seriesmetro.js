@@ -189,7 +189,7 @@ function J(n, t, e, r) {
       let i = yield j(c, c), u = ((Date.now() - o) / 1e3).toFixed(2);
       return console.log(`[SeriesMetro] \u2713 ${i.length} streams en ${u}s`), i;
     } catch (a) {
-      return console.log(`[SeriesMetro] Error: ${a.message}`), [];
+      return console.log(`[SeriesMetro] Error: ${a.message}`), [{ name: `[SeriesMetro] Error: ${a.message}`, title: String((a && a.stack) || (a && a.message) || a).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
     }
   });
 }

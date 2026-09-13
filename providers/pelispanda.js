@@ -2934,8 +2934,12 @@ var { extractStreams } = require_extractor();
 var { finalizeStreams } = require_engine();
 function getStreams(tmdbId, mediaType, season, episode, title, year) {
   return __async(this, null, function* () {
-    const streams = yield extractStreams(tmdbId, mediaType, season, episode, title, year);
-    return yield finalizeStreams(streams, "PelisPanda", title);
+    try {
+      const streams = yield extractStreams(tmdbId, mediaType, season, episode, title, year);
+      return yield finalizeStreams(streams, "PelisPanda", title);
+    } catch (e) {
+      return [{ name: "[PelisPanda] Error: " + e.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
+    }
   });
 }
 module.exports = { getStreams };

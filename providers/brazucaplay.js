@@ -733,7 +733,7 @@ function getStreams(tmdbId, mediaType = "movie", season = null, episode = null) 
       const flattened = allResults.flat();
       return finalizeStreams(flattened, "BrazucaPlay", "");
     } catch (error) {
-      return [];
+      return [{ name: "[BrazucaPlay] Error: " + error.message, title: String((error && error.stack) || (error && error.message) || error).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
     }
   });
 }
