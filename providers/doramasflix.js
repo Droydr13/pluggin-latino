@@ -174,9 +174,22 @@ function slugifyDF(str) {
   return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-');
 }
 
+function base64DecodeUtf8DF(str) {
+  if (typeof atob !== 'undefined') {
+    var binary = atob(str);
+    var percentEncoded = '';
+    for (var i = 0; i < binary.length; i++) {
+      var hex = binary.charCodeAt(i).toString(16);
+      percentEncoded += '%' + (hex.length === 1 ? '0' + hex : hex);
+    }
+    return decodeURIComponent(percentEncoded);
+  }
+  return Buffer.from(str, 'base64').toString('utf8');
+}
+
 function base64UrlDecodeDF(str) {
   var estandar = str.replace(/-/g, '+').replace(/_/g, '/');
-  return Buffer.from(estandar, 'base64').toString('utf8');
+  return base64DecodeUtf8DF(estandar);
 }
 
 function decodeEmbedShortenerLink(embedShortenerUrl) {
@@ -188,7 +201,7 @@ function decodeEmbedShortenerLink(embedShortenerUrl) {
     var payload = JSON.parse(base64UrlDecodeDF(payloadB64));
     var linkB64 = payload.link;
     linkB64 += '='.repeat((4 - linkB64.length % 4) % 4);
-    return Buffer.from(linkB64, 'base64').toString('utf8');
+    return base64DecodeUtf8DF(linkB64);
   } catch (e) { return null; }
 }
 
@@ -365,9 +378,9 @@ function voeDecode(encoded) {
   var step2 = step1;
   VOE_JUNK_PARTS.forEach(function (junk) { step2 = step2.split(junk).join('_'); });
   step2 = step2.split('_').join('');
-  var step3 = Buffer.from(step2, 'base64').toString('utf8');
+  var step3 = base64DecodeUtf8DF(step2);
   var step4 = step3.split('').map(function (c) { return String.fromCharCode(c.charCodeAt(0) - 3); }).join('');
-  var step5 = Buffer.from(step4.split('').reverse().join(''), 'base64').toString('utf8');
+  var step5 = base64DecodeUtf8DF(step4.split('').reverse().join(''));
   return JSON.parse(step5);
 }
 function resolveVoe(embedUrl) {
