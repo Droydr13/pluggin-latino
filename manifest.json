@@ -317,6 +317,61 @@
       "filename": "providers/documaniatv.js",
       "enabled": true,
       "contentLanguage": ["es"]
+    },
+    {
+      "id": "doramasyt",
+      "name": "DoramasYT",
+      "description": "Doramas asiaticos en Latino desde DoramasYT.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/doramasyt.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "latanime",
+      "name": "LatAnime",
+      "description": "Anime en Latino desde LatAnime.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/latanime.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "entrepeliculasyseries",
+      "name": "EntrePeliculasYSeries",
+      "description": "Peliculas y series en Latino desde EntrePeliculasYSeries.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/entrepeliculasyseries.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "hdfull",
+      "name": "HDFull",
+      "description": "Peliculas y series en Español desde HDFull. Usa una cuenta compartida propia del sitio original; si vence, puede fallar hasta que se actualice.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/hdfull.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "jkanime",
+      "name": "JKAnime",
+      "description": "Anime subtitulado desde JKAnime. Version simplificada: cubre el camino principal de extraccion, no las cadenas de respaldo mas complejas del sitio (GSPlay/Nozomi).",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/jkanime.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
     }
   ]
 }
