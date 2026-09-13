@@ -174,13 +174,18 @@ function slugifyDF(str) {
   return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-');
 }
 
+function base64UrlDecodeDF(str) {
+  var estandar = str.replace(/-/g, '+').replace(/_/g, '/');
+  return Buffer.from(estandar, 'base64').toString('utf8');
+}
+
 function decodeEmbedShortenerLink(embedShortenerUrl) {
   try {
     var m = embedShortenerUrl.match(/embedshortener\.co\/e\/([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)/);
     if (!m) return null;
     var payloadB64 = m[1].split('.')[1];
     payloadB64 += '='.repeat((4 - payloadB64.length % 4) % 4);
-    var payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+    var payload = JSON.parse(base64UrlDecodeDF(payloadB64));
     var linkB64 = payload.link;
     linkB64 += '='.repeat((4 - linkB64.length % 4) % 4);
     return Buffer.from(linkB64, 'base64').toString('utf8');
@@ -197,7 +202,7 @@ function extractServersDF(html) {
     try {
       var payloadB64 = jwt.split('.')[1];
       payloadB64 += '='.repeat((4 - payloadB64.length % 4) % 4);
-      var payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+      var payload = JSON.parse(base64UrlDecodeDF(payloadB64));
       linkPorServer[payload.server] = linkReal;
     } catch (e) {}
   });
