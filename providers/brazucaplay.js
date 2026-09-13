@@ -79,8 +79,9 @@ var __async = (__this, __arguments, generator) => {
 };
 
 // src/utils/ua.js
-var require_ua = __commonJS({
-  "src/utils/ua.js"(exports2, module2) {
+function require_ua() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var UA_POOL = [
       // Windows - Chrome 146 (Custom modern fingerprint)
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
@@ -91,12 +92,15 @@ var require_ua = __commonJS({
       return UA_POOL[index];
     }
     module2.exports = { getRandomUA, UA_POOL };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/utils/http.js
-var require_http = __commonJS({
-  "src/utils/http.js"(exports2, module2) {
+function require_http() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { getRandomUA } = require_ua();
     var DEFAULT_CHROME_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     var sessionUA = null;
@@ -180,12 +184,15 @@ var require_http = __commonJS({
       DEFAULT_UA,
       MOBILE_UA
     };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/utils/m3u8.js
-var require_m3u8 = __commonJS({
-  "src/utils/m3u8.js"(exports2, module2) {
+function require_m3u8() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { getSessionUA } = require_http();
     function getQualityFromHeight(height) {
       if (!height)
@@ -291,8 +298,10 @@ var require_m3u8 = __commonJS({
       });
     }
     module2.exports = { validateStream, getQualityFromHeight };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/utils/sorting.js
 var sorting_exports = {};
@@ -350,8 +359,9 @@ var init_sorting = __esm({
 });
 
 // src/utils/mirrors.js
-var require_mirrors = __commonJS({
-  "src/utils/mirrors.js"(exports2, module2) {
+function require_mirrors() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var MIRRORS = {
       VIDHIDE: [
         "vidhide",
@@ -517,12 +527,15 @@ var require_mirrors = __commonJS({
       return MIRRORS[groupName].some((m) => s.includes(m));
     }
     module2.exports = { MIRRORS, isMirror };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/utils/engine.js
-var require_engine = __commonJS({
-  "src/utils/engine.js"(exports2, module2) {
+function require_engine() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { validateStream } = require_m3u8();
     var { sortStreamsByQuality: sortStreamsByQuality2 } = (init_sorting(), __toCommonJS(sorting_exports));
     var { isMirror } = require_mirrors();
@@ -647,8 +660,10 @@ var require_engine = __commonJS({
       });
     }
     module2.exports = { finalizeStreams: finalizeStreams2, normalizeLanguage };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/brazucaplay/index.js
 var { fetchJson, setSessionUA } = require_http();

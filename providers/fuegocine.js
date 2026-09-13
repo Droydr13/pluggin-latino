@@ -89,8 +89,9 @@ var __async = (__this, __arguments, generator) => {
 };
 
 // src/utils/ua.js
-var require_ua = __commonJS({
-  "src/utils/ua.js"(exports2, module2) {
+function require_ua() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var UA_POOL = [
       // Windows - Chrome 146 (Custom modern fingerprint)
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
@@ -101,12 +102,15 @@ var require_ua = __commonJS({
       return UA_POOL[index];
     }
     module2.exports = { getRandomUA, UA_POOL };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/utils/http.js
-var require_http = __commonJS({
-  "src/utils/http.js"(exports2, module2) {
+function require_http() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { getRandomUA } = require_ua();
     var DEFAULT_CHROME_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     var sessionUA = null;
@@ -190,12 +194,15 @@ var require_http = __commonJS({
       DEFAULT_UA,
       MOBILE_UA
     };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/utils/m3u8.js
-var require_m3u8 = __commonJS({
-  "src/utils/m3u8.js"(exports2, module2) {
+function require_m3u8() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { getSessionUA } = require_http();
     function getQualityFromHeight(height) {
       if (!height)
@@ -301,8 +308,10 @@ var require_m3u8 = __commonJS({
       });
     }
     module2.exports = { validateStream, getQualityFromHeight };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/utils/sorting.js
 var sorting_exports = {};
@@ -360,8 +369,9 @@ var init_sorting = __esm({
 });
 
 // src/utils/mirrors.js
-var require_mirrors = __commonJS({
-  "src/utils/mirrors.js"(exports2, module2) {
+function require_mirrors() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var MIRRORS = {
       VIDHIDE: [
         "vidhide",
@@ -527,12 +537,15 @@ var require_mirrors = __commonJS({
       return MIRRORS[groupName].some((m) => s.includes(m));
     }
     module2.exports = { MIRRORS, isMirror };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/utils/engine.js
-var require_engine = __commonJS({
-  "src/utils/engine.js"(exports2, module2) {
+function require_engine() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { validateStream } = require_m3u8();
     var { sortStreamsByQuality: sortStreamsByQuality2 } = (init_sorting(), __toCommonJS(sorting_exports));
     var { isMirror } = require_mirrors();
@@ -657,12 +670,15 @@ var require_engine = __commonJS({
       });
     }
     module2.exports = { finalizeStreams: finalizeStreams2, normalizeLanguage };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/voe.js
-var require_voe = __commonJS({
-  "src/resolvers/voe.js"(exports2, module2) {
+function require_voe() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { getSessionUA } = require_http();
     var { validateStream } = require_m3u8();
     function localAtob(input) {
@@ -775,12 +791,15 @@ var require_voe = __commonJS({
     }
     module2.exports = { resolve: resolve3 };
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/hlswish.js
-var require_hlswish = __commonJS({
-  "src/resolvers/hlswish.js"(exports2, module2) {
+function require_hlswish() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { getSessionUA } = require_http();
     var { validateStream } = require_m3u8();
     function unpackEval(payload, radix, symtab) {
@@ -910,12 +929,15 @@ var require_hlswish = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/utils/aes_gcm.js
-var require_aes_gcm = __commonJS({
-  "src/utils/aes_gcm.js"(exports2, module2) {
+function require_aes_gcm() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var _CryptoJS = typeof CryptoJS !== "undefined" ? CryptoJS : null;
     function parseB64(b64) {
       if (!b64 || !_CryptoJS)
@@ -973,12 +995,15 @@ var require_aes_gcm = __commonJS({
       }
     }
     module2.exports = { decryptByse };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/filemoon.js
-var require_filemoon = __commonJS({
-  "src/resolvers/filemoon.js"(exports2, module2) {
+function require_filemoon() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { decryptByse } = require_aes_gcm();
     var { getSessionUA } = require_http();
     function resolve3(url, signal = null) {
@@ -1087,12 +1112,15 @@ var require_filemoon = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/vidhide.js
-var require_vidhide = __commonJS({
-  "src/resolvers/vidhide.js"(exports2, module2) {
+function require_vidhide() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { getSessionUA, getStealthHeaders: getStealthHeaders2 } = require_http();
     var { validateStream } = require_m3u8();
     function unpackVidHide(script) {
@@ -1189,12 +1217,15 @@ var require_vidhide = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/quality.js
-var require_quality = __commonJS({
-  "src/resolvers/quality.js"(exports2, module2) {
+function require_quality() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { request, getSessionUA } = require_http();
     function detectQuality(_0) {
       return __async(this, arguments, function* (url, headers = {}) {
@@ -1240,12 +1271,15 @@ var require_quality = __commonJS({
       });
     }
     module2.exports = { detectQuality };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/goodstream.js
-var require_goodstream = __commonJS({
-  "src/resolvers/goodstream.js"(exports2, module2) {
+function require_goodstream() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var axios3 = require("axios");
     var { detectQuality } = require_quality();
     var { getSessionUA } = require_http();
@@ -1293,12 +1327,15 @@ var require_goodstream = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/fastream.js
-var require_fastream = __commonJS({
-  "src/resolvers/fastream.js"(exports2, module2) {
+function require_fastream() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var UA3 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     function unpackPacker(data) {
       const match = data.match(/eval\(function\(p,a,c,k,e,d\)\{.*?\}\('([\s\S]*?)',(\d+),(\d+),'([\s\S]*?)'\.split\('\|'\)\)\)/);
@@ -1381,12 +1418,15 @@ var require_fastream = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/vimeos.js
-var require_vimeos = __commonJS({
-  "src/resolvers/vimeos.js"(exports2, module2) {
+function require_vimeos() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { fetchHtml: fetchHtml2, fetchJson: fetchJson2, getSessionUA } = require_http();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -1472,12 +1512,15 @@ var require_vimeos = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/buzzheavier.js
-var require_buzzheavier = __commonJS({
-  "src/resolvers/buzzheavier.js"(exports2, module2) {
+function require_buzzheavier() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var axios3 = require("axios");
     var { getStealthHeaders: getStealthHeaders2 } = require_http();
     function resolve3(embedUrl) {
@@ -1552,8 +1595,10 @@ var require_buzzheavier = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/okru.js
 var okru_exports = {};
@@ -1612,8 +1657,9 @@ var init_okru = __esm({
 });
 
 // src/resolvers/pixeldrain.js
-var require_pixeldrain = __commonJS({
-  "src/resolvers/pixeldrain.js"(exports2, module2) {
+function require_pixeldrain() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var axios3 = require("axios");
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -1664,12 +1710,15 @@ var require_pixeldrain = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/playmogo.js
-var require_playmogo = __commonJS({
-  "src/resolvers/playmogo.js"(exports2, module2) {
+function require_playmogo() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { fetchHtml: fetchHtml2, DEFAULT_UA } = require_http();
     function resolve3(url) {
       return __async(this, null, function* () {
@@ -1692,8 +1741,10 @@ var require_playmogo = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/turbovid.js
 var turbovid_exports = {};
@@ -1733,8 +1784,9 @@ var init_turbovid = __esm({
 });
 
 // src/resolvers/embedseek.js
-var require_embedseek = __commonJS({
-  "src/resolvers/embedseek.js"(exports2, module2) {
+function require_embedseek() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var CryptoJS2 = require("crypto-js");
     var { getSessionUA } = require_http();
     function resolve3(url) {
@@ -1835,12 +1887,15 @@ var require_embedseek = __commonJS({
       return decrypted.toString(CryptoJS2.enc.Utf8);
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/tplayer.js
-var require_tplayer = __commonJS({
-  "src/resolvers/tplayer.js"(exports2, module2) {
+function require_tplayer() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var axios3 = require("axios");
     var { getStealthHeaders: getStealthHeaders2 } = require_http();
     function resolve3(embedUrl) {
@@ -1896,12 +1951,15 @@ var require_tplayer = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/lulustream.js
-var require_lulustream = __commonJS({
-  "src/resolvers/lulustream.js"(exports2, module2) {
+function require_lulustream() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { getSessionUA } = require_http();
     var { validateStream } = require_m3u8();
     function unpackEval(payload, radix, symtab) {
@@ -1981,12 +2039,15 @@ var require_lulustream = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/dropcdn.js
-var require_dropcdn = __commonJS({
-  "src/resolvers/dropcdn.js"(exports2, module2) {
+function require_dropcdn() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     function resolve3(url, signal = null) {
       return __async(this, null, function* () {
         try {
@@ -2084,12 +2145,15 @@ var require_dropcdn = __commonJS({
       }
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/vidsrc.js
-var require_vidsrc = __commonJS({
-  "src/resolvers/vidsrc.js"(exports2, module2) {
+function require_vidsrc() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     function resolve3(url, signal = null) {
       return __async(this, null, function* () {
         try {
@@ -2176,12 +2240,15 @@ var require_vidsrc = __commonJS({
       }
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/doodstream.js
-var require_doodstream = __commonJS({
-  "src/resolvers/doodstream.js"(exports2, module2) {
+function require_doodstream() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { getSessionUA } = require_http();
     function resolve3(url, signal = null) {
       return __async(this, null, function* () {
@@ -2260,12 +2327,15 @@ var require_doodstream = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/vidnest.js
-var require_vidnest = __commonJS({
-  "src/resolvers/vidnest.js"(exports2, module2) {
+function require_vidnest() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var axios3 = require("axios");
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -2291,12 +2361,15 @@ var require_vidnest = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/vidsonic.js
-var require_vidsonic = __commonJS({
-  "src/resolvers/vidsonic.js"(exports2, module2) {
+function require_vidsonic() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -2354,12 +2427,15 @@ var require_vidsonic = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/barmonrey.js
-var require_barmonrey = __commonJS({
-  "src/resolvers/barmonrey.js"(exports2, module2) {
+function require_barmonrey() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var axios3 = require("axios");
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -2385,12 +2461,15 @@ var require_barmonrey = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/vidmoly.js
-var require_vidmoly = __commonJS({
-  "src/resolvers/vidmoly.js"(exports2, module2) {
+function require_vidmoly() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -2428,12 +2507,15 @@ var require_vidmoly = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/rpmvid.js
-var require_rpmvid = __commonJS({
-  "src/resolvers/rpmvid.js"(exports2, module2) {
+function require_rpmvid() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var CryptoJS2 = require("crypto-js");
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -2486,12 +2568,15 @@ var require_rpmvid = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/resolvers/generic_fuegocine.js
-var require_generic_fuegocine = __commonJS({
-  "src/resolvers/generic_fuegocine.js"(exports2, module2) {
+function require_generic_fuegocine() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -2531,12 +2616,15 @@ var require_generic_fuegocine = __commonJS({
       });
     }
     module2.exports = { resolve: resolve3 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/utils/resolvers.js
-var require_resolvers = __commonJS({
-  "src/utils/resolvers.js"(exports2, module2) {
+function require_resolvers() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var { resolve: resolveVoe } = require_voe();
     var { resolve: resolveHlswish } = require_hlswish();
     var { resolve: resolveFilemoon } = require_filemoon();
@@ -2729,12 +2817,15 @@ var require_resolvers = __commonJS({
       });
     }
     module2.exports = { resolveEmbed: resolveEmbed2 };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/utils/tmdb.js
-var require_tmdb = __commonJS({
-  "src/utils/tmdb.js"(exports2, module2) {
+function require_tmdb() {
+  var module2 = { exports: {} };
+  var exports2 = module2.exports;
     var axios3 = require("axios");
     var TMDB_API_KEY = "439c478a771f35c05022f9feabcca01c";
     var titleCache = /* @__PURE__ */ new Map();
@@ -2837,8 +2928,10 @@ var require_tmdb = __commonJS({
       });
     }
     module2.exports = { getTmdbTitle: getTmdbTitle2, getTmdbInfo, getTmdbAliases };
-  }
-});
+
+  return module2.exports;
+}
+
 
 // src/fuegocine/index.js
 var { fetchHtml, fetchJson, getStealthHeaders } = require_http();
