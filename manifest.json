@@ -306,6 +306,17 @@
       "filename": "providers/doramasflix.js",
       "enabled": true,
       "contentLanguage": ["es"]
+    },
+    {
+      "id": "documaniatv",
+      "name": "DocumaniaTV",
+      "description": "Documentales y series documentales en Español desde DocumaniaTV (video directo, sin embeds de terceros).",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/documaniatv.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
     }
   ]
 }
