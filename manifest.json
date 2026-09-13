@@ -8,22 +8,293 @@
       "description": "Proveedor premium con enlaces directos en 1080p y enfoque Latino.",
       "version": "2.5.5",
       "author": "AdrianJael",
-      "supportedTypes": [
-        "movie",
-        "tv"
-      ],
+      "supportedTypes": ["movie", "tv"],
       "filename": "providers/lamovie.js",
       "enabled": true,
       "logo": "https://lamovie.cc/img/favicon.png",
-      "contentLanguage": [
-        "es"
-      ],
-      "formats": [
-        "m3u8",
-        "mp4"
-      ],
+      "contentLanguage": ["es"],
+      "formats": ["m3u8", "mp4"],
       "limited": false,
       "supportsExternalPlayer": true
+    },
+    {
+      "id": "embed69",
+      "name": "Embed69",
+      "description": "Movies & Series in English & Spanish (~5s).",
+      "version": "1.0",
+      "author": "KennethJYS",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/embed69.js",
+      "enabled": true,
+      "logo": "https://i.postimg.cc/SK9YMsHG/embed69.png",
+      "contentLanguage": ["en", "es"],
+      "formats": ["mp4", "m3u8"],
+      "limited": false,
+      "supportsExternalPlayer": true
+    },
+    {
+      "id": "cinecalidad",
+      "name": "CineCalidad",
+      "description": "Películas en Latino desde CineCalidad. Vimeos, VOE, StreamWish.",
+      "version": "2.0.0",
+      "author": "KennethJYS",
+      "supportedTypes": ["movie"],
+      "filename": "providers/cinecalidad.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "peliserieshoy",
+      "name": "PelisSeriesHoy",
+      "description": "Streams en Latino desde PelisSeriesHoy.",
+      "version": "2.0.0",
+      "author": "KennethJYS",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/peliserieshoy.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "seriesmetro",
+      "name": "SeriesMetro",
+      "description": "Streams en Latino desde SeriesMetro. Fastream.",
+      "version": "2.0.0",
+      "author": "KennethJYS",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/seriesmetro.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "hackstore",
+      "name": "HackStore",
+      "description": "Streams en Latino desde HackStore.",
+      "version": "2.0.0",
+      "author": "KennethJYS",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/hackstore.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "lacartoons",
+      "name": "LACartoons",
+      "description": "Caricaturas y series animadas clasicas en Español Latino, via lacartoons.com.",
+      "version": "1.1.0",
+      "author": "AddonLatam",
+      "supportedTypes": ["tv"],
+      "filename": "providers/lacartoons.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "brazucaplay",
+      "name": "BrazucaPlay",
+      "description": "Streams de peliculas y series via BrazucaPlay/cineby.",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/brazucaplay.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "cinemacity",
+      "name": "CinemaCity",
+      "description": "Peliculas y series en Latino desde CinemaCity (cinemacity.cc).",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/cinemacity.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "cuevana_unbuendato",
+      "name": "Cuevana (unbuendato)",
+      "description": "Peliculas y series en Latino desde Cuevana (espejo unbuendato.com).",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/cuevana_unbuendato.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "fuegocine",
+      "name": "FuegoCine",
+      "description": "Peliculas y series en Latino desde FuegoCine.",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/fuegocine.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "hackstore2",
+      "name": "HackStore (v2)",
+      "description": "Version alternativa del scraper de HackStore (hackstore.mx) -- distinta a 'hackstore', probar cual anda mejor.",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/hackstore2.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "pelisgo",
+      "name": "PelisGo",
+      "description": "Peliculas y series en Latino desde PelisGo.",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/pelisgo.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "pelispanda",
+      "name": "PelisPanda",
+      "description": "Peliculas y series en Latino desde PelisPanda.",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/pelispanda.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "pelispedia",
+      "name": "PelisPedia",
+      "description": "Peliculas y series en Latino desde PelisPedia.",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/pelispedia.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "pelisplus",
+      "name": "PelisPlus",
+      "description": "Peliculas y series en Latino desde PelisPlus (pelisplushd.la).",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/pelisplus.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "playhubmax",
+      "name": "PlayHubMax",
+      "description": "Peliculas y series en Latino desde PlayHubMax.",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/playhubmax.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "sololatino",
+      "name": "SoloLatino",
+      "description": "Peliculas y series en Latino desde SoloLatino.",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/sololatino.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "tioplus",
+      "name": "TioPlus",
+      "description": "Peliculas y series en Latino desde TioPlus.",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/tioplus.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "videasy",
+      "name": "VidEasy",
+      "description": "Resolutor generico de streams (no es un catalogo propio, se usa como respaldo para otros sitios).",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/videasy.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "xupalace",
+      "name": "XuPalace",
+      "description": "Peliculas y series en Latino desde XuPalace.",
+      "version": "1.0.0",
+      "author": "pluggin-latino",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/xupalace.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "allcalidad",
+      "name": "AllCalidad",
+      "description": "Peliculas, series y animes en Latino desde AllCalidad (API JSON propia).",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/allcalidad.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "animeav1",
+      "name": "AnimeAV1",
+      "description": "Anime subtitulado y doblado desde AnimeAV1.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/animeav1.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "animejl",
+      "name": "AnimeJL",
+      "description": "Anime en Latino desde AnimeJL (anime-jl.net). Aviso: el sitio original usa Cloudflare, puede fallar si el bloqueo esta activo.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/animejl.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "animeflv",
+      "name": "AnimeFLV",
+      "description": "Anime subtitulado desde AnimeFLV.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/animeflv.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "areadocumental",
+      "name": "Area Documental",
+      "description": "Documentales en Español desde Area Documental (video directo, sin embeds de terceros).",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/areadocumental.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
     },
     {
       "id": "doramasflix",
@@ -31,15 +302,131 @@
       "description": "Doramas y peliculas asiaticas en Latino desde Doramasflix -- API GraphQL directa, con respaldo de scraping HTML propio (Uqload, OkRu, Doodstream, Streamtape, VOE, Primeload).",
       "version": "2.0.0",
       "author": "Droydr13 + CloudStream (fusionado)",
-      "supportedTypes": [
-        "movie",
-        "tv"
-      ],
+      "supportedTypes": ["movie", "tv"],
       "filename": "providers/doramasflix.js",
       "enabled": true,
-      "contentLanguage": [
-        "es"
-      ]
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "documaniatv",
+      "name": "DocumaniaTV",
+      "description": "Documentales y series documentales en Español desde DocumaniaTV (video directo, sin embeds de terceros).",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/documaniatv.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "doramasyt",
+      "name": "DoramasYT",
+      "description": "Doramas asiaticos en Latino desde DoramasYT.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/doramasyt.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "latanime",
+      "name": "LatAnime",
+      "description": "Anime en Latino desde LatAnime.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/latanime.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "entrepeliculasyseries",
+      "name": "EntrePeliculasYSeries",
+      "description": "Peliculas y series en Latino desde EntrePeliculasYSeries.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/entrepeliculasyseries.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "hdfull",
+      "name": "HDFull",
+      "description": "Peliculas y series en Español desde HDFull. Usa una cuenta compartida propia del sitio original; si vence, puede fallar hasta que se actualice.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/hdfull.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "jkanime",
+      "name": "JKAnime",
+      "description": "Anime subtitulado desde JKAnime. Version simplificada: cubre el camino principal de extraccion, no las cadenas de respaldo mas complejas del sitio (GSPlay/Nozomi).",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/jkanime.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "monoschinos",
+      "name": "Monoschinos",
+      "description": "Anime subtitulado desde Monoschinos.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/monoschinos.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "tioanime",
+      "name": "TioAnime",
+      "description": "Anime subtitulado desde TioAnime.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/tioanime.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "reydonghua",
+      "name": "ReyDonghua",
+      "description": "Donghuas (animacion china) en Latino desde ReyDonghua.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/reydonghua.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "mundodonghua",
+      "name": "MundoDonghua",
+      "description": "Donghuas (animacion china) en Español desde MundoDonghua. Version simplificada: no cubre la cadena de respaldo 'protea_tab' mas compleja del sitio.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/mundodonghua.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "peliculasflix",
+      "name": "PeliculasFlix",
+      "description": "Peliculas en Español desde PeliculasFlix -- misma API GraphQL que Doramasflix, con respaldo de scraping HTML propio.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["movie"],
+      "filename": "providers/peliculasflix.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
     }
   ]
 }
