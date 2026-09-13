@@ -36,6 +36,25 @@ var DORAMASFLIX_BASE = 'https://doramasflix.co';
 var DORAMASFLIX_GQL = 'https://doraflix.fluxcedene.net/api/gql';
 var DORAMASFLIX_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
+// La clase URL no es confiable dentro de Nuvio (ya lo aprendimos con
+// LACartoons) -- estos helpers hacen lo mismo a mano con regex, sin
+// depender de que exista.
+function dfGetOrigin(url) {
+  var m = url.match(/^([a-z]+:\/\/[^\/]+)/i);
+  return m ? m[1] : url;
+}
+function dfGetHostname(url) {
+  var m = url.match(/^[a-z]+:\/\/([^\/:?#]+)/i);
+  return m ? m[1] : '';
+}
+function dfResolveUrl(relativeOrAbsolute, base) {
+  if (/^https?:\/\//i.test(relativeOrAbsolute)) return relativeOrAbsolute;
+  var origin = dfGetOrigin(base);
+  if (relativeOrAbsolute.startsWith('/')) return origin + relativeOrAbsolute;
+  var dir = base.slice(0, base.lastIndexOf('/') + 1);
+  return dir + relativeOrAbsolute;
+}
+
 function dfHttpGet(url, extraHeaders) {
   var axios3 = require('axios');
   return axios3.get(url, {
@@ -138,7 +157,7 @@ function intentarGraphQL(mediaType, title, year, season, episode) {
             name: 'Doramasflix',
             title: (IDIOMA_POR_ID[entrada.lang] || entrada.lang || 'Latino') + ' \xB7 ' + (formatQualityDF(resultado.url) || 'HD'),
             url: resultado.url,
-            headers: { 'User-Agent': DORAMASFLIX_UA, 'Referer': resultado.referer, 'Origin': (new URL(resultado.referer)).origin },
+            headers: { 'User-Agent': DORAMASFLIX_UA, 'Referer': resultado.referer, 'Origin': dfGetOrigin(resultado.referer) },
           });
         }
       }).catch(function () {});
@@ -205,7 +224,7 @@ function parseFlightResponse(texto) {
 
 function nombreDesdeHost(url) {
   try {
-    var host = new URL(url).hostname.replace(/^www\./, '');
+    var host = dfGetHostname(url).replace(/^www\./, '');
     var base = host.split('.')[0];
     return base.charAt(0).toUpperCase() + base.slice(1);
   } catch (e) { return 'Doramasflix'; }
@@ -257,7 +276,7 @@ function resolveUqload(embedUrl) {
     var candidatos = [html, unpackJS(html)].filter(Boolean);
     for (var i = 0; i < candidatos.length; i++) {
       var m = candidatos[i].match(/sources:\s*\[\s*\{\s*file:\s*"([^"]+)"/) || candidatos[i].match(/sources:\s*\["([^"]+)"/);
-      if (m) return { url: m[1], referer: new URL(embedUrl).origin + '/' };
+      if (m) return { url: m[1], referer: dfGetOrigin(embedUrl) + '/' };
     }
     return null;
   });
@@ -293,7 +312,7 @@ function resolveDoodstream(embedUrl) {
       var tokenMatch = html.match(/token=([a-zA-Z0-9]+)/);
       if (!passMd5Match || !tokenMatch) return null;
       var passMd5Url = passMd5Match[1];
-      if (!passMd5Url.startsWith('http')) passMd5Url = new URL(passMd5Url, embedUrl).href;
+      if (!passMd5Url.startsWith('http')) passMd5Url = dfResolveUrl(passMd5Url, embedUrl);
       var token = tokenMatch[1];
       var videoBaseUrl = (yield dfHttpGet(passMd5Url, { Referer: embedUrl })) || '';
       videoBaseUrl = ('' + videoBaseUrl).trim();
@@ -302,7 +321,7 @@ function resolveDoodstream(embedUrl) {
       var randomStr = '';
       for (var i = 0; i < 10; i++) randomStr += chars[Math.floor(Math.random() * 62)];
       var expiry = Math.floor(Date.now() / 1000);
-      return { url: videoBaseUrl + randomStr + '?token=' + token + '&expiry=' + expiry, referer: new URL(embedUrl).origin + '/' };
+      return { url: videoBaseUrl + randomStr + '?token=' + token + '&expiry=' + expiry, referer: dfGetOrigin(embedUrl) + '/' };
     } catch (e) { return null; }
   });
 }
@@ -323,7 +342,7 @@ function resolveStreamtape(embedUrl) {
       var path = idMatch[1].trim().replace(/^\/+/, '');
       var url = path.startsWith('http') ? path : 'https://' + path;
       if (!/[?&]token=/.test(url)) url += (url.includes('?') ? '&' : '?') + 'token=' + token;
-      return { url: url, referer: new URL(embedUrl).origin + '/' };
+      return { url: url, referer: dfGetOrigin(embedUrl) + '/' };
     } catch (e) { return null; }
   });
 }
@@ -381,7 +400,7 @@ function resolveVoe(embedUrl) {
       }
     }
     if (!source) return null;
-    return { url: source, referer: new URL(embedUrl).origin + '/' };
+    return { url: source, referer: dfGetOrigin(embedUrl) + '/' };
   });
 }
 
@@ -413,13 +432,13 @@ function resolveGenerico(embedUrl) {
     ];
     for (var i = 0; i < patrones.length; i++) {
       var m = html.match(patrones[i]);
-      if (m) return { url: m[1] || m[0], referer: new URL(embedUrl).origin + '/' };
+      if (m) return { url: m[1] || m[0], referer: dfGetOrigin(embedUrl) + '/' };
     }
     var unpacked = unpackJS(html);
     if (unpacked) {
       for (var j = 0; j < patrones.length; j++) {
         var m2 = unpacked.match(patrones[j]);
-        if (m2) return { url: m2[1] || m2[0], referer: new URL(embedUrl).origin + '/' };
+        if (m2) return { url: m2[1] || m2[0], referer: dfGetOrigin(embedUrl) + '/' };
       }
     }
     return null;
@@ -452,7 +471,7 @@ function elegirExtractorDF(name, embedUrl) {
   if (n === 'streamtape') return resolveStreamtape;
   if (n === 'primeload') return resolvePrimeload;
   try {
-    var host = new URL(embedUrl).hostname.toLowerCase();
+    var host = dfGetHostname(embedUrl).toLowerCase();
     if (host.includes('uqload')) return resolveUqload;
     if (host.includes('ok.ru')) return resolveOkRu;
     if (host.includes('voe.')) return resolveVoe;
@@ -516,7 +535,7 @@ function intentarHTML(mediaType, title, season, episode) {
             name: 'Doramasflix',
             title: s.name + ' \xB7 ' + (formatQualityDF(resultado.url) || 'HD'),
             url: resultado.url,
-            headers: { 'User-Agent': DORAMASFLIX_UA, Referer: resultado.referer, Origin: (new URL(resultado.referer)).origin },
+            headers: { 'User-Agent': DORAMASFLIX_UA, Referer: resultado.referer, Origin: dfGetOrigin(resultado.referer) },
           });
         }
       }).catch(function () {});
