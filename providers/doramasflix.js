@@ -10,6 +10,28 @@
 //      Doodstream, Streamtape, VOE, Primeload, generico).
 'use strict';
 
+var __async = (__this, __arguments, generator) => {
+  return new Promise((resolve, reject) => {
+    var fulfilled = (value) => {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var rejected = (value) => {
+      try {
+        step(generator.throw(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+    step((generator = generator.apply(__this, __arguments)).next());
+  });
+};
+
+
 var DORAMASFLIX_BASE = 'https://doramasflix.co';
 var DORAMASFLIX_GQL = 'https://doraflix.fluxcedene.net/api/gql';
 var DORAMASFLIX_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
@@ -77,7 +99,7 @@ function normalizarTituloDF(s) {
 }
 
 function intentarGraphQL(mediaType, title, year, season, episode) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     var isMovie = mediaType === 'movie' || mediaType === 'movies';
     var busqueda = yield gqlSearchAll(title);
     var candidatos = isMovie ? busqueda.movies : busqueda.doramas;
@@ -190,7 +212,7 @@ function nombreDesdeHost(url) {
 }
 
 function obtenerServidoresPelicula(html, slug) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     var slugEscapado = slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     var idMatch = html.match(new RegExp('\\\\"_id\\\\":\\\\"([a-f0-9]{24})\\\\",\\\\"name\\\\":\\\\"[^\\\\]*\\\\",\\\\"slug\\\\":\\\\"' + slugEscapado + '\\\\"'));
     if (!idMatch) return [];
@@ -229,7 +251,7 @@ function unpackJS(code) {
 }
 
 function resolveUqload(embedUrl) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     var html = yield dfHttpGet(embedUrl, { Referer: DORAMASFLIX_BASE });
     if (!html) return null;
     var candidatos = [html, unpackJS(html)].filter(Boolean);
@@ -242,7 +264,7 @@ function resolveUqload(embedUrl) {
 }
 
 function resolveOkRu(embedUrl) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     var html = yield dfHttpGet(embedUrl, { Referer: DORAMASFLIX_BASE });
     if (!html) return null;
     try {
@@ -263,7 +285,7 @@ function resolveOkRu(embedUrl) {
 }
 
 function resolveDoodstream(embedUrl) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     var html = yield dfHttpGet(embedUrl, { Referer: embedUrl });
     if (!html) return null;
     try {
@@ -286,7 +308,7 @@ function resolveDoodstream(embedUrl) {
 }
 
 function resolveStreamtape(embedUrl) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     var videoPageUrl = embedUrl.replace('/e/', '/v/');
     var html = yield dfHttpGet(videoPageUrl, { Referer: DORAMASFLIX_BASE });
     if (!html) return null;
@@ -325,7 +347,7 @@ function voeDecode(encoded) {
   return JSON.parse(step5);
 }
 function resolveVoe(embedUrl) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     var html = yield dfHttpGet(embedUrl, { Referer: DORAMASFLIX_BASE });
     if (!html) return null;
 
@@ -364,7 +386,7 @@ function resolveVoe(embedUrl) {
 }
 
 function resolvePrimeload(embedUrl) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     var html = yield dfHttpGet(embedUrl, { Referer: DORAMASFLIX_BASE });
     if (!html) return null;
     var iframeMatch = html.match(/<iframe[^>]+id=["']sf-player-frame["'][^>]+src=["']([^"']+)["']/) || html.match(/<iframe[^>]+src=["']([^"']+)["']/);
@@ -376,7 +398,7 @@ function resolvePrimeload(embedUrl) {
 }
 
 function resolveGenerico(embedUrl) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     var html = yield dfHttpGet(embedUrl, { Referer: DORAMASFLIX_BASE });
     if (!html) return null;
     var patrones = [
@@ -448,7 +470,7 @@ function formatQualityDF(url) {
 }
 
 function findDoramasflixPageHTML(mediaType, season, episode, allTitles) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     var isMovie = mediaType === 'movie' || mediaType === 'movies';
     var probados = {};
     for (var i = 0; i < allTitles.length; i++) {
@@ -472,7 +494,7 @@ function findDoramasflixPageHTML(mediaType, season, episode, allTitles) {
 }
 
 function intentarHTML(mediaType, title, season, episode) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     var isMovie = mediaType === 'movie' || mediaType === 'movies';
     var pagina = yield findDoramasflixPageHTML(mediaType, season, episode, [title]);
     if (!pagina) return [];
@@ -503,27 +525,8 @@ function intentarHTML(mediaType, title, season, episode) {
   });
 }
 
-// pequeño helper para poder usar function*/yield sin depender de que el
-// bundler nos de __async -- este archivo es standalone, no usa el motor
-// compartido de los demas providers.
-function __async_df(generatorFn) {
-  return new Promise(function (resolve, reject) {
-    var gen = generatorFn();
-    function step(nextFn) {
-      var result;
-      try { result = nextFn(); } catch (e) { return reject(e); }
-      if (result.done) return resolve(result.value);
-      Promise.resolve(result.value).then(
-        function (val) { step(function () { return gen.next(val); }); },
-        function (err) { step(function () { return gen.throw(err); }); }
-      );
-    }
-    step(function () { return gen.next(); });
-  });
-}
-
 function getStreams(tmdbId, mediaType, season, episode, title, year) {
-  return __async_df(function* () {
+  return __async(this, null, function* () {
     if (!title) return [];
     try {
       var streams = yield intentarGraphQL(mediaType, title, year, season, episode);
