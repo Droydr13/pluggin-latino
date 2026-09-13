@@ -8,7 +8,6 @@
 //      HTML propio (el que ya venia probado a mano) -- decodifica el JWT
 //      de embedshortener.co y tiene un resolutor por host (Uqload, OkRu,
 //      Doodstream, Streamtape, VOE, Primeload, generico).
-'use strict';
 
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
