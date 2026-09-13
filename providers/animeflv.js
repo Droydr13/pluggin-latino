@@ -2751,8 +2751,20 @@ function normalizarAFLV(s) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
-function getStreams(tmdbId, mediaType, season, episode, title) {
+var TMDB_API_KEY_COMUN = '439c478a771f35c05022f9feabcca01c';
+function getTmdbTitleComun(tmdbId, mediaType) {
+  var axios3 = require('axios');
+  var type = mediaType === 'movie' ? 'movie' : 'tv';
+  var url = 'https://api.themoviedb.org/3/' + type + '/' + tmdbId + '?api_key=' + TMDB_API_KEY_COMUN + '&language=es-MX';
+  return axios3.get(url).then(function (r) {
+    var data = r.data;
+    return type === 'movie' ? (data.title || data.original_title) : (data.name || data.original_name);
+  }).catch(function () { return null; });
+}
+
+function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
+    var title = yield getTmdbTitleComun(tmdbId, mediaType);
     if (!title) return [];
     try {
       const $search = yield aflvGetDoc(`${ANIMEFLV_BASE}/browse?q=${encodeURIComponent(title)}`);

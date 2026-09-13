@@ -4,6 +4,17 @@
 
 var DOCUMANIATV_BASE = 'https://www.documaniatv.com';
 var DOCUMANIATV_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+var TMDB_API_KEY_DT = '439c478a771f35c05022f9feabcca01c';
+
+function getTmdbTitleDT(tmdbId, mediaType) {
+  var axios3 = require('axios');
+  var type = mediaType === 'movie' ? 'movie' : 'tv';
+  var url = 'https://api.themoviedb.org/3/' + type + '/' + tmdbId + '?api_key=' + TMDB_API_KEY_DT + '&language=es-MX';
+  return axios3.get(url).then(function (r) {
+    var data = r.data;
+    return type === 'movie' ? (data.title || data.original_title) : (data.name || data.original_name);
+  }).catch(function () { return null; });
+}
 
 function dtGet(url, opts) {
   var axios3 = require('axios');
@@ -17,16 +28,17 @@ function normalizarDT(s) {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
 
-function getStreams(tmdbId, mediaType, season, episode, title) {
-  if (!title) return Promise.resolve([]);
+function getStreams(tmdbId, mediaType, season, episode) {
   var axios3 = require('axios');
-  var tituloNorm = normalizarDT(title);
+  return getTmdbTitleDT(tmdbId, mediaType).then(function (title) {
+    if (!title) return [];
+    var tituloNorm = normalizarDT(title);
 
-  return axios3.post(
-    DOCUMANIATV_BASE + '/ajax_search.php',
-    'queryString=' + encodeURIComponent(title),
-    { headers: { 'User-Agent': DOCUMANIATV_UA, 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' } }
-  ).then(function (res) {
+    return axios3.post(
+      DOCUMANIATV_BASE + '/ajax_search.php',
+      'queryString=' + encodeURIComponent(title),
+      { headers: { 'User-Agent': DOCUMANIATV_UA, 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' } }
+    ).then(function (res) {
     var cheerio3 = require('cheerio-without-node-native');
     var $ = cheerio3.load(res.data);
     var targetHref = null;
@@ -94,6 +106,10 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
     });
   }).catch(function (e) {
     console.log('[DocumaniaTV] Error: ' + e.message);
+    return [];
+  });
+  }).catch(function (e) {
+    console.log('[DocumaniaTV] Error TMDB: ' + e.message);
     return [];
   });
 }

@@ -608,9 +608,22 @@ function buscarEnDominio(dominioBase, title, season, episode) {
   });
 }
 
-function getStreams(tmdbId, mediaType, season, episode, title) {
+var TMDB_API_KEY_PP = '439c478a771f35c05022f9feabcca01c';
+function getTmdbTitlePP(tmdbId, mediaType) {
+  const axios3 = require('axios');
+  const type = mediaType === 'movie' ? 'movie' : 'tv';
+  const url = `https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY_PP}&language=es-MX`;
+  return axios3.get(url).then((r) => {
+    const data = r.data;
+    return type === 'movie' ? (data.title || data.original_title) : (data.name || data.original_name);
+  }).catch(() => null);
+}
+
+function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     try {
+      const title = yield getTmdbTitlePP(tmdbId, mediaType);
+      if (!title) return [];
       // pelispedia.mov es el dominio de siempre; pelispedia.is es un
       // espejo que trajo CloudStream -- si el primero no encuentra
       // nada (dominio caido/bloqueado, cosa comun en estos sitios),

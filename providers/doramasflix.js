@@ -561,8 +561,24 @@ function intentarHTML(mediaType, title, season, episode) {
   });
 }
 
-function getStreams(tmdbId, mediaType, season, episode, title, year) {
+var TMDB_API_KEY_DF = '439c478a771f35c05022f9feabcca01c';
+function getTmdbInfoDF(tmdbId, mediaType) {
+  var axios3 = require('axios');
+  var type = mediaType === 'movie' ? 'movie' : 'tv';
+  var url = 'https://api.themoviedb.org/3/' + type + '/' + tmdbId + '?api_key=' + TMDB_API_KEY_DF + '&language=es-MX';
+  return axios3.get(url).then(function (r) {
+    var data = r.data;
+    var title = type === 'movie' ? (data.title || data.original_title) : (data.name || data.original_name);
+    var year = (type === 'movie' ? data.release_date : data.first_air_date || '').slice(0, 4);
+    return { title: title, year: year };
+  }).catch(function () { return { title: null, year: null }; });
+}
+
+function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
+    var info = yield getTmdbInfoDF(tmdbId, mediaType);
+    var title = info.title;
+    var year = info.year;
     if (!title) return [];
     try {
       var streams = yield intentarGraphQL(mediaType, title, year, season, episode);

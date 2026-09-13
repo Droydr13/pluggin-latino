@@ -2755,7 +2755,7 @@ function getStreams(tmdbId, mediaType, season, episode, title, year) {
       });
       const data = response.data;
       if (!data || !data.success || !data.languages) {
-        return yield scrapeCuevanaDirecto(title, year, mediaType, season, episode);
+        return yield scrapeCuevanaDirecto(tmdbId, mediaType, season, episode);
       }
       const promises = [];
       const seenLinks = /* @__PURE__ */ new Set();
@@ -2791,12 +2791,12 @@ function getStreams(tmdbId, mediaType, season, episode, title, year) {
       const results = yield Promise.all(promises);
       const rawStreams = results.filter((r) => r !== null);
       if (rawStreams.length === 0) {
-        return yield scrapeCuevanaDirecto(title, year, mediaType, season, episode);
+        return yield scrapeCuevanaDirecto(tmdbId, mediaType, season, episode);
       }
       return yield finalizeStreams(rawStreams, "Cuevana UBD", data.title);
     } catch (e) {
       try {
-        return yield scrapeCuevanaDirecto(title, year, mediaType, season, episode);
+        return yield scrapeCuevanaDirecto(tmdbId, mediaType, season, episode);
       } catch (e2) {
         return [];
       }
@@ -2809,8 +2809,24 @@ function getStreams(tmdbId, mediaType, season, episode, title, year) {
 // API de cuevana.unbuendato.com falla o no encuentra nada. Reusa
 // resolveEmbed/finalizeStreams (ya definidos arriba en este mismo
 // archivo) para no reimplementar los resolutores de cada host.
-function scrapeCuevanaDirecto(title, year, mediaType, season, episode) {
+var TMDB_API_KEY_CUEVANA = '439c478a771f35c05022f9feabcca01c';
+function getTmdbInfoCuevana(tmdbId, mediaType) {
+  const axios3 = require('axios');
+  const type = mediaType === 'movie' || mediaType === 'movies' ? 'movie' : 'tv';
+  const url = `https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY_CUEVANA}&language=es-MX`;
+  return axios3.get(url).then((r) => {
+    const data = r.data;
+    const title = type === 'movie' ? (data.title || data.original_title) : (data.name || data.original_name);
+    const year = (type === 'movie' ? data.release_date : data.first_air_date || '').slice(0, 4);
+    return { title, year };
+  }).catch(() => ({ title: null, year: null }));
+}
+
+function scrapeCuevanaDirecto(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
+    const info = yield getTmdbInfoCuevana(tmdbId, mediaType);
+    const title = info.title;
+    const year = info.year;
     if (!title) return [];
     const CUEVANA_BASE = "https://wv3.cuevana3.eu";
     const axios3 = require("axios");

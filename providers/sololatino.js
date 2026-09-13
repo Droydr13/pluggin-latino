@@ -2814,8 +2814,20 @@ function slugificarSL(s) {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-function getStreams(tmdbId, mediaType, season, episode, title) {
+var TMDB_API_KEY_SL = '439c478a771f35c05022f9feabcca01c';
+function getTmdbTitleSL(tmdbId, mediaType) {
+  const axios3 = require('axios');
+  const type = mediaType === 'movie' || mediaType === 'movies' ? 'movie' : 'tv';
+  const url = `https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY_SL}&language=es-MX`;
+  return axios3.get(url).then((r) => {
+    const data = r.data;
+    return type === 'movie' ? (data.title || data.original_title) : (data.name || data.original_name);
+  }).catch(() => null);
+}
+
+function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
+    const title = yield getTmdbTitleSL(tmdbId, mediaType);
     if (!title) return [];
     const axios3 = require("axios");
     const cheerio3 = require("cheerio-without-node-native");
