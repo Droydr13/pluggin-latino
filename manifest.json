@@ -372,6 +372,61 @@
       "filename": "providers/jkanime.js",
       "enabled": true,
       "contentLanguage": ["es"]
+    },
+    {
+      "id": "monoschinos",
+      "name": "Monoschinos",
+      "description": "Anime subtitulado desde Monoschinos.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/monoschinos.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "tioanime",
+      "name": "TioAnime",
+      "description": "Anime subtitulado desde TioAnime.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/tioanime.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "reydonghua",
+      "name": "ReyDonghua",
+      "description": "Donghuas (animacion china) en Latino desde ReyDonghua.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/reydonghua.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "mundodonghua",
+      "name": "MundoDonghua",
+      "description": "Donghuas (animacion china) en Español desde MundoDonghua. Version simplificada: no cubre la cadena de respaldo 'protea_tab' mas compleja del sitio.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["tv"],
+      "filename": "providers/mundodonghua.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "peliculasflix",
+      "name": "PeliculasFlix",
+      "description": "Peliculas en Español desde PeliculasFlix -- misma API GraphQL que Doramasflix, con respaldo de scraping HTML propio.",
+      "version": "1.0.0",
+      "author": "CloudStream (portado)",
+      "supportedTypes": ["movie"],
+      "filename": "providers/peliculasflix.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
     }
   ]
 }
