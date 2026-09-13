@@ -1,3 +1,18 @@
+
+function __makeUrlLike(urlStr) {
+  var originMatch = urlStr.match(/^([a-z]+:\/\/[^\/]+)/i);
+  var origin = originMatch ? originMatch[1] : urlStr;
+  var hostnameMatch = urlStr.match(/^[a-z]+:\/\/([^\/:?#]+)/i);
+  var hostname = hostnameMatch ? hostnameMatch[1] : '';
+  var pathMatch = urlStr.match(/^[a-z]+:\/\/[^\/]+([^?#]*)/i);
+  var pathname = pathMatch ? pathMatch[1] : '';
+  var hashMatch = urlStr.match(/#(.*)$/);
+  var hash = hashMatch ? '#' + hashMatch[1] : '';
+  var searchMatch = urlStr.match(/\?([^#]*)/);
+  var search = searchMatch ? '?' + searchMatch[1] : '';
+  return { origin: origin, hostname: hostname, pathname: pathname, hash: hash, search: search, href: urlStr };
+}
+
 /**
  * pelisplus - Built from src/pelisplus/
  * Generated: 2026-05-05T21:05:01.205Z
@@ -509,7 +524,7 @@ var require_hlswish = __commonJS({
         try {
           const UA3 = getSessionUA();
           const rawId = url.split("/").pop().replace(/\.html$/, "");
-          const urlObj = new URL(url);
+          const urlObj = __makeUrlLike(url);
           const mirrors = [
             `https://hanerix.com/e/${rawId}`,
             `https://embedwish.com/e/${rawId}`,
@@ -527,7 +542,7 @@ var require_hlswish = __commonJS({
             let pending = mirrors.length;
             mirrors.forEach((mirror) => __async(this, null, function* () {
               try {
-                const mirrorObj = new URL(mirror);
+                const mirrorObj = __makeUrlLike(mirror);
                 const mirrorOrigin = mirrorObj.origin;
                 const resp = yield fetch(mirror, {
                   headers: { "Referer": mirror, "User-Agent": UA3 },
@@ -591,7 +606,7 @@ var require_hlswish = __commonJS({
             return null;
           const reqHeaders = {
             "Referer": validResult.mirror,
-            "Origin": new URL(validResult.mirror).origin,
+            "Origin": __makeUrlLike(validResult.mirror).origin,
             "User-Agent": UA3
           };
           const streamObj = { url: validResult.url, headers: reqHeaders };
@@ -687,7 +702,7 @@ var require_filemoon = __commonJS({
       return __async(this, null, function* () {
         var _a, _b, _c, _d;
         try {
-          const urlObj = new URL(url);
+          const urlObj = __makeUrlLike(url);
           const hostname = urlObj.hostname;
           const videoId = urlObj.pathname.split("/").filter((p) => !!p).pop();
           const UA_CHROME = getSessionUA();
@@ -701,7 +716,7 @@ var require_filemoon = __commonJS({
           const frameUrl = details.embed_frame_url;
           if (!frameUrl)
             return null;
-          const playbackDomain = new URL(frameUrl).origin;
+          const playbackDomain = __makeUrlLike(frameUrl).origin;
           const challengeResp = yield fetch(`${playbackDomain}/api/videos/access/challenge`, {
             method: "POST",
             headers: { "X-Requested-With": "XMLHttpRequest", "Referer": frameUrl, "Origin": playbackDomain, "User-Agent": UA_CHROME }
@@ -829,7 +844,7 @@ var require_vidhide = __commonJS({
         try {
           const currentUA = getSessionUA();
           console.log(`[VidHide] TV-Resolving: ${url}`);
-          const urlObj = new URL(url);
+          const urlObj = __makeUrlLike(url);
           const domain = urlObj.hostname;
           const response = yield fetch(url, {
             signal,
@@ -863,12 +878,12 @@ var require_vidhide = __commonJS({
           if (!finalUrl)
             return null;
           if (!finalUrl.startsWith("http"))
-            finalUrl = new URL(url).origin + finalUrl;
+            finalUrl = __makeUrlLike(url).origin + finalUrl;
           if (!finalUrl.includes("referer="))
             finalUrl += (finalUrl.includes("?") ? "&" : "?") + "referer=embed69.org";
           const reqHeaders = __spreadProps(__spreadValues({}, getStealthHeaders()), {
             "Referer": url.split("?")[0],
-            "Origin": new URL(url).origin,
+            "Origin": __makeUrlLike(url).origin,
             "X-Requested-With": "XMLHttpRequest",
             "User-Agent": currentUA
           });
@@ -1188,7 +1203,7 @@ var require_buzzheavier = __commonJS({
           return null;
         try {
           const cleanUrl = embedUrl.split("|")[0].replace(/\/$/, "");
-          const domain = new URL(cleanUrl).hostname;
+          const domain = __makeUrlLike(cleanUrl).hostname;
           const downloadUrl = `${cleanUrl}/download`;
           console.log(`[Buzzheavier] Resolviendo v8.8.7 (Python Logic): ${cleanUrl}`);
           const headers = __spreadProps(__spreadValues({}, getStealthHeaders()), {
@@ -1443,7 +1458,7 @@ var require_embedseek = __commonJS({
       return __async(this, null, function* () {
         try {
           const UA3 = getSessionUA();
-          const parsedUrl = new URL(url);
+          const parsedUrl = __makeUrlLike(url);
           const hostname = parsedUrl.hostname;
           const hash = parsedUrl.hash;
           const id = hash.replace("#", "").split("&")[0];
@@ -1553,7 +1568,7 @@ var require_tplayer = __commonJS({
           if (!idMatch)
             return null;
           const fileId = idMatch[1];
-          const baseUrl = new URL(embedUrl).origin;
+          const baseUrl = __makeUrlLike(embedUrl).origin;
           const apiUrl = `${baseUrl}/api/resolve/${fileId}`;
           const baseHeaders = __spreadProps(__spreadValues({}, getStealthHeaders()), {
             "Referer": embedUrl,
@@ -1629,7 +1644,7 @@ var require_lulustream = __commonJS({
       return __async(this, null, function* () {
         try {
           const UA3 = getSessionUA();
-          const urlObj = new URL(url);
+          const urlObj = __makeUrlLike(url);
           const origin = urlObj.origin;
           const response = yield fetch(url, {
             headers: {
@@ -1831,7 +1846,7 @@ var require_vidsrc = __commonJS({
             headers: {
               "User-Agent": UA3,
               "Referer": nextUrl,
-              "Origin": new URL(nextUrl).origin
+              "Origin": __makeUrlLike(nextUrl).origin
             }
           };
         } catch (error) {
@@ -1913,7 +1928,7 @@ var require_doodstream = __commonJS({
           }
           const passPath = match[1];
           const token = match[2];
-          const domain = new URL(embedUrl).origin;
+          const domain = __makeUrlLike(embedUrl).origin;
           const passUrl = domain + passPath;
           const passRes = yield fetch(passUrl, {
             headers: {
@@ -2096,7 +2111,7 @@ var require_vidmoly = __commonJS({
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
-          const urlObj = new URL(embedUrl);
+          const urlObj = __makeUrlLike(embedUrl);
           const redirectBase = "https://vidmoly.to";
           const videoId = urlObj.pathname.split("/").pop().replace(".html", "").replace("embed-", "");
           const targetUrl = `${redirectBase}/embed-${videoId}.html`;
@@ -2443,7 +2458,7 @@ var require_resolvers = __commonJS({
       const { getStealthHeaders } = require_http2();
       const s = url.toLowerCase();
       try {
-        const domain = new URL(url).hostname;
+        const domain = __makeUrlLike(url).hostname;
         const baseOrigin = `https://${domain}`;
         const headers = __spreadProps(__spreadValues({}, getStealthHeaders()), {
           "Referer": baseOrigin,
@@ -2811,7 +2826,7 @@ var require_engine = __commonJS({
         return "DoodStream";
       if (url) {
         try {
-          const domainParts = new URL(url).hostname.replace("www.", "").split(".");
+          const domainParts = __makeUrlLike(url).hostname.replace("www.", "").split(".");
           const mainName = domainParts.length > 1 ? domainParts[domainParts.length - 2] : domainParts[0];
           return mainName.charAt(0).toUpperCase() + mainName.slice(1);
         } catch (e) {

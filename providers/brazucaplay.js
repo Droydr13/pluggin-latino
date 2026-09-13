@@ -1,3 +1,18 @@
+
+function __makeUrlLike(urlStr) {
+  var originMatch = urlStr.match(/^([a-z]+:\/\/[^\/]+)/i);
+  var origin = originMatch ? originMatch[1] : urlStr;
+  var hostnameMatch = urlStr.match(/^[a-z]+:\/\/([^\/:?#]+)/i);
+  var hostname = hostnameMatch ? hostnameMatch[1] : '';
+  var pathMatch = urlStr.match(/^[a-z]+:\/\/[^\/]+([^?#]*)/i);
+  var pathname = pathMatch ? pathMatch[1] : '';
+  var hashMatch = urlStr.match(/#(.*)$/);
+  var hash = hashMatch ? '#' + hashMatch[1] : '';
+  var searchMatch = urlStr.match(/\?([^#]*)/);
+  var search = searchMatch ? '?' + searchMatch[1] : '';
+  return { origin: origin, hostname: hostname, pathname: pathname, hash: hash, search: search, href: urlStr };
+}
+
 /**
  * brazucaplay - Built from src/brazucaplay/
  * Generated: 2026-05-05T21:05:01.077Z
@@ -548,7 +563,7 @@ var require_engine = __commonJS({
         return "DoodStream";
       if (url) {
         try {
-          const domainParts = new URL(url).hostname.replace("www.", "").split(".");
+          const domainParts = __makeUrlLike(url).hostname.replace("www.", "").split(".");
           const mainName = domainParts.length > 1 ? domainParts[domainParts.length - 2] : domainParts[0];
           return mainName.charAt(0).toUpperCase() + mainName.slice(1);
         } catch (e) {

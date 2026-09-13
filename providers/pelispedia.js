@@ -1,3 +1,18 @@
+
+function __makeUrlLike(urlStr) {
+  var originMatch = urlStr.match(/^([a-z]+:\/\/[^\/]+)/i);
+  var origin = originMatch ? originMatch[1] : urlStr;
+  var hostnameMatch = urlStr.match(/^[a-z]+:\/\/([^\/:?#]+)/i);
+  var hostname = hostnameMatch ? hostnameMatch[1] : '';
+  var pathMatch = urlStr.match(/^[a-z]+:\/\/[^\/]+([^?#]*)/i);
+  var pathname = pathMatch ? pathMatch[1] : '';
+  var hashMatch = urlStr.match(/#(.*)$/);
+  var hash = hashMatch ? '#' + hashMatch[1] : '';
+  var searchMatch = urlStr.match(/\?([^#]*)/);
+  var search = searchMatch ? '?' + searchMatch[1] : '';
+  return { origin: origin, hostname: hostname, pathname: pathname, hash: hash, search: search, href: urlStr };
+}
+
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -271,13 +286,13 @@ function decryptByse(playback) {
 function resolve2(url) {
   return __async(this, null, function* () {
     try {
-      const origin = new URL(url).origin;
+      const origin = __makeUrlLike(url).origin;
       const idMatch = url.match(/\/e\/([a-zA-Z0-9]+)/);
       if (!idMatch)
         return null;
       const id = idMatch[1];
       try {
-        const apiRes = yield import_axios3.default.get(`https://${new URL(url).hostname}/api/videos/${id}`, {
+        const apiRes = yield import_axios3.default.get(`https://${__makeUrlLike(url).hostname}/api/videos/${id}`, {
           headers: { "User-Agent": UA3, "Referer": url }
         });
         const data = yield apiRes.data;
@@ -331,7 +346,7 @@ function resolve3(url) {
           break;
         }
       }
-      const origin = new URL(targetUrl).origin;
+      const origin = __makeUrlLike(targetUrl).origin;
       const res = yield import_axios4.default.get(targetUrl, {
         headers: { "User-Agent": UA4, "Referer": origin + "/", "Origin": origin }
       });
@@ -396,7 +411,7 @@ function unpackVidHide(script) {
 function resolve4(url) {
   return __async(this, null, function* () {
     try {
-      const origin = new URL(url).origin;
+      const origin = __makeUrlLike(url).origin;
       const res = yield import_axios5.default.get(url, {
         headers: { "User-Agent": UA5, "Referer": origin + "/" }
       });

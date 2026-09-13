@@ -1,3 +1,18 @@
+
+function __makeUrlLike(urlStr) {
+  var originMatch = urlStr.match(/^([a-z]+:\/\/[^\/]+)/i);
+  var origin = originMatch ? originMatch[1] : urlStr;
+  var hostnameMatch = urlStr.match(/^[a-z]+:\/\/([^\/:?#]+)/i);
+  var hostname = hostnameMatch ? hostnameMatch[1] : '';
+  var pathMatch = urlStr.match(/^[a-z]+:\/\/[^\/]+([^?#]*)/i);
+  var pathname = pathMatch ? pathMatch[1] : '';
+  var hashMatch = urlStr.match(/#(.*)$/);
+  var hash = hashMatch ? '#' + hashMatch[1] : '';
+  var searchMatch = urlStr.match(/\?([^#]*)/);
+  var search = searchMatch ? '?' + searchMatch[1] : '';
+  return { origin: origin, hostname: hostname, pathname: pathname, hash: hash, search: search, href: urlStr };
+}
+
 var R = Object.defineProperty;
 var _ = Object.getOwnPropertyDescriptor;
 var T = Object.getOwnPropertyNames, L = Object.getOwnPropertySymbols;
@@ -224,7 +239,7 @@ function H(e) {
       }
       let l = n.match(/json">\s*\[\s*['"]([^'"]+)['"]\s*\]\s*<\/script>\s*<script[^>]*src=['"]([^'"]+)['"]/i);
       if (l) {
-        let r = l[1], o = l[2].startsWith("http") ? l[2] : new URL(l[2], e).href;
+        let r = l[1], o = l[2].startsWith("http") ? l[2] : __makeUrlLike(l[2], e).href;
         console.log(`[VOE] Found encoded array + loader: ${o}`);
         let i = yield b(o, { Referer: e }), d = i.ok ? yield i.text() : "", m = d.match(/(\[(?:'[^']{1,10}'[\s,]*){4,12}\])/i) || d.match(/(\[(?:"[^"]{1,10}"[,\s]*){4,12}\])/i);
         if (m) {
@@ -298,8 +313,8 @@ function y(e) {
       if (!r)
         return console.log("[VidHide] No se encontr\xF3 hls4/hls2"), null;
       let o = r;
-      r.startsWith("http") || (o = `${new URL(e).origin}${r}`), console.log(`[VidHide] URL encontrada: ${o.substring(0, 80)}...`);
-      let i = new URL(e).origin;
+      r.startsWith("http") || (o = `${__makeUrlLike(e).origin}${r}`), console.log(`[VidHide] URL encontrada: ${o.substring(0, 80)}...`);
+      let i = __makeUrlLike(e).origin;
       return { url: o, quality: yield g(o, { Referer: `${i}/` }), headers: { "User-Agent": N, Referer: `${i}/`, Origin: i } };
     } catch (n) {
       return console.log(`[VidHide] Error: ${n.message}`), null;
@@ -361,7 +376,7 @@ function re(e, t, n, l) {
         console.log(`[XuPalace] Resolviendo ${o.length} embeds (${i})...`);
         let m = (yield Promise.allSettled(o.map((h) => f(this, null, function* () {
           try {
-            let p = new URL(h).hostname.replace("www.", ""), w = te[p];
+            let p = __makeUrlLike(h).hostname.replace("www.", ""), w = te[p];
             if (!w)
               return console.log(`[XuPalace] Sin resolver para: ${p} \u2192 ${h}`), null;
             let $ = yield w.fn(h);
