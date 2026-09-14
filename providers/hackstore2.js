@@ -1372,7 +1372,7 @@ function require_pixeldrain() {
               headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 "Range": "bytes=0-0"
-                // Solo pedimos 1 byte para que sea una petición ultra-rápida
+                // Solo pedimos 1 byte para que sea una petici\u00f3n ultra-r\u00e1pida
               },
               timeout: 5e3,
               validateStatus: (status) => status < 500
@@ -2010,7 +2010,7 @@ function require_doodstream() {
           return {
             url: finalVideoUrl,
             quality: "720p",
-            // Doodstream suele ser 720p estático o adaptativo interno
+            // Doodstream suele ser 720p est\u00e1tico o adaptativo interno
             verified: isLive,
             serverName: "DoodStream",
             headers: reqHeaders
@@ -3001,7 +3001,7 @@ function require_extractor() {
     function normalizeSlug(title) {
       if (!title)
         return "";
-      return title.toLowerCase().replace(/[áàäâ]/g, "a").replace(/[éèëê]/g, "e").replace(/[íìïî]/g, "i").replace(/[óòöô]/g, "o").replace(/[úùüû]/g, "u").replace(/ñ/g, "n").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      return title.toLowerCase().replace(/[\u00e1\u00e0\u00e4\u00e2]/g, "a").replace(/[\u00e9\u00e8\u00eb\u00ea]/g, "e").replace(/[\u00ed\u00ec\u00ef\u00ee]/g, "i").replace(/[\u00f3\u00f2\u00f6\u00f4]/g, "o").replace(/[\u00fa\u00f9\u00fc\u00fb]/g, "u").replace(/\u00f1/g, "n").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     }
     function getStreams(tmdbId, mediaType, season, episode, query) {
       return __async(this, null, function* () {

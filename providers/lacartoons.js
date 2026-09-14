@@ -1,20 +1,20 @@
 // providers/lacartoons.js
 //
-// Provider de Nuvio para lacartoons.com — portado desde
+// Provider de Nuvio para lacartoons.com \u2014 portado desde
 // https://github.com/masilvasol/stremio-lacartoons
 //
 // Corre 100% dentro de Nuvio (tu celular), sin servidor, sin Playwright
 // y sin yt-dlp. El addon original usaba esos dos como respaldo para
-// reproductores que no fueran cubeembed/rpmvid; acá NO están portados
+// reproductores que no fueran cubeembed/rpmvid; ac\u00e1 NO est\u00e1n portados
 // porque necesitan un navegador de verdad, que Nuvio no tiene.
 //
 // LIMITACION CONOCIDA: si un capitulo puntual usa un reproductor
 // DISTINTO a cubeembed.rpmvid.com (por ejemplo si lacartoons.com
 // cambiara de proveedor de video, o usara ok.ru para algo viejo), este
-// provider no va a poder resolverlo — el original sí, porque tenía
+// provider no va a poder resolverlo \u2014 el original s\u00ed, porque ten\u00eda
 // Playwright/yt-dlp de respaldo. Hoy cubeembed/rpmvid parece ser el
-// reproductor principal del sitio, así que la mayoría de los capítulos
-// deberían andar igual.
+// reproductor principal del sitio, as\u00ed que la mayor\u00eda de los cap\u00edtulos
+// deber\u00edan andar igual.
 
 const cheerio = require('cheerio-without-node-native');
 const CryptoJS = require('crypto-js');
@@ -460,7 +460,7 @@ function resolveLiveMaster(videoId) {
 // para poder ver EN LA PROPIA APP en que paso se corta, ya que no
 // tenemos forma de ver la consola/logs de Nuvio desde afuera. Esto es
 // TEMPORAL para diagnosticar -- una vez que ande bien, avisame y te
-// devuelvo la version limpia (sin esto) para que no se vea en producción.
+// devuelvo la version limpia (sin esto) para que no se vea en producci\u00f3n.
 function debugStream(mensaje) {
   return [{
     name: '[DEBUG] ' + mensaje,
@@ -570,8 +570,8 @@ function getStreams(tmdbId, mediaType, season, episode) {
         if (videoId) {
           return resolveLiveMaster(videoId).then(function (result) {
             return [{
-              name: 'LACartoons - HD - Español Latino',
-              title: (result.title || 'HD') + ' - Español Latino',
+              name: 'LACartoons - HD - Espa\u00f1ol Latino',
+              title: (result.title || 'HD') + ' - Espa\u00f1ol Latino',
               url: result.url,
               quality: 'HD',
               headers: RPMVID_HEADERS,
@@ -584,8 +584,8 @@ function getStreams(tmdbId, mediaType, season, episode) {
         if (isOkRuIframe(embedSrc)) {
           return extractOkRuStreams(embedSrc).then(function (result) {
             return [{
-              name: 'LACartoons - ' + result.quality + ' - Español Latino (ok.ru)',
-              title: 'ok.ru - ' + result.quality + ' - Español Latino',
+              name: 'LACartoons - ' + result.quality + ' - Espa\u00f1ol Latino (ok.ru)',
+              title: 'ok.ru - ' + result.quality + ' - Espa\u00f1ol Latino',
               url: result.url,
               quality: result.quality,
             }];

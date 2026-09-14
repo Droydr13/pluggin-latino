@@ -1605,7 +1605,7 @@ function require_pixeldrain() {
             headers: {
               "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
               "Range": "bytes=0-0"
-              // Solo pedimos 1 byte para que sea una petición ultra-rápida
+              // Solo pedimos 1 byte para que sea una petici\u00f3n ultra-r\u00e1pida
             },
             timeout: 5e3,
             validateStatus: (status) => status < 500
@@ -2213,7 +2213,7 @@ function require_doodstream() {
         return {
           url: finalVideoUrl,
           quality: "720p",
-          // Doodstream suele ser 720p estático o adaptativo interno
+          // Doodstream suele ser 720p est\u00e1tico o adaptativo interno
           verified: isLive,
           serverName: "DoodStream",
           headers: reqHeaders

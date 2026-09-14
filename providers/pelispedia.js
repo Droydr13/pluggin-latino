@@ -150,7 +150,7 @@ var import_axios7 = __toESM(require("axios"));
 function normalizeTitle(t) {
   if (!t)
     return "";
-  return t.toLowerCase().replace(/[áàäâ]/g, "a").replace(/[éèëê]/g, "e").replace(/[íìïî]/g, "i").replace(/[óòöô]/g, "o").replace(/[úùüû]/g, "u").replace(/ñ/g, "n").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  return t.toLowerCase().replace(/[\u00e1\u00e0\u00e4\u00e2]/g, "a").replace(/[\u00e9\u00e8\u00eb\u00ea]/g, "e").replace(/[\u00ed\u00ec\u00ef\u00ee]/g, "i").replace(/[\u00f3\u00f2\u00f6\u00f4]/g, "o").replace(/[\u00fa\u00f9\u00fc\u00fb]/g, "u").replace(/\u00f1/g, "n").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 init_extractor();
 var import_axios2 = __toESM(require("axios"));
@@ -448,7 +448,7 @@ function resolve5(url) {
         headers: {
           "User-Agent": UA6,
           "Referer": "https://xupalace.org/"
-          // CABECERA CRÍTICA
+          // CABECERA CR\u00cdTICA
         }
       });
       const html = yield res.text();
