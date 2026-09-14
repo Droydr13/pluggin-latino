@@ -3179,7 +3179,7 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
       const streams = yield getOnlineStreams(html);
       return yield finalizeStreams(streams, "PelisGo", mediaTitle);
     } catch (e) {
-      return [{ name: "[PelisGo] Error: " + e.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
+      return [{ name: "[PelisGo] Error: " + e.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
     }
   });
 }

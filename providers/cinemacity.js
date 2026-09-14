@@ -854,7 +854,7 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
       return yield finalizeStreams(streams, "CinemaCity", searchTitle);
     } catch (error) {
       console.error(`[CinemaCity] Error cr\xEDtico: ${error.message}`);
-      return [{ name: `[CinemaCity] Error critico: ${error.message}`, title: String((error && error.stack) || (error && error.message) || error).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
+      return [{ name: `[CinemaCity] Error critico: ${error.message}`, title: String((error && error.stack) || (error && error.message) || error).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
     }
   });
 }

@@ -396,7 +396,7 @@ function re(e, t, n, l) {
       }
       return console.log("[XuPalace] No se encontraron streams en ning\xFAn idioma"), [];
     } catch (a) {
-      return console.log(`[XuPalace] Error: ${a.message}`), [{ name: `[XuPalace] Error: ${a.message}`, title: String((a && a.stack) || (a && a.message) || a).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
+      return console.log(`[XuPalace] Error: ${a.message}`), [{ name: `[XuPalace] Error: ${a.message}`, title: String((a && a.stack) || (a && a.message) || a).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
     }
   });
 }

@@ -661,7 +661,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
       }
       return streams;
     } catch (e) {
-      return [{ name: "[PelisPedia] Error: " + e.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
+      return [{ name: "[PelisPedia] Error: " + e.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
     }
   });
 }

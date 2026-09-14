@@ -244,7 +244,7 @@ function getStreams(tmdbId, mediaType = 'movie', seasonNum = null, episodeNum = 
         });
     }).catch(function(error) {
         console.error(`[Videasy] Error: ${error.message}`);
-        return [{ name: `[Videasy] Error: ${error.message}`, title: String((error && error.stack) || (error && error.message) || error).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
+        return [{ name: `[Videasy] Error: ${error.message}`, title: String((error && error.stack) || (error && error.message) || error).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
     });
 }
 

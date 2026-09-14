@@ -2772,7 +2772,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
       return yield finalizeStreams(resueltos, "TioAnime", title);
     } catch (e) {
       console.log("[TioAnime] Error: " + e.message);
-      return [{ name: "[TioAnime] Error: " + e.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
+      return [{ name: "[TioAnime] Error: " + e.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
     }
   });
 }

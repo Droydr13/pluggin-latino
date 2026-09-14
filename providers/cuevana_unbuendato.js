@@ -2888,7 +2888,7 @@ function getStreams(tmdbId, mediaType, season, episode, title, year) {
       try {
         return yield scrapeCuevanaDirecto(tmdbId, mediaType, season, episode);
       } catch (e2) {
-        return [{ name: "[Cuevana] Error: " + e.message + " | Respaldo: " + e2.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
+        return [{ name: "[Cuevana] Error: " + e.message + " | Respaldo: " + e2.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
       }
     }
   });
@@ -2987,7 +2987,7 @@ function scrapeCuevanaDirecto(tmdbId, mediaType, season, episode) {
       if (!resueltos.length) return [];
       return yield finalizeStreams(resueltos, "Cuevana (directo)", title);
     } catch (e) {
-      return [{ name: "[Cuevana directo] Error: " + e.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
+      return [{ name: "[Cuevana directo] Error: " + e.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
     }
   });
 }

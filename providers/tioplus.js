@@ -3121,7 +3121,7 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
       return yield finalizeStreams(resolvedStreams, "TioPlus", mediaTitle);
     } catch (error) {
       console.error(`[TioPlus] Error: ${error.message}`);
-      return [{ name: `[TioPlus] Error: ${error.message}`, title: String((error && error.stack) || (error && error.message) || error).slice(0, 300), url: "https://example.com/debug-error.mp4" }];
+      return [{ name: `[TioPlus] Error: ${error.message}`, title: String((error && error.stack) || (error && error.message) || error).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
     }
   });
 }
