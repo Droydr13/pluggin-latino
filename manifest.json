@@ -1,6 +1,6 @@
 {
   "name": "Addon Latam Providers",
-  "version": "1.0.2",
+  "version": "1.0.0",
   "scrapers": [
     {
       "id": "lamovie",
@@ -425,6 +425,17 @@
       "author": "CloudStream (portado)",
       "supportedTypes": ["movie"],
       "filename": "providers/peliculasflix.js",
+      "enabled": true,
+      "contentLanguage": ["es"]
+    },
+    {
+      "id": "rcn",
+      "name": "RCN",
+      "description": "Novelas, series y peliculas gratis de RCN Total (Colombia) via su propia API (Cloud Unity). Solo contenido sin DRM.",
+      "version": "1.0.0",
+      "author": "AddonLatam",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/rcn.js",
       "enabled": true,
       "contentLanguage": ["es"]
     }
