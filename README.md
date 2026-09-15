@@ -12,7 +12,7 @@ https://raw.githubusercontent.com/Droydr13/pluggin-latino/main
 ## Providers incluidos
 
 | Provider | Tipos | 
-|---|---|---|
+|---|---|
 | LaMovie | movie, tv |
 | Embed69 | movie, tv |
 | CineCalidad | movie | 
