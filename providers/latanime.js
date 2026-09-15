@@ -97,9 +97,14 @@ function extraerResultadosBusqueda(html) {
 }
 function extraerEpisodios(html) {
   const episodios = [];
-  const regex = /<a\s+[^>]*href="([^"]*\/ver\/[^"]*)"/gi;
+  const regex = /<div[^>]*class="[^"]*cap-layout[^"]*"[\s\S]{0,50}?<a\s+[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
   let m;
-  while ((m = regex.exec(html)) !== null) episodios.push(m[1]);
+  while ((m = regex.exec(html)) !== null) {
+    const texto = m[2].replace(/<[^>]+>/g, "").trim();
+    const epMatch = texto.match(/(\d+)\s*$/);
+    if (!epMatch) continue;
+    episodios.push({ href: m[1], episodio: parseInt(epMatch[1]) });
+  }
   return episodios;
 }
 function unpackJS(code) {
@@ -168,14 +173,13 @@ function getStreams(tmdbId, mediaType, season, episode) {
         const epNum = parseInt(episode);
         const showHtml = yield fetchText(targetHref);
         const episodios = extraerEpisodios(showHtml);
-        if (episodios[epNum - 1]) {
-          const href = episodios[epNum - 1];
-          episodeUrl = href.startsWith("http") ? href : LATANIME_BASE + "/" + href.replace(/^\//, "");
-        }
+        const epMatch = episodios.find((e) => e.episodio === epNum);
+        if (!epMatch) return [];
+        episodeUrl = epMatch.href.startsWith("http") ? epMatch.href : LATANIME_BASE + "/" + epMatch.href.replace(/^\//, "");
       }
       const html = yield fetchText(episodeUrl);
       const rawUrls = [];
-      const regex = /<li[^>]*id="play-video"[\s\S]{0,400}?data-player="([^"]+)"/gi;
+      const regex = /<a\s+[^>]*class="[^"]*play-video[^"]*"[^>]*data-player="([^"]+)"/gi;
       let m;
       while ((m = regex.exec(html)) !== null) {
         try {
