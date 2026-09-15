@@ -18,11 +18,42 @@ var __async = (__this, __arguments, generator) => {
     step((generator = generator.apply(__this, __arguments)).next());
   });
 };
-const axios = require("axios");
 const RCN_BASE = "https://unity.tbxapis.com/v0";
 const RCN_CLIENT_ID = "801ca66694329da3ba697f38c94bf0a1";
 const RCN_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 const TMDB_API_KEY_RCN = "439c478a771f35c05022f9feabcca01c";
+function timeoutSignal(ms) {
+  try {
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  } catch (e) {
+  }
+  try {
+    if (typeof AbortController === "function" && typeof setTimeout === "function") {
+      const c = new AbortController();
+      setTimeout(() => {
+        try {
+          c.abort();
+        } catch (e) {
+        }
+      }, ms);
+      return c.signal;
+    }
+  } catch (e) {
+  }
+  return void 0;
+}
+function fetchJson(url, options) {
+  return __async(this, null, function* () {
+    const opts = Object.assign({}, options, { signal: timeoutSignal(options && options.timeoutMs || 15e3) });
+    delete opts.timeoutMs;
+    const res = yield fetch(url, opts);
+    if (!res.ok) {
+      const body = yield res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status}${body ? " - " + body.slice(0, 200) : ""}`);
+    }
+    return res.json();
+  });
+}
 function normalizarRCN(s) {
   return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
@@ -31,8 +62,7 @@ function getTmdbTitleRCN(tmdbId, mediaType) {
     const type = mediaType === "movie" ? "movie" : "tv";
     const url = `https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY_RCN}&language=es-MX`;
     try {
-      const r = yield axios.get(url, { timeout: 1e4 });
-      const data = r.data;
+      const data = yield fetchJson(url, { headers: { Accept: "application/json" }, timeoutMs: 1e4 });
       return type === "movie" ? data.title || data.original_title : data.name || data.original_name;
     } catch (e) {
       return null;
@@ -41,11 +71,13 @@ function getTmdbTitleRCN(tmdbId, mediaType) {
 }
 function rcnPublicAuth() {
   return __async(this, null, function* () {
-    const url = `${RCN_BASE}/auth/public?v=${Date.now()}`;
-    const res = yield axios.post(url, {
-      auth: { sub: RCN_CLIENT_ID, country: "CO", currentProfile: null, device: null, language: "es" }
-    }, { headers: { Accept: "application/json", "Content-Type": "application/json", "User-Agent": RCN_UA }, timeout: 1e4 });
-    const token = res.data && res.data.token && res.data.token.access_token;
+    const data = yield fetchJson(`${RCN_BASE}/auth/public?v=${Date.now()}`, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json", "User-Agent": RCN_UA },
+      body: JSON.stringify({ auth: { sub: RCN_CLIENT_ID, country: "CO", currentProfile: null, device: null, language: "es" } }),
+      timeoutMs: 1e4
+    });
+    const token = data && data.token && data.token.access_token;
     if (!token) throw new Error("RCN: auth publica sin access_token");
     return token;
   });
@@ -53,17 +85,17 @@ function rcnPublicAuth() {
 function rcnRequest(path) {
   return __async(this, null, function* () {
     const jwt = yield rcnPublicAuth();
-    return axios.get(`${RCN_BASE}${path}`, {
+    return fetchJson(`${RCN_BASE}${path}`, {
       headers: { Accept: "application/json", Authorization: `JWT ${jwt}`, "User-Agent": RCN_UA },
-      timeout: 15e3
+      timeoutMs: 15e3
     });
   });
 }
 function rcnSearchContent(title, contentType) {
   return __async(this, null, function* () {
     const q = `contentType=${contentType}&text=${encodeURIComponent(title)}&page=1&pageSize=10`;
-    const res = yield rcnRequest(`/contents?${q}`);
-    return res.data && res.data.result || [];
+    const data = yield rcnRequest(`/contents?${q}`);
+    return data && data.result || [];
   });
 }
 function rcnFindEncodings(value) {
@@ -77,8 +109,7 @@ function rcnFindEncodings(value) {
     if (current.type === "media" && typeof current.url === "string" && (current.extension === "m3u8" || current.extension === "mpd")) {
       results.push(current);
     }
-    const values = Object.keys(current).map((k) => current[k]);
-    values.forEach(visit);
+    Object.keys(current).forEach((k) => visit(current[k]));
   }
   visit(value);
   return results;
@@ -86,11 +117,10 @@ function rcnFindEncodings(value) {
 function rcnGetPlayback(contentId) {
   return __async(this, null, function* () {
     const jwt = yield rcnPublicAuth();
-    const res = yield axios.get(`${RCN_BASE}/contents/${encodeURIComponent(contentId)}/url?network=RCN`, {
+    const data = yield fetchJson(`${RCN_BASE}/contents/${encodeURIComponent(contentId)}/url?network=RCN`, {
       headers: { Accept: "application/json", Authorization: `JWT ${jwt}`, "User-Agent": RCN_UA },
-      timeout: 15e3
+      timeoutMs: 15e3
     });
-    const data = res.data || {};
     const encodings = rcnFindEncodings(data);
     const usable = encodings.filter((e) => e.hasDRM === false && typeof e.url === "string");
     const hls = usable.filter((e) => e.extension === "m3u8")[0];
