@@ -23,7 +23,6 @@ https://raw.githubusercontent.com/Droydr13/pluggin-latino/main
 | BrazucaPlay | movie, tv | 
 | CinemaCity | movie, tv | 
 | Cuevana (unbuendato) | movie, tv | 
-| FuegoCine | movie, tv | 
 | HackStore (v2) | movie, tv | 
 | PelisGo | movie, tv | 
 | PelisPanda | movie, tv | 
