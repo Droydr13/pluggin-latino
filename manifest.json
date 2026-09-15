@@ -160,16 +160,16 @@
       ]
     },
     {
-      "id": "cuevana_unbuendato",
-      "name": "Cuevana (unbuendato)",
-      "description": "Peliculas y series en Latino desde Cuevana (espejo unbuendato.com).",
+      "id": "cuevana",
+      "name": "Cuevana",
+      "description": "Peliculas y series en Latino desde Cuevana.",
       "version": "1.0.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
         "tv"
       ],
-      "filename": "providers/cuevana_unbuendato.js",
+      "filename": "providers/cuevana.js",
       "enabled": true,
       "contentLanguage": [
         "es"
