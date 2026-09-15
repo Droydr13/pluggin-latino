@@ -1,10 +1,13 @@
 # Addon Latam plugin
-
-Ahora también tenemos plugin para Nuvio. Contenido en Español/Latino: películas,
+ 
+Ahora también tenemos este plugin para Nuvio. Contenido en Español/Latino: películas,
 series, anime y donghuas de distintos sitios.
-
+ 
+[![Donar](https://img.shields.io/badge/❤-Donar-e50914?style=for-the-badge)](https://addonlatampagina.duckdns.org/donar.html)
+ 
 - Página de Addon Latam: https://addonlatampagina.duckdns.org
 - Instalar el addon de Addon Latam desde Stremio Addons: https://stremio-addons.net/addons/addon-latam
+
 
 ## Instalar en Nuvio
 
