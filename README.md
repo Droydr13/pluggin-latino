@@ -13,45 +13,45 @@ https://raw.githubusercontent.com/Droydr13/pluggin-latino/main
 
 | Provider | Tipos | Autor |
 |---|---|---|
-| LaMovie | movie, tv | AdrianJael |
-| Embed69 | movie, tv | KennethJYS |
-| CineCalidad | movie | KennethJYS |
-| PelisSeriesHoy | movie, tv | KennethJYS |
-| SeriesMetro | movie, tv | KennethJYS |
-| HackStore | movie, tv | KennethJYS |
+| LaMovie | movie, tv |
+| Embed69 | movie, tv |
+| CineCalidad | movie | 
+| PelisSeriesHoy | movie, tv | 
+| SeriesMetro | movie, tv | 
+| HackStore | movie, tv |
 | LACartoons | tv | Doyrd |
-| BrazucaPlay | movie, tv | Doyrd |
-| CinemaCity | movie, tv | Doyrd |
-| Cuevana (unbuendato) | movie, tv | Doyrd |
-| FuegoCine | movie, tv | Doyrd |
-| HackStore (v2) | movie, tv | Doyrd |
-| PelisGo | movie, tv | Doyrd |
-| PelisPanda | movie, tv | Doyrd |
-| PelisPedia | movie, tv | Doyrd |
-| PelisPlus | movie, tv | Doyrd |
-| PlayHubMax | movie, tv | Doyrd |
-| SoloLatino | movie, tv | Doyrd |
-| TioPlus | movie, tv | Doyrd |
-| VidEasy | movie, tv | Doyrd |
-| XuPalace | movie, tv | Doyrd |
-| AllCalidad | movie, tv | Doyrd |
-| AnimeAV1 | tv | Doyrd |
-| AnimeJL | tv | Doyrd |
-| AnimeFLV | tv | Doyrd |
-| Area Documental | movie, tv | Doyrd |
-| Doramasflix | movie, tv | Doyrd |
-| DocumaniaTV | movie, tv | Doyrd |
-| DoramasYT | tv | Doyrd |
-| LatAnime | tv | Doyrd |
-| EntrePeliculasYSeries | movie, tv | Doyrd |
-| HDFull | movie, tv | Doyrd |
-| JKAnime | tv | Doyrd |
-| Monoschinos | tv | Doyrd |
-| TioAnime | tv | Doyrd |
-| ReyDonghua | tv | Doyrd |
-| MundoDonghua | tv | Doyrd |
-| PeliculasFlix | movie | Doyrd |
-| RCN | movie, tv | Doyrd (+ ayuda de un colaborador)|
+| BrazucaPlay | movie, tv | 
+| CinemaCity | movie, tv | 
+| Cuevana (unbuendato) | movie, tv | 
+| FuegoCine | movie, tv | 
+| HackStore (v2) | movie, tv | 
+| PelisGo | movie, tv | 
+| PelisPanda | movie, tv | 
+| PelisPedia | movie, tv | 
+| PelisPlus | movie, tv | 
+| PlayHubMax | movie, tv | 
+| SoloLatino | movie, tv | 
+| TioPlus | movie, tv | 
+| VidEasy | movie, tv | 
+| XuPalace | movie, tv | 
+| AllCalidad | movie, tv | 
+| AnimeAV1 | tv | 
+| AnimeJL | tv | 
+| AnimeFLV | tv | 
+| Area Documental | movie, tv | 
+| Doramasflix | movie, tv | 
+| DocumaniaTV | movie, tv | 
+| DoramasYT | tv | 
+| LatAnime | tv | 
+| EntrePeliculasYSeries | movie, tv | 
+| HDFull | movie, tv | 
+| JKAnime | tv | 
+| Monoschinos | tv | 
+| TioAnime | tv | 
+| ReyDonghua | tv | 
+| MundoDonghua | tv | 
+| PeliculasFlix | movie | 
+| RCN | movie, tv | 
 
 Los primeros 6 (LaMovie, Embed69, CineCalidad, PelisSeriesHoy,
 SeriesMetro, HackStore) vienen tal cual de sus repos originales de
