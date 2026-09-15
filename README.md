@@ -11,7 +11,7 @@ https://raw.githubusercontent.com/Droydr13/pluggin-latino/main
 
 ## Providers incluidos
 
-| Provider | Tipos | Autor |
+| Provider | Tipos | 
 |---|---|---|
 | LaMovie | movie, tv |
 | Embed69 | movie, tv |
@@ -19,7 +19,7 @@ https://raw.githubusercontent.com/Droydr13/pluggin-latino/main
 | PelisSeriesHoy | movie, tv | 
 | SeriesMetro | movie, tv | 
 | HackStore | movie, tv |
-| LACartoons | tv | Doyrd |
+| LACartoons | tv | 
 | BrazucaPlay | movie, tv | 
 | CinemaCity | movie, tv | 
 | Cuevana (unbuendato) | movie, tv | 
