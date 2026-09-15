@@ -14,49 +14,6 @@ Settings → Plugins → agregar esta URL:
 https://raw.githubusercontent.com/Droydr13/pluggin-latino/main
 ```
 
-## Providers incluidos
-
-| Provider | Tipos | 
-|---|---|
-| LaMovie | movie, tv |
-| Embed69 | movie, tv |
-| CineCalidad | movie | 
-| PelisSeriesHoy | movie, tv | 
-| SeriesMetro | movie, tv | 
-| HackStore | movie, tv |
-| LACartoons | tv | 
-| BrazucaPlay | movie, tv | 
-| CinemaCity | movie, tv | 
-| Cuevana (unbuendato) | movie, tv | 
-| HackStore (v2) | movie, tv | 
-| PelisGo | movie, tv | 
-| PelisPanda | movie, tv | 
-| PelisPedia | movie, tv | 
-| PelisPlus | movie, tv | 
-| PlayHubMax | movie, tv | 
-| SoloLatino | movie, tv | 
-| TioPlus | movie, tv | 
-| VidEasy | movie, tv | 
-| XuPalace | movie, tv | 
-| AllCalidad | movie, tv | 
-| AnimeAV1 | tv | 
-| AnimeJL | tv | 
-| AnimeFLV | tv | 
-| Area Documental | movie, tv | 
-| Doramasflix | movie, tv | 
-| DocumaniaTV | movie, tv | 
-| DoramasYT | tv | 
-| LatAnime | tv | 
-| EntrePeliculasYSeries | movie, tv | 
-| HDFull | movie, tv | 
-| JKAnime | tv | 
-| Monoschinos | tv | 
-| TioAnime | tv | 
-| ReyDonghua | tv | 
-| MundoDonghua | tv | 
-| PeliculasFlix | movie | 
-| RCN | movie, tv | 
-
 ## Avisos conocidos
 
 - **JKAnime** y **MundoDonghua**: cubren el camino principal de
