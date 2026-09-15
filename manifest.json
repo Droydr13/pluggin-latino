@@ -601,7 +601,7 @@
       "name": "RCN",
       "description": "Novelas, series y peliculas gratis de RCN Total (Colombia) via su propia API (Cloud Unity). Solo contenido sin DRM.",
       "version": "1.0.0",
-      "author": "Doyrd",
+      "author": "Doyrd (+ ayuda de un colaborador)",
       "supportedTypes": [
         "movie",
         "tv"
