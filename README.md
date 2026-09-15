@@ -1,5 +1,10 @@
-# Addon Latam plugin 
-Contenido en Español/Latino: peliculas, series, anime y donghuas de distintos sitio.
+# Addon Latam plugin
+
+Ahora también tenemos plugin para Nuvio. Contenido en Español/Latino: películas,
+series, anime y donghuas de distintos sitios.
+
+- Página de Addon Latam: https://addonlatampagina.duckdns.org
+- Instalar el addon de Addon Latam desde Stremio Addons: https://stremio-addons.net/addons/addon-latam
 
 ## Instalar en Nuvio
 
@@ -60,4 +65,3 @@ https://raw.githubusercontent.com/Droydr13/pluggin-latino/main
 - **EntrePeliculasYSeries**: si el sitio en vez de mostrar la clave de
   descifrado directo tira un desafío de "proof-of-work", esta versión
   no lo resuelve (devuelve vacío en ese caso puntual).
-
