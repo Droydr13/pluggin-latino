@@ -1,76 +1,110 @@
-const CryptoJS = require("crypto-js");
-const BASE_URL = "https://lacartoons.com";
-const EMBED_ORIGIN = "https://cubeembed.rpmvid.com";
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-const RPMVID_HEADERS = {
-  Referer: EMBED_ORIGIN + "/",
-  Origin: EMBED_ORIGIN,
-  "User-Agent": UA
+var __async = (__this, __arguments, generator) => {
+  return new Promise((resolve, reject) => {
+    var fulfilled = (value) => {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var rejected = (value) => {
+      try {
+        step(generator.throw(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+    step((generator = generator.apply(__this, __arguments)).next());
+  });
 };
-const MAPPING = { "lc_1": { "imdb": "tt0105928", "tmdb": 1916 }, "lc_2": { "imdb": "tt0161952", "tmdb": 42444 }, "lc_3": { "imdb": "tt0098763", "tmdb": 478 }, "lc_4": { "imdb": "tt0417311", "tmdb": 4622 }, "lc_5": { "imdb": "tt0220880", "tmdb": 2085 }, "lc_6": { "imdb": "tt0376390", "tmdb": 216 }, "lc_7": { "imdb": "tt0247729", "tmdb": 1487 }, "lc_8": { "imdb": "tt0094469", "tmdb": 4606 }, "lc_10": { "imdb": "tt1636691", "tmdb": 32118 }, "lc_11": { "imdb": "tt0112064", "tmdb": 9957 }, "lc_12": { "imdb": "tt0242213", "tmdb": 10400 }, "lc_13": { "imdb": "tt0179552", "tmdb": 1570 }, "lc_15": { "imdb": "tt1178180", "tmdb": 6673 }, "lc_16": { "imdb": "tt0292800", "tmdb": 897 }, "lc_17": { "imdb": "tt0118289", "tmdb": 3611 }, "lc_18": { "imdb": "tt8543208", "tmdb": 102321 }, "lc_19": { "imdb": "tt0090506", "tmdb": 2286 }, "lc_22": { "imdb": "tt0055683", "tmdb": 2362 }, "lc_23": { "imdb": "tt0177814", "tmdb": 5246 }, "lc_24": { "imdb": "tt0127385", "tmdb": 1153 }, "lc_25": { "imdb": "tt0061300", "tmdb": 30986 }, "lc_26": { "imdb": "tt0221735", "tmdb": 35790 }, "lc_27": { "imdb": "tt0278238", "tmdb": 2723 }, "lc_28": { "imdb": "tt0182629", "tmdb": 28136 }, "lc_29": { "imdb": "tt0423731", "tmdb": 1063 }, "lc_31": { "imdb": "tt0184111", "tmdb": 606 }, "lc_32": { "imdb": "tt0343314", "tmdb": 604 }, "lc_33": { "imdb": "tt0081938", "tmdb": 3973 }, "lc_34": { "imdb": "tt1709198", "tmdb": 32315 }, "lc_35": { "imdb": "tt3559124", "tmdb": 47480 }, "lc_36": { "imdb": "tt0772145", "tmdb": 6549 }, "lc_37": { "imdb": "tt2824770", "tmdb": 60306 }, "lc_38": { "imdb": "tt0247827", "tmdb": 668 }, "lc_39": { "imdb": "tt0168366", "tmdb": 60572 }, "lc_40": { "imdb": "tt0121220", "tmdb": 12971 }, "lc_41": { "imdb": "tt0121220", "tmdb": 12971 }, "lc_42": { "imdb": "tt0139774", "tmdb": 12697 }, "lc_43": { "imdb": "tt0251439", "tmdb": 26453 }, "lc_44": { "imdb": "tt0105988", "tmdb": 11040 }, "lc_45": { "imdb": "tt0454349", "tmdb": 1769 }, "lc_46": { "imdb": "tt0275137", "tmdb": 1618 }, "lc_47": { "imdb": "tt6025022", "tmdb": 84200 }, "lc_51": { "imdb": "tt0328733", "tmdb": 54728 }, "lc_52": { "imdb": "tt0096554", "tmdb": 1824 }, "lc_53": { "imdb": "tt0210418", "tmdb": 31654 }, "lc_54": { "imdb": "tt0210418", "tmdb": 31654 }, "lc_55": { "imdb": "tt0295080", "tmdb": 9302 }, "lc_56": { "imdb": "tt0316975", "tmdb": 8991 }, "lc_57": { "imdb": "tt0085033", "tmdb": 4035 }, "lc_58": { "imdb": "tt0281474", "tmdb": 9980 }, "lc_59": { "imdb": "tt0167742", "tmdb": 3945 }, "lc_60": { "imdb": "tt0108783", "tmdb": 1719 }, "lc_61": { "imdb": "tt0159193", "tmdb": 21730 }, "lc_62": { "imdb": "tt0126158", "tmdb": 931 }, "lc_63": { "imdb": "tt1877889", "tmdb": 51817 }, "lc_64": { "imdb": "tt0235918", "tmdb": 4630 }, "lc_65": { "imdb": "tt0293731", "tmdb": 11235 }, "lc_67": { "imdb": "tt0213363", "tmdb": 2777 }, "lc_68": { "imdb": "tt0106064", "tmdb": 2328 }, "lc_69": { "imdb": "tt0106064", "tmdb": 2328 }, "lc_70": { "imdb": "tt0106064", "tmdb": 2328 }, "lc_73": { "imdb": "tt0194622", "tmdb": 3411 }, "lc_74": { "imdb": "tt0103369", "tmdb": 3570 }, "lc_75": { "imdb": "tt12502782", "tmdb": 104699 }, "lc_76": { "imdb": "tt0835241", "tmdb": 14 }, "lc_77": { "imdb": "tt0118475", "tmdb": 10331 }, "lc_78": { "imdb": "tt0083481", "tmdb": 1269 }, "lc_79": { "imdb": "tt0112175", "tmdb": 888 }, "lc_80": { "imdb": "tt0207120", "tmdb": 10079 }, "lc_81": { "imdb": "tt0203268", "tmdb": 1130 }, "lc_83": { "imdb": "tt0144069", "tmdb": 31713 }, "lc_84": { "imdb": "tt0115108", "tmdb": 958 }, "lc_85": { "imdb": "tt0086817", "tmdb": 4269 }, "lc_86": { "imdb": "tt5185786", "tmdb": 71993 }, "lc_9": { "imdb": "tt0283727", "tmdb": 12158 }, "lc_14": { "imdb": "tt0189254", "tmdb": 1585 }, "lc_20": { "imdb": "tt0090436", "tmdb": 3105 }, "lc_21": { "imdb": "tt0053502", "tmdb": 3014 }, "lc_30": { "imdb": "tt1564065", "tmdb": 31918 }, "lc_66": { "imdb": "tt0244355", "tmdb": 39340 }, "lc_71": { "imdb": "tt0138983", "tmdb": 4343 }, "lc_72": { "imdb": "tt0181931", "tmdb": 4344 }, "lc_82": { "imdb": "tt0078691", "tmdb": 12411 }, "lc_87": { "imdb": "tt0244327", "tmdb": 31105 }, "lc_90": { "imdb": "tt0108937", "tmdb": 2798 }, "lc_95": { "imdb": "tt0255768", "tmdb": 30773 }, "lc_97": { "imdb": "tt0061237", "tmdb": 1029 }, "lc_100": { "imdb": "tt0070996", "tmdb": 10106 }, "lc_101": { "imdb": "tt0051283", "tmdb": 967 }, "lc_102": { "imdb": "tt0065307", "tmdb": 4489 }, "lc_88": { "imdb": "tt0073971", "tmdb": 12224 }, "lc_89": { "imdb": "tt0060028", "tmdb": 4385 }, "lc_91": { "imdb": "tt0173546", "tmdb": 31004 }, "lc_92": { "imdb": "tt0058846", "tmdb": 4001 }, "lc_93": { "imdb": "tt0055714", "tmdb": 12221 }, "lc_94": { "imdb": "tt0094518", "tmdb": 22252 }, "lc_96": { "imdb": "tt0058850", "tmdb": 12222 }, "lc_98": { "imdb": "tt0073984", "tmdb": 12225 }, "lc_99": { "imdb": "tt0080219", "tmdb": 16244 }, "lc_103": { "imdb": "tt0058859", "tmdb": 12223 }, "lc_104": { "imdb": "tt0058789", "tmdb": 22172 }, "lc_105": { "imdb": "tt0108895", "tmdb": 14693 }, "lc_106": { "imdb": "tt0068037", "tmdb": 10347 }, "lc_108": { "imdb": "tt0122365", "tmdb": 985 }, "lc_110": { "imdb": "tt18247048", "tmdb": 12164 }, "lc_112": { "imdb": "tt0173587", "tmdb": 1765 }, "lc_113": { "imdb": "tt0060004", "tmdb": 11167 }, "lc_115": { "imdb": "tt0250908", "tmdb": 12350 }, "lc_119": { "imdb": "tt0063950", "tmdb": 926 }, "lc_121": { "imdb": "tt0127471", "tmdb": 5172 }, "lc_122": { "imdb": "tt0244156", "tmdb": 38960 }, "lc_123": { "imdb": "tt0054572", "tmdb": 4232 }, "lc_124": { "imdb": "tt0147746", "tmdb": 513 }, "lc_125": { "imdb": "tt0103359", "tmdb": 2098 }, "lc_126": { "imdb": "tt0106367", "tmdb": 5343 }, "lc_127": { "imdb": "tt0115228", "tmdb": 2118 }, "lc_128": { "imdb": "tt0170996", "tmdb": 4190 }, "lc_129": { "imdb": "tt0112123", "tmdb": 2228 }, "lc_130": { "imdb": "tt0115378", "tmdb": 4303 }, "lc_131": { "imdb": "tt13362852", "tmdb": 155779 }, "lc_132": { "imdb": "tt0398417", "tmdb": 2022 }, "lc_133": { "imdb": "tt0105941", "tmdb": 82 }, "lc_134": { "imdb": "tt0112186", "tmdb": 9867 }, "lc_136": { "imdb": "tt0105935", "tmdb": 2745 }, "lc_137": { "imdb": "tt0103477", "tmdb": 2675 }, "lc_138": { "imdb": "tt0090390", "tmdb": 4658 }, "lc_139": { "imdb": "tt0417299", "tmdb": 246 }, "lc_140": { "imdb": "tt1695360", "tmdb": 33880 }, "lc_141": { "imdb": "tt0206512", "tmdb": 387 }, "lc_142": { "imdb": "tt0154061", "tmdb": 1567 }, "lc_143": { "imdb": "tt0386176", "tmdb": 1960 }, "lc_107": { "imdb": "tt0088469", "tmdb": 2994 }, "lc_109": { "imdb": "tt0075531", "tmdb": 3040 }, "lc_111": { "imdb": "tt0138964", "tmdb": 12349 }, "lc_114": { "imdb": "tt0074011", "tmdb": 2189 }, "lc_116": { "imdb": "tt0063894", "tmdb": 4317 }, "lc_117": { "imdb": "tt0294186", "tmdb": 12351 }, "lc_118": { "imdb": "tt0071077", "tmdb": 4319 }, "lc_120": { "imdb": "tt0078683", "tmdb": 3039 }, "lc_135": { "imdb": "tt0029583", "tmdb": 113 }, "lc_144": { "imdb": "tt0363328", "tmdb": 1824 }, "lc_145": { "imdb": "tt0366005", "tmdb": 2309 }, "lc_146": { "imdb": "tt0101084", "tmdb": 384 }, "lc_147": { "imdb": "tt0090520", "tmdb": 12504 }, "lc_148": { "imdb": "tt0421482", "tmdb": 1848 }, "lc_149": { "imdb": "tt0870039", "tmdb": 3031 }, "lc_150": { "imdb": "tt0972534", "tmdb": 5371 }, "lc_151": { "imdb": "tt0320808", "tmdb": 2129 }, "lc_153": { "imdb": "tt0318233", "tmdb": 178 }, "lc_154": { "imdb": "tt0339967", "tmdb": 43219 }, "lc_155": { "imdb": "tt0103352", "tmdb": 2913 }, "lc_156": { "imdb": "tt0106115", "tmdb": 657 }, "lc_157": { "imdb": "tt0167743", "tmdb": 2408 }, "lc_158": { "imdb": "tt0405576", "tmdb": 1600 }, "lc_161": { "imdb": "tt0244926", "tmdb": 2009 }, "lc_162": { "imdb": "tt0115200", "tmdb": 537 }, "lc_163": { "imdb": "tt0115341", "tmdb": 605 }, "lc_166": { "imdb": "tt0415463", "tmdb": 1778 }, "lc_167": { "imdb": "tt0069554", "tmdb": 13015 }, "lc_169": { "imdb": "tt0057733", "tmdb": 4482 }, "lc_170": { "imdb": "tt1626038", "tmdb": 33623 }, "lc_171": { "imdb": "tt1988235", "tmdb": 62798 }, "lc_172": { "imdb": "tt0111970", "tmdb": 4334 }, "lc_173": { "imdb": "tt0103584", "tmdb": 4574 }, "lc_174": { "imdb": "tt0094531", "tmdb": 418 }, "lc_175": { "imdb": "tt0111982", "tmdb": 15830 }, "lc_176": { "imdb": "tt0057730", "tmdb": 962 }, "lc_177": { "imdb": "tt16245782", "tmdb": 312434 }, "lc_178": { "imdb": "tt0189315", "tmdb": 932 }, "lc_180": { "imdb": "tt0088631", "tmdb": 1988 }, "lc_181": { "imdb": "tt0108684", "tmdb": 2429 }, "lc_182": { "imdb": "tt0218769", "tmdb": 177 }, "lc_184": { "imdb": "tt0247902", "tmdb": 902 }, "lc_186": { "imdb": "tt0103562", "tmdb": 10126 }, "lc_187": { "imdb": "tt2070571", "tmdb": 43146 }, "lc_188": { "imdb": "tt1659175", "tmdb": 32910 }, "lc_152": { "imdb": "tt0115231", "tmdb": 2341 }, "lc_159": { "imdb": "tt0062543", "tmdb": 12221 }, "lc_160": { "imdb": "tt1112815", "tmdb": 11114 }, "lc_164": { "imdb": "tt2284154", "tmdb": 46150 }, "lc_165": { "imdb": "tt1604099", "tmdb": 32739 }, "lc_168": { "imdb": "tt0057773", "tmdb": 3057 }, "lc_179": { "imdb": "tt0283783", "tmdb": 43350 }, "lc_183": { "imdb": "tt0259141", "tmdb": 2017 }, "lc_185": { "imdb": "tt0092348", "tmdb": 2396 }, "lc_189": { "imdb": "tt0076985", "tmdb": 3102 }, "lc_190": { "imdb": "tt0058815", "tmdb": 1660 }, "lc_191": { "imdb": "tt0374419", "tmdb": 140 }, "lc_194": { "imdb": "tt0185133", "tmdb": 30669 }, "lc_197": { "imdb": "tt0367413", "tmdb": 10926 }, "lc_198": { "imdb": "tt0235923", "tmdb": 3793 }, "lc_199": { "imdb": "tt0084996", "tmdb": 6670 }, "lc_200": { "imdb": "tt0376364", "tmdb": 43 }, "lc_201": { "imdb": "tt0144065", "tmdb": 3026 }, "lc_202": { "imdb": "tt0096686", "tmdb": 57706 }, "lc_203": { "imdb": "tt0069641", "tmdb": 936 }, "lc_204": { "imdb": "tt1707807", "tmdb": 45418 }, "lc_205": { "imdb": "tt0131664", "tmdb": 3579 }, "lc_206": { "imdb": "tt0118360", "tmdb": 2405 }, "lc_207": { "imdb": "tt0115215", "tmdb": 6332 }, "lc_208": { "imdb": "tt0187635", "tmdb": 2901 }, "lc_210": { "imdb": "tt1847521", "tmdb": 38247 }, "lc_211": { "imdb": "tt0837143", "tmdb": 7330 }, "lc_212": { "imdb": "tt0203247", "tmdb": 1300 }, "lc_213": { "imdb": "tt2455546", "tmdb": 59427 }, "lc_217": { "imdb": "tt0206500", "tmdb": 14675 }, "lc_218": { "imdb": "tt0211793", "tmdb": 22784 }, "lc_219": { "imdb": "tt0098762", "tmdb": 14396 }, "lc_220": { "imdb": "tt0167552", "tmdb": 26732 }, "lc_221": { "imdb": "tt0108978", "tmdb": 518 }, "lc_222": { "imdb": "tt0115674", "tmdb": 2136 }, "lc_223": { "imdb": "tt0312109", "tmdb": 2660 }, "lc_224": { "imdb": "tt0294023", "tmdb": 25707 }, "lc_225": { "imdb": "tt0115157", "tmdb": 4229 }, "lc_226": { "imdb": "tt0361201", "tmdb": 472 }, "lc_227": { "imdb": "tt0230804", "tmdb": 20992 }, "lc_228": { "imdb": "tt0050079", "tmdb": 4681 }, "lc_229": { "imdb": "tt0118266", "tmdb": 4625 }, "lc_231": { "imdb": "tt0061237", "tmdb": 1029 }, "lc_232": { "imdb": "tt0110825", "tmdb": 2017 }, "lc_233": { "imdb": "tt0372650", "tmdb": 69113 }, "lc_234": { "imdb": "tt1705038", "tmdb": 33163 }, "lc_235": { "imdb": "tt0103559", "tmdb": 12544 }, "lc_236": { "imdb": "tt0131179", "tmdb": 30983 }, "lc_237": { "imdb": "tt0070968", "tmdb": 29452 }, "lc_238": { "imdb": "tt0270761", "tmdb": 9160 }, "lc_192": { "imdb": "tt0329917", "tmdb": 2110 }, "lc_193": { "imdb": "tt0361193", "tmdb": 38232 }, "lc_195": { "imdb": "tt0379641", "tmdb": 37905 }, "lc_196": { "imdb": "tt0124254", "tmdb": 31004 }, "lc_209": { "imdb": "tt0845014", "tmdb": 3284 }, "lc_214": { "imdb": "tt0106001", "tmdb": 22354 }, "lc_215": { "imdb": "tt0071071", "tmdb": 12391 }, "lc_216": { "imdb": "tt0138255", "tmdb": 12390 }, "lc_230": { "imdb": "tt0060022", "tmdb": 31084 }, "lc_239": { "imdb": "tt0086824", "tmdb": 12496 }, "lc_242": { "imdb": "tt0169473", "tmdb": 19253 }, "lc_243": { "imdb": "tt0294235", "tmdb": 43979 }, "lc_245": { "imdb": "tt0421381", "tmdb": 9152 }, "lc_246": { "imdb": "tt0185655", "tmdb": 44777 }, "lc_247": { "imdb": "tt0299378", "tmdb": 89455 }, "lc_248": { "imdb": "tt0122336", "tmdb": 23004 }, "lc_249": { "imdb": "tt0159887", "tmdb": 19412 }, "lc_250": { "imdb": "tt0068792", "tmdb": 13549 }, "lc_251": { "imdb": "tt0069576", "tmdb": 57911 }, "lc_252": { "imdb": "tt0260662", "tmdb": 4508 }, "lc_253": { "imdb": "tt0813808", "tmdb": 4335 }, "lc_254": { "imdb": "tt0386180", "tmdb": 4336 }, "lc_255": { "imdb": "tt0098800", "tmdb": 1892 }, "lc_256": { "imdb": "tt0092359", "tmdb": 4313 }, "lc_260": { "imdb": "tt0498318", "tmdb": 63128 }, "lc_261": { "imdb": "tt0236893", "tmdb": 2650 }, "lc_263": { "imdb": "tt0061262", "tmdb": 3578 }, "lc_264": { "imdb": "tt0059984", "tmdb": 2579 }, "lc_265": { "imdb": "tt0877057", "tmdb": 13916 }, "lc_267": { "imdb": "tt0144700", "tmdb": 2198 }, "lc_268": { "imdb": "tt0184109", "tmdb": 38324 }, "lc_269": { "imdb": "tt11920706", "tmdb": 99598 }, "lc_270": { "imdb": "tt0213338", "tmdb": 30991 }, "lc_271": { "imdb": "tt0159933", "tmdb": 35993 }, "lc_240": { "imdb": "tt0086824", "tmdb": 11134 }, "lc_241": { "imdb": "tt0131174", "tmdb": 12240 }, "lc_244": { "imdb": "tt0159887", "tmdb": 43126 }, "lc_257": { "imdb": "tt0074051", "tmdb": 3041 }, "lc_258": { "imdb": "tt0069661", "tmdb": 12231 }, "lc_259": { "imdb": "tt0283803", "tmdb": 114227 }, "lc_262": { "imdb": "tt0283770", "tmdb": 114226 }, "lc_266": { "imdb": "tt0320831", "tmdb": 80284 }, "lc_272": { "imdb": "tt0159189", "tmdb": 32954 }, "lc_273": { "imdb": "tt0159190", "tmdb": 32955 }, "lc_274": { "imdb": "tt0127403", "tmdb": 19553 }, "lc_275": { "imdb": "tt0235138", "tmdb": 8880 }, "lc_276": { "imdb": "tt0367443", "tmdb": 37419 }, "lc_278": { "imdb": "tt0892700", "tmdb": 7869 }, "lc_279": { "imdb": "tt0294097", "tmdb": 416 }, "lc_280": { "imdb": "tt0760437", "tmdb": 4686 }, "lc_281": { "imdb": "tt1192169", "tmdb": 6040 }, "lc_282": { "imdb": "tt1622696", "tmdb": 31109 }, "lc_283": { "imdb": "tt0353115", "tmdb": 288 }, "lc_284": { "imdb": "tt0166910", "tmdb": 3518 }, "lc_286": { "imdb": "tt0126171", "tmdb": 14755 }, "lc_287": { "imdb": "tt0088595", "tmdb": 2192 }, "lc_288": { "imdb": "tt0488465", "tmdb": 34090 }, "lc_289": { "imdb": "tt0088500", "tmdb": 2416 }, "lc_290": { "imdb": "tt0068112", "tmdb": 1068 }, "lc_291": { "imdb": "tt0112197", "tmdb": 4429 }, "lc_292": { "imdb": "tt0115218", "tmdb": 3097 }, "lc_293": { "imdb": "tt0165052", "tmdb": 2005 }, "lc_294": { "imdb": "tt0429305", "tmdb": 346 }, "lc_297": { "imdb": "tt0235589", "tmdb": 4350 }, "lc_298": { "imdb": "tt0108903", "tmdb": 2121 }, "lc_304": { "imdb": "tt0181262", "tmdb": 13800 }, "lc_305": { "imdb": "tt0066699", "tmdb": 2451 }, "lc_277": { "imdb": "tt0280331", "tmdb": 34535 }, "lc_285": { "imdb": "tt0108847", "tmdb": 1210 }, "lc_295": { "imdb": "tt0080245", "tmdb": 32085 }, "lc_296": { "imdb": "tt0364143", "tmdb": 3110 }, "lc_299": { "imdb": "tt0292790", "tmdb": 38141 }, "lc_300": { "imdb": "tt10499444", "tmdb": 211110 }, "lc_301": { "imdb": "tt0283734", "tmdb": 12424 }, "lc_302": { "imdb": "tt0182643", "tmdb": 43144 }, "lc_303": { "imdb": "tt0439928", "tmdb": 3386 }, "lc_306": { "imdb": "tt0078662", "tmdb": 14813 }, "lc_308": { "imdb": "tt0291672", "tmdb": 4314 }, "lc_309": { "imdb": "tt0138230", "tmdb": 1794 }, "lc_310": { "imdb": "tt0290223", "tmdb": 35610 }, "lc_311": { "imdb": "tt0290223", "tmdb": 35610 }, "lc_312": { "imdb": "tt0455295", "tmdb": 35894 }, "lc_313": { "imdb": "tt0126170", "tmdb": 1546 }, "lc_314": { "imdb": "tt0101076", "tmdb": 3319 }, "lc_317": { "imdb": "tt0138967", "tmdb": 2567 }, "lc_318": { "imdb": "tt0278866", "tmdb": 2345 }, "lc_319": { "imdb": "tt0283754", "tmdb": 2395 }, "lc_320": { "imdb": "tt4644488", "tmdb": 62715 }, "lc_321": { "imdb": "tt11349866", "tmdb": 91764 }, "lc_323": { "imdb": "tt4741296", "tmdb": 66900 }, "lc_324": { "imdb": "tt0112233", "tmdb": 34663 }, "lc_325": { "imdb": "tt0965547", "tmdb": 42573 }, "lc_327": { "imdb": "tt0137311", "tmdb": 10200 }, "lc_330": { "imdb": "tt0320969", "tmdb": 2580 }, "lc_332": { "imdb": "tt0770762", "tmdb": 1126 }, "lc_333": { "imdb": "tt0069637", "tmdb": 1992 }, "lc_334": { "imdb": "tt0212671", "tmdb": 2004 }, "lc_335": { "imdb": "tt0149460", "tmdb": 615 }, "lc_336": { "imdb": "tt0213334", "tmdb": 6616 }, "lc_337": { "imdb": "tt0098924", "tmdb": 2720 }, "lc_307": { "imdb": "tt0291599", "tmdb": 32244 }, "lc_315": { "imdb": "tt0364833", "tmdb": 2288 }, "lc_316": { "imdb": "tt0096557", "tmdb": 2330 }, "lc_322": { "imdb": "tt0294154", "tmdb": 41103 }, "lc_326": { "imdb": "tt0140761", "tmdb": 14428 }, "lc_328": { "imdb": "tt0090387", "tmdb": 12343 }, "lc_329": { "imdb": "tt0094449", "tmdb": 12341 }, "lc_331": { "imdb": "tt0131171", "tmdb": 31011 }, "lc_338": { "imdb": "tt0220259", "tmdb": 3109 }, "lc_339": { "imdb": "tt0115268", "tmdb": 3111 }, "lc_341": { "imdb": "tt0126173", "tmdb": 590 }, "lc_342": { "imdb": "tt0194625", "tmdb": 2628 }, "lc_345": { "imdb": "tt0101240", "tmdb": 10442 }, "lc_346": { "imdb": "tt0081933", "tmdb": 5687 }, "lc_347": { "imdb": "tt0284712", "tmdb": 9773 }, "lc_348": { "imdb": "tt0069554", "tmdb": 13015 }, "lc_350": { "imdb": "tt0855673", "tmdb": 3809 }, "lc_351": { "imdb": "tt0103373", "tmdb": 1767 }, "lc_352": { "imdb": "tt0122837", "tmdb": 13455 }, "lc_353": { "imdb": "tt0795256", "tmdb": 6782 }, "lc_354": { "imdb": "tt0337539", "tmdb": 6 }, "lc_355": { "imdb": "tt0286347", "tmdb": 1763 }, "lc_356": { "imdb": "tt0096707", "tmdb": 14613 }, "lc_357": { "imdb": "tt0278192", "tmdb": 101512 }, "lc_358": { "imdb": "tt1718438", "tmdb": 33428 }, "lc_359": { "imdb": "tt0306274", "tmdb": 652 }, "lc_360": { "imdb": "tt0850642", "tmdb": 593 }, "lc_363": { "imdb": "tt0145628", "tmdb": 8392 }, "lc_364": { "imdb": "tt0352090", "tmdb": 5598 }, "lc_365": { "imdb": "tt1638319", "tmdb": 35016 }, "lc_366": { "imdb": "tt1196094", "tmdb": 20695 }, "lc_367": { "imdb": "tt0235916", "tmdb": 4413 }, "lc_368": { "imdb": "tt0101188", "tmdb": 3022 }, "lc_369": { "imdb": "tt0387714", "tmdb": 130 }, "lc_370": { "imdb": "tt0235911", "tmdb": 1760 }, "lc_371": { "imdb": "tt0101178", "tmdb": 504 }, "lc_372": { "imdb": "tt0077003", "tmdb": 2410 }, "lc_373": { "imdb": "tt0409591", "tmdb": 46260 }, "lc_374": { "imdb": "tt0458290", "tmdb": 4194 }, "lc_375": { "imdb": "tt1305826", "tmdb": 15260 }, "lc_376": { "imdb": "tt1710308", "tmdb": 31132 }, "lc_378": { "imdb": "tt0125633", "tmdb": 6279 }, "lc_379": { "imdb": "tt0457246", "tmdb": 1634 }, "lc_382": { "imdb": "tt5540054", "tmdb": 67487 }, "lc_383": { "imdb": "tt0242197", "tmdb": 10670 }, "lc_384": { "imdb": "tt0069595", "tmdb": 10475 }, "lc_340": { "imdb": "tt0058815", "tmdb": 43538 }, "lc_343": { "imdb": "tt0066667", "tmdb": 3085 }, "lc_344": { "imdb": "tt0061293", "tmdb": 3089 }, "lc_349": { "imdb": "tt0128864", "tmdb": 12454 }, "lc_361": { "imdb": "tt0456051", "tmdb": 39146 }, "lc_362": { "imdb": "tt0115332", "tmdb": 10104 }, "lc_377": { "imdb": "tt0841942", "tmdb": 32324 }, "lc_380": { "imdb": "tt0103401", "tmdb": 14133 }, "lc_381": { "imdb": "tt0103406", "tmdb": 3125 }, "lc_385": { "imdb": "tt0088522", "tmdb": 2188 }, "lc_386": { "imdb": "tt0293737", "tmdb": 543 }, "lc_388": { "imdb": "tt0136658", "tmdb": 1863 }, "lc_389": { "imdb": "tt0465327", "tmdb": 4623 }, "lc_390": { "imdb": "tt1722512", "tmdb": 34391 }, "lc_392": { "imdb": "tt0283808", "tmdb": 66695 }, "lc_393": { "imdb": "tt0996695", "tmdb": 31736 }, "lc_394": { "imdb": "tt2861424", "tmdb": 60625 }, "lc_395": { "imdb": "tt0096697", "tmdb": 456 }, "lc_396": { "imdb": "tt0059975", "tmdb": 3642 }, "lc_398": { "imdb": "tt0497578", "tmdb": 1903 }, "lc_399": { "imdb": "tt0328795", "tmdb": 12150 }, "lc_401": { "imdb": "tt0101065", "tmdb": 249 }, "lc_402": { "imdb": "tt0090506", "tmdb": 2286 }, "lc_403": { "imdb": "tt0121932", "tmdb": 4793 }, "lc_404": { "imdb": "tt0145628", "tmdb": 8392 }, "lc_405": { "imdb": "tt0252162", "tmdb": 10425 }, "lc_406": { "imdb": "tt0312255", "tmdb": 1789 }, "lc_407": { "imdb": "tt0163952", "tmdb": 6361 }, "lc_408": { "imdb": "tt1291662", "tmdb": 14636 }, "lc_409": { "imdb": "tt1213218", "tmdb": 15804 }, "lc_410": { "imdb": "tt1641384", "tmdb": 33217 }, "lc_411": { "imdb": "tt1173427", "tmdb": 6618 }, "lc_413": { "imdb": "tt0101056", "tmdb": 16814 }, "lc_417": { "imdb": "tt0143068", "tmdb": 10361 }, "lc_418": { "imdb": "tt0381771", "tmdb": 13350 }, "lc_420": { "imdb": "tt0075544", "tmdb": 14599 }, "lc_421": { "imdb": "tt0284711", "tmdb": 205936 }, "lc_387": { "imdb": "tt0852863", "tmdb": 4951 }, "lc_391": { "imdb": "tt0976191", "tmdb": 4607 }, "lc_397": { "imdb": "tt0229931", "tmdb": 12235 }, "lc_400": { "imdb": "tt1583352", "tmdb": 33880 }, "lc_412": { "imdb": "tt0161169", "tmdb": 12236 }, "lc_414": { "imdb": "tt0285344", "tmdb": 12237 }, "lc_415": { "imdb": "tt0294112", "tmdb": 12238 }, "lc_416": { "imdb": "tt0175407", "tmdb": 12239 }, "lc_419": { "imdb": "tt0149399", "tmdb": 40045 }, "lc_422": { "imdb": "tt0066661", "tmdb": 12240 }, "lc_423": { "imdb": "tt0157227", "tmdb": 12396 }, "lc_427": { "imdb": "tt5102426", "tmdb": 16794 }, "lc_428": { "imdb": "tt0092486", "tmdb": 66081 }, "lc_430": { "imdb": "tt0185825", "tmdb": 22002 }, "lc_432": { "imdb": "tt0213341", "tmdb": 2158 }, "lc_434": { "imdb": "tt0083473", "tmdb": 42088 }, "lc_435": { "imdb": "tt0118298", "tmdb": 2131 }, "lc_439": { "imdb": "tt0177468", "tmdb": 12266 }, "lc_424": { "imdb": "tt0060009", "tmdb": 12231 }, "lc_425": { "imdb": "tt0103581", "tmdb": 32483 }, "lc_426": { "imdb": "tt0364810", "tmdb": 12235 }, "lc_429": { "imdb": "tt0202747", "tmdb": 31174 }, "lc_431": { "imdb": "tt0108929", "tmdb": 32484 }, "lc_433": { "imdb": "tt0112148", "tmdb": 40101 }, "lc_436": { "imdb": "tt0173555", "tmdb": 32486 }, "lc_437": { "imdb": "tt0419317", "tmdb": 2411 }, "lc_438": { "imdb": "tt1161114", "tmdb": 14144 }, "lc_440": { "imdb": "tt0173551", "tmdb": 32488 }, "lc_441": { "imdb": "tt1761811", "tmdb": 33955 }, "lc_443": { "imdb": "tt0284757", "tmdb": 319126 }, "lc_444": { "imdb": "tt0361260", "tmdb": 13349 }, "lc_445": { "imdb": "tt0388625", "tmdb": 1643 }, "lc_446": { "imdb": "tt0217910", "tmdb": 376 }, "lc_447": { "imdb": "tt1304146", "tmdb": 18594 }, "lc_448": { "imdb": "tt1304146", "tmdb": 18594 }, "lc_449": { "imdb": "tt0338580", "tmdb": 670 }, "lc_450": { "imdb": "tt0149447", "tmdb": 2784 }, "lc_451": { "imdb": "tt0147743", "tmdb": 41729 }, "lc_452": { "imdb": "tt0369171", "tmdb": 3072 }, "lc_453": { "imdb": "tt0236908", "tmdb": 5283 }, "lc_458": { "imdb": "tt0901176", "tmdb": 6942 }, "lc_459": { "imdb": "tt0122355", "tmdb": 6212 }, "lc_461": { "imdb": "tt0293741", "tmdb": 21175 }, "lc_462": { "imdb": "tt0224455", "tmdb": 5373 }, "lc_442": { "imdb": "tt0190181", "tmdb": 32943 }, "lc_454": { "imdb": "tt0156218", "tmdb": 12232 }, "lc_455": { "imdb": "tt0108715", "tmdb": 14352 }, "lc_456": { "imdb": "tt0115284", "tmdb": 14140 }, "lc_457": { "imdb": "tt0138263", "tmdb": 38114 }, "lc_460": { "imdb": "tt0118454", "tmdb": 14115 }, "lc_463": { "imdb": "tt0233095", "tmdb": 11354 }, "lc_464": { "imdb": "tt0275867", "tmdb": 11355 }, "lc_465": { "imdb": "tt0307808", "tmdb": 11356 }, "lc_466": { "imdb": "tt0344701", "tmdb": 11357 }, "lc_467": { "imdb": "tt0356228", "tmdb": 5281 }, "lc_471": { "imdb": "tt0106064", "tmdb": 2328 }, "lc_472": { "imdb": "tt0106064", "tmdb": 2328 }, "lc_473": { "imdb": "tt1704503", "tmdb": 330166 }, "lc_474": { "imdb": "tt0106064", "tmdb": 2328 }, "lc_477": { "imdb": "tt0106064", "tmdb": 2328 }, "lc_478": { "imdb": "tt0106064", "tmdb": 2328 }, "lc_479": { "imdb": "tt0106064", "tmdb": 2328 }, "lc_480": { "imdb": "tt0106064", "tmdb": 2328 }, "lc_481": { "imdb": "tt0106064", "tmdb": 2328 }, "lc_483": { "imdb": "tt0169414", "tmdb": 2153 }, "lc_484": { "imdb": "tt0262972", "tmdb": 536 }, "lc_486": { "imdb": "tt0476918", "tmdb": 1977 }, "lc_488": { "imdb": "tt0128890", "tmdb": 4568 }, "lc_489": { "imdb": "tt0103442", "tmdb": 4414 }, "lc_491": { "imdb": "tt0096694", "tmdb": 4345 }, "lc_492": { "imdb": "tt0106122", "tmdb": 2014 }, "lc_493": { "imdb": "tt2017382", "tmdb": 78298 }, "lc_494": { "imdb": "tt0112230", "tmdb": 4616 }, "lc_495": { "imdb": "tt0209536", "tmdb": 18640 }, "lc_496": { "imdb": "tt15473788", "tmdb": 138955 }, "lc_468": { "imdb": "tt0439955", "tmdb": 2328 }, "lc_469": { "imdb": "tt0491583", "tmdb": 2329 }, "lc_470": { "imdb": "tt0831411", "tmdb": 2330 }, "lc_475": { "imdb": "tt2244198", "tmdb": 46146 }, "lc_476": { "imdb": "tt3126866", "tmdb": 46146 }, "lc_482": { "imdb": "tt0810313", "tmdb": 4301 }, "lc_485": { "imdb": "tt0229113", "tmdb": 10114 }, "lc_487": { "imdb": "tt0423746", "tmdb": 12225 }, "lc_490": { "imdb": "tt0364791", "tmdb": 43144 }, "lc_497": { "imdb": "tt0280251", "tmdb": 32431 }, "lc_498": { "imdb": "tt0190211", "tmdb": 4217 }, "lc_499": { "imdb": "tt0233041", "tmdb": 8379 }, "lc_505": { "imdb": "tt0085017", "tmdb": 2957 }, "lc_510": { "imdb": "tt0229889", "tmdb": 47 }, "lc_511": { "imdb": "tt0260622", "tmdb": 68343 }, "lc_512": { "imdb": "tt0168341", "tmdb": 37799 }, "lc_514": { "imdb": "tt0262981", "tmdb": 5601 }, "lc_515": { "imdb": "tt0988824", "tmdb": 31910 }, "lc_516": { "imdb": "tt0090461", "tmdb": 3127 }, "lc_517": { "imdb": "tt0407398", "tmdb": 255 }, "lc_504": { "imdb": "tt0421314", "tmdb": 12242 }, "lc_506": { "imdb": "tt0283714", "tmdb": 38231 }, "lc_507": { "imdb": "tt0115170", "tmdb": 34391 }, "lc_508": { "imdb": "tt0108715", "tmdb": 14105 }, "lc_509": { "imdb": "tt0303459", "tmdb": 14902 }, "lc_513": { "imdb": "tt0389692", "tmdb": 12244 } };
-const TMDB_TO_LACART = {};
-Object.keys(MAPPING).forEach(function(key) {
-  const item = MAPPING[key];
-  const numId = key.replace(/^lc_/, "");
-  if (item && item.tmdb) TMDB_TO_LACART[String(item.tmdb)] = numId;
-});
-function fetchHTML(url) {
-  return fetch(url, { headers: { "User-Agent": UA } }).then(function(res) {
+const BASE_URL = "https://lacartoons.com";
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+const TMDB_API_KEY_LC = "439c478a771f35c05022f9feabcca01c";
+function timeoutSignal(ms) {
+  try {
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  } catch (e) {
+  }
+  try {
+    if (typeof AbortController === "function" && typeof setTimeout === "function") {
+      const c = new AbortController();
+      setTimeout(() => {
+        try {
+          c.abort();
+        } catch (e) {
+        }
+      }, ms);
+      return c.signal;
+    }
+  } catch (e) {
+  }
+  return void 0;
+}
+function fetchHTML(url, opts) {
+  return __async(this, null, function* () {
+    const o = Object.assign({ headers: { "User-Agent": UA } }, opts, { signal: timeoutSignal(15e3) });
+    const res = yield fetch(url, o);
     return res.text();
   });
 }
-function extractEpisodesFromPage(html) {
-  const episodes = [];
-  const epPerSeason = {};
-  let currentSeason = 1;
-  const regex = /<h4[^>]*>([\s\S]*?)<\/h4>|<a\s+([^>]*href=["']([^"']*\/capitulo\/[^"']*)["'][^>]*)>([\s\S]*?)<\/a>/gi;
+function normalizarLC(s) {
+  return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+function getTmdbTitleLC(tmdbId, mediaType) {
+  return __async(this, null, function* () {
+    const type = mediaType === "movie" ? "movie" : "tv";
+    const url = `https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY_LC}&language=es-MX`;
+    try {
+      const res = yield fetch(url, { signal: timeoutSignal(1e4) });
+      const data = yield res.json();
+      return type === "movie" ? data.title || data.original_title : data.name || data.original_name;
+    } catch (e) {
+      return null;
+    }
+  });
+}
+function extraerResultadosBusqueda(html) {
+  const resultados = [];
+  const regex = /<a\s+([^>]*href=["']([^"']+)["'][^>]*)>([\s\S]*?)<\/a>/gi;
   let m;
   while ((m = regex.exec(html)) !== null) {
-    if (m[1] !== void 0) {
-      const text = m[1].replace(/<[^>]+>/g, "").trim();
-      const sm = text.match(/[Tt]emporada\s+(\d+)/);
-      if (sm) currentSeason = parseInt(sm[1]);
-      continue;
-    }
-    const href = m[3];
-    epPerSeason[currentSeason] = (epPerSeason[currentSeason] || 0) + 1;
-    const epPath = href.startsWith("/") ? href : "/" + href.split("/").slice(3).join("/");
-    const linkText = m[4].replace(/<[^>]+>/g, "").trim();
-    episodes.push({
-      season: currentSeason,
-      episode: epPerSeason[currentSeason],
-      title: linkText || "Episodio " + epPerSeason[currentSeason],
-      epPath
+    const bloque = m[3];
+    const nombreMatch = bloque.match(/nombre-serie[^>]*>([^<]+)</i);
+    if (!nombreMatch) continue;
+    resultados.push({ href: m[2], title: nombreMatch[1].trim() });
+  }
+  return resultados;
+}
+function buscarSerie(title) {
+  return __async(this, null, function* () {
+    const html = yield fetchHTML(`${BASE_URL}/?Titulo=${encodeURIComponent(title)}`);
+    const resultados = extraerResultadosBusqueda(html);
+    if (!resultados.length) return null;
+    const tituloNorm = normalizarLC(title);
+    const match = resultados.find((r) => normalizarLC(r.title) === tituloNorm) || resultados[0];
+    return match.href.startsWith("http") ? match.href : BASE_URL + "/" + match.href.replace(/^\//, "");
+  });
+}
+function extraerEpisodios(html) {
+  const episodios = [];
+  const seccionIdx = html.indexOf("listas-de-episodion");
+  const zona = seccionIdx !== -1 ? html.slice(seccionIdx) : html;
+  const regex = /<a\s+([^>]*href=["']([^"']+)["'][^>]*)>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = regex.exec(zona)) !== null) {
+    const href = m[2];
+    const texto = m[3].replace(/<[^>]+>/g, "").trim();
+    const seasonMatch = href.match(/[?&]t=(\d+)/);
+    const epMatch = texto.match(/[Cc]apitulo.(\d+)/);
+    if (!seasonMatch || !epMatch) continue;
+    episodios.push({
+      season: parseInt(seasonMatch[1]),
+      episode: parseInt(epMatch[1]),
+      href: href.startsWith("http") ? href : BASE_URL + "/" + href.replace(/^\//, "")
     });
   }
-  return episodes;
-}
-function getSeriesEpisodes(numId) {
-  return fetchHTML(BASE_URL + "/serie/" + numId).then(function(html) {
-    return extractEpisodesFromPage(html);
-  });
-}
-function findEpisodeUrl(numId, season, episode) {
-  return getSeriesEpisodes(numId).then(function(episodes) {
-    if (!episodes.length) return null;
-    let match = episodes.find(function(e) {
-      return e.season === season && e.episode === episode;
-    });
-    if (!match) {
-      let cumulativeIndex = episode;
-      if (season > 1) {
-        const prevSeasonsEps = episodes.filter(function(e) {
-          return e.season < season;
-        }).length;
-        if (prevSeasonsEps > 0) cumulativeIndex = prevSeasonsEps + episode;
-      }
-      if (cumulativeIndex > 0 && cumulativeIndex <= episodes.length) {
-        match = episodes[cumulativeIndex - 1];
-      }
-    }
-    if (!match) return null;
-    return match.epPath.startsWith("http") ? match.epPath : BASE_URL + match.epPath;
-  });
+  return episodios;
 }
 const HOST_ALIASES = [
   [/^https:\/\/short\.ink\//i, "https://abysscdn.com/?v="],
@@ -88,16 +122,18 @@ const HOST_ALIASES = [
   [/^https:\/\/do7go\.com/i, "https://dood.la"]
 ];
 function normalizarHostEmbed(url) {
-  for (let i = 0; i < HOST_ALIASES.length; i++) {
-    if (HOST_ALIASES[i][0].test(url)) return url.replace(HOST_ALIASES[i][0], HOST_ALIASES[i][1]);
+  for (const [patron, reemplazo] of HOST_ALIASES) {
+    if (patron.test(url)) return url.replace(patron, reemplazo);
   }
   return url;
 }
-function isAbyssCdn(url) {
-  return /(^|\.)abysscdn\.com$/i.test(getHostname(url));
+function getOrigin(url) {
+  const m = url.match(/^([a-z]+:\/\/[^\/]+)/i);
+  return m ? m[1] : url;
 }
 function findEmbedUrl(epUrl) {
-  return fetchHTML(epUrl).then(function(html) {
+  return __async(this, null, function* () {
+    const html = yield fetchHTML(epUrl);
     let embedSrc = null;
     const seccionIdx = html.indexOf("serie-video-informacion");
     if (seccionIdx !== -1) {
@@ -108,9 +144,8 @@ function findEmbedUrl(epUrl) {
       const iframeRegex = /<iframe[^>]+src=["']([^"']+)["']/gi;
       let m2;
       while ((m2 = iframeRegex.exec(html)) !== null) {
-        const src = m2[1];
-        if (!src.includes("google") && !src.includes("facebook")) {
-          embedSrc = src.startsWith("http") ? src : BASE_URL + src;
+        if (!m2[1].includes("google") && !m2[1].includes("facebook")) {
+          embedSrc = m2[1];
           break;
         }
       }
@@ -118,248 +153,22 @@ function findEmbedUrl(epUrl) {
     return embedSrc ? normalizarHostEmbed(embedSrc) : null;
   });
 }
-let cryptoCodeCache = null;
-function utf8Encode(str) {
-  const bytes = [];
-  for (let i = 0; i < str.length; i++) {
-    let code = str.codePointAt(i);
-    if (code > 65535) i++;
-    if (code < 128) {
-      bytes.push(code);
-    } else if (code < 2048) {
-      bytes.push(192 | code >> 6, 128 | code & 63);
-    } else if (code < 65536) {
-      bytes.push(224 | code >> 12, 128 | code >> 6 & 63, 128 | code & 63);
-    } else {
-      bytes.push(240 | code >> 18, 128 | code >> 12 & 63, 128 | code >> 6 & 63, 128 | code & 63);
+function resolveGenerico(embedUrl) {
+  return __async(this, null, function* () {
+    const html = yield fetchHTML(embedUrl, { headers: { Referer: BASE_URL, "User-Agent": UA } });
+    const patrones = [
+      /sources:\s*\[\s*\{\s*file:\s*"([^"]+)"/,
+      /file:\s*"([^"]+\.m3u8[^"]*)"/,
+      /"file":"([^"]+\.m3u8[^"]*)"/,
+      /src:\s*"([^"]+\.m3u8[^"]*)"/,
+      /https?:\/\/[^\s"'\\<>]+\.m3u8[^\s"'\\<>]*/,
+      /file:\s*"([^"]+\.mp4[^"]*)"/
+    ];
+    for (const p of patrones) {
+      const m = html.match(p);
+      if (m) return { url: m[1] || m[0], referer: getOrigin(embedUrl) + "/" };
     }
-  }
-  return bytes;
-}
-function bytesToHex(bytes) {
-  return bytes.map(function(b) {
-    return ("0" + (b & 255).toString(16)).slice(-2);
-  }).join("");
-}
-function loadCryptoCode() {
-  if (cryptoCodeCache) return Promise.resolve(cryptoCodeCache);
-  return fetch(EMBED_ORIGIN + "/", { headers: { "User-Agent": UA } }).then(function(res) {
-    return res.text();
-  }).then(function(html) {
-    const scriptMatch = html.match(/src="(\/assets\/index-[a-zA-Z0-9_-]+\.js)"/);
-    const currentScriptPath = scriptMatch && scriptMatch[1] || "/assets/index-C6EWk6HJ.js";
-    return fetch(EMBED_ORIGIN + currentScriptPath, {
-      headers: { "User-Agent": UA, Referer: EMBED_ORIGIN + "/" }
-    });
-  }).then(function(res) {
-    return res.text();
-  }).then(function(js) {
-    const saStart = js.indexOf("function sa(){");
-    if (saStart === -1) throw new Error("No se encontro sa() en el JS de cubeembed (el sitio pudo haber cambiado)");
-    const regexEnd = /}\)\(sa,\s*\d+\s*\);/;
-    const matchEnd = js.slice(saStart).match(regexEnd);
-    if (!matchEnd) throw new Error("La estructura de cubeembed cambio (fin de sa() no encontrado)");
-    const shuffleEnd = saStart + matchEnd.index + matchEnd[0].length;
-    const saExtractedCode = js.slice(saStart, shuffleEnd);
-    cryptoCodeCache = saExtractedCode + '\nfunction re(n,e){const t=sa();return re=function(s,i){return s=s-109,t[s]},re(n,e)}\nfunction p(...g){return String.fromCodePoint(...g)}\nfunction v(g,b){return g.codePointAt(b)||0}\nfunction S(g){return __utf8Encode(g)}\nT=()=>{const g=re,b=window[g(263)][g(585)],P="10",k=110,U=1;let M="";const B=v("\u1D5F")[g(321)]()[g(199)]("");for(let de=0;de<B.length;de++)M+=p(P+B[de]);M+=p(v(b,P/10)),M+=M[g(336)](1,3),M+=p(k,k-1,k+7);const se=g(370)[g(199)]("");return M+=p(se[3]+se[2],se[1]+se[2]),M+=p(se[0]*U+U+se[3],se[0]*U+U+se[3]),M+=p(se[3]*P+se[3]*U,se[g(580)]()[g(364)]("")[g(336)](0,2)),S(M)}\nC=()=>{const g=re,b=window[g(263)][g(585)],P=b+"//",k=window.location[g(217)],U=b[g(316)]*P[g(316)],M=1;let B="";for(let me=M;me<10;me++)B+=p(me+U);let se="";se=M+se+M+se+M;const de=se[g(316)]*v(k),Ie=se*M+b.length,I=Ie+4,j=v(b,M),oe=j*M-2;return B+=p(U,se,de,Ie,I,j,oe),S(B)}\n';
-    return cryptoCodeCache;
-  });
-}
-function deriveKeyIv(hash) {
-  return loadCryptoCode().then(function(fnCode) {
-    const windowMock = { location: { protocol: "https:", hash: "#" + hash } };
-    const runner = new Function(
-      "window",
-      "__utf8Encode",
-      "parseInt",
-      "String",
-      fnCode + "\nreturn { T: T(), C: C() };"
-    );
-    const result = runner(windowMock, utf8Encode, parseInt, String);
-    return {
-      keyHex: bytesToHex(result.T.slice(0, 16)),
-      ivHex: bytesToHex(result.C.slice(0, 16))
-    };
-  });
-}
-function decryptHex(hex, hash) {
-  return deriveKeyIv(hash).then(function(kv) {
-    const key = CryptoJS.enc.Hex.parse(kv.keyHex);
-    const iv = CryptoJS.enc.Hex.parse(kv.ivHex);
-    const ciphertext = CryptoJS.enc.Hex.parse(hex.trim());
-    const decrypted = CryptoJS.AES.decrypt(
-      { ciphertext },
-      key,
-      { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
-    );
-    return JSON.parse(decrypted.toString(CryptoJS.enc.Utf8));
-  });
-}
-function getHostname(url) {
-  const m = url.match(/^[a-z]+:\/\/([^\/:?#]+)/i);
-  return m ? m[1] : "";
-}
-function getQueryParam(url, name) {
-  const qIndex = url.indexOf("?");
-  if (qIndex === -1) return null;
-  const hashIndex = url.indexOf("#", qIndex);
-  const query = url.slice(qIndex + 1, hashIndex === -1 ? url.length : hashIndex);
-  const parts = query.split("&");
-  for (let i = 0; i < parts.length; i++) {
-    const eq = parts[i].indexOf("=");
-    const k = eq === -1 ? parts[i] : parts[i].slice(0, eq);
-    const v = eq === -1 ? "" : parts[i].slice(eq + 1);
-    if (decodeURIComponent(k) === name) return decodeURIComponent(v || "");
-  }
-  return null;
-}
-function resolveUrl(relativeOrAbsolute, base) {
-  if (/^https?:\/\//i.test(relativeOrAbsolute)) return relativeOrAbsolute;
-  const originMatch = base.match(/^([a-z]+:\/\/[^\/]+)/i);
-  const origin = originMatch ? originMatch[1] : "";
-  if (relativeOrAbsolute.startsWith("/")) return origin + relativeOrAbsolute;
-  const dir = base.slice(0, base.lastIndexOf("/") + 1);
-  return dir + relativeOrAbsolute;
-}
-function videoIdFromIframe(iframeSrc) {
-  const hostname = getHostname(iframeSrc);
-  if (!/rpmvid\.com$/i.test(hostname) && !hostname.includes("cubeembed")) return null;
-  let id = getQueryParam(iframeSrc, "id");
-  if (!id) {
-    const hIndex = iframeSrc.indexOf("#");
-    id = hIndex === -1 ? "" : iframeSrc.slice(hIndex + 1);
-  }
-  if (id && id.includes("&")) id = id.split("&")[0];
-  return id && id.length > 1 ? id : null;
-}
-function fetchVideoData(hash) {
-  const url = EMBED_ORIGIN + "/api/v1/video?id=" + hash + "&w=1280&h=720&r=lacartoons.com";
-  return fetch(url, { headers: RPMVID_HEADERS }).then(function(res) {
-    return res.text();
-  }).then(function(hex) {
-    if (!/^[0-9a-f]+$/i.test(String(hex).trim())) {
-      throw new Error("Respuesta rpmvid no es hex cifrado. Primeros 150 caracteres de lo que contesto: " + String(hex).slice(0, 150));
-    }
-    return decryptHex(hex, hash);
-  });
-}
-function collectHlsUrls(data) {
-  const urls = [];
-  if (data.source && /\.m3u8/i.test(data.source)) urls.push(data.source);
-  if (data.cfNative && /\.m3u8/i.test(data.cfNative)) urls.push(data.cfNative);
-  if (data.hlsVideoTiktok) {
-    const rel = data.hlsVideoTiktok.startsWith("http") ? data.hlsVideoTiktok : EMBED_ORIGIN + data.hlsVideoTiktok;
-    urls.push(rel);
-  }
-  return urls.filter(function(u, i) {
-    return urls.indexOf(u) === i;
-  });
-}
-function collectProbeUris(playlistText) {
-  const lines = playlistText.split(/\r?\n/);
-  const uris = [];
-  for (const line of lines) {
-    if (!line.startsWith("#EXT-X-MEDIA:TYPE=AUDIO")) continue;
-    if (!/LANGUAGE="es"|NAME="Espa/i.test(line)) continue;
-    const m = line.match(/URI="([^"]+)"/);
-    if (m) uris.push(m[1]);
-  }
-  for (let i = 0; i < lines.length; i++) {
-    if (!lines[i].startsWith("#EXT-X-STREAM-INF")) continue;
-    for (let j = i + 1; j < lines.length; j++) {
-      const t = lines[j].trim();
-      if (!t || t.startsWith("#")) continue;
-      uris.push(t);
-      break;
-    }
-    break;
-  }
-  return uris;
-}
-function probeFirstVariant(masterUrl, playlistText) {
-  const targets = collectProbeUris(playlistText);
-  if (!targets.length) return Promise.resolve(false);
-  let chain = Promise.resolve(true);
-  targets.forEach(function(uri) {
-    chain = chain.then(function(okSoFar) {
-      if (!okSoFar) return false;
-      const childUrl = resolveUrl(uri, masterUrl);
-      return fetch(childUrl, { headers: RPMVID_HEADERS }).then(function(res) {
-        if (!res.ok) return false;
-        return res.text().then(function(text) {
-          return /#EXTM3U/i.test(text);
-        });
-      });
-    });
-  });
-  return chain;
-}
-function fixAudioMediaLine(line) {
-  const isEs = /LANGUAGE="es"/i.test(line) || /NAME="Espa/i.test(line);
-  let body = line.replace(/^#EXT-X-MEDIA:/i, "");
-  body = body.replace(/,?AUTOSELECT=(YES|NO)/ig, "").replace(/,?DEFAULT=(YES|NO)/ig, "").replace(/,\s*,+/g, ",").replace(/^,|,$/g, "");
-  body += isEs ? ",AUTOSELECT=YES,DEFAULT=YES" : ",AUTOSELECT=NO,DEFAULT=NO";
-  return "#EXT-X-MEDIA:" + body;
-}
-function normalizeMasterPlaylist(text) {
-  const lines = text.split(/\r?\n/);
-  const head = [];
-  const audio = [];
-  const variants = [];
-  let pendingInf = null;
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    if (line.startsWith("#EXT-X-MEDIA:TYPE=AUDIO")) {
-      audio.push(fixAudioMediaLine(line));
-      continue;
-    }
-    if (line.startsWith("#EXT-X-STREAM-INF")) {
-      pendingInf = line;
-      continue;
-    }
-    if (pendingInf && !line.startsWith("#")) {
-      variants.push({ inf: pendingInf, uri: line });
-      pendingInf = null;
-      continue;
-    }
-    pendingInf = null;
-    if (line.startsWith("#EXTM3U") || line.startsWith("#EXT-X-")) head.push(line);
-  }
-  const audioOut = audio.filter(function(l) {
-    return /LANGUAGE="es"|NAME="Espa/i.test(l);
-  });
-  const chosenAudio = audioOut.length ? audioOut : audio.slice(0, 1);
-  const out = ["#EXTM3U"].concat(head.filter(function(l) {
-    return l !== "#EXTM3U";
-  })).concat(chosenAudio);
-  if (variants.length) {
-    out.push(variants[0].inf);
-    out.push(variants[0].uri);
-  }
-  return out.join("\n") + "\n";
-}
-function resolveLiveMaster(videoId) {
-  return fetchVideoData(videoId).then(function(data) {
-    const candidates = collectHlsUrls(data);
-    function tryNext(index) {
-      if (index >= candidates.length) {
-        throw new Error("Ningun master HLS vivo encontrado para este capitulo");
-      }
-      const url = candidates[index];
-      return fetch(url, { headers: RPMVID_HEADERS }).then(function(res) {
-        if (!res.ok) return tryNext(index + 1);
-        return res.text().then(function(raw) {
-          if (!/#EXTM3U/i.test(raw)) return tryNext(index + 1);
-          return probeFirstVariant(url, raw).then(function(ok) {
-            if (!ok) return tryNext(index + 1);
-            return { url, playlist: normalizeMasterPlaylist(raw), title: data.title || null };
-          });
-        });
-      }).catch(function() {
-        return tryNext(index + 1);
-      });
-    }
-    return tryNext(0);
+    return null;
   });
 }
 function debugStream(mensaje) {
@@ -369,111 +178,34 @@ function debugStream(mensaje) {
     url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
   }];
 }
-function unescapeHTML(str) {
-  return str.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
-}
-function isOkRuIframe(iframeSrc) {
-  const host = getHostname(iframeSrc);
-  return /(^|\.)ok\.ru$/i.test(host) || /(^|\.)odnoklassniki\.ru$/i.test(host);
-}
-function extractOkRuVideoId(embedUrl) {
-  const m = embedUrl.match(/(?:ok|odnoklassniki)\.ru\/(?:videoembed|video)\/([\d-]+)/i);
-  return m ? m[1] : null;
-}
-const OKRU_QUALITY_ORDEN = ["mobile", "lowest", "low", "sd", "hd", "full", "quad", "ultra"];
-function extractOkRuStreams(embedUrl) {
-  const videoId = extractOkRuVideoId(embedUrl);
-  if (!videoId) return Promise.reject(new Error("No pude sacar el id de video de la URL de ok.ru: " + embedUrl));
-  const pageUrl = "https://ok.ru/videoembed/" + videoId;
-  return fetch(pageUrl, { headers: { "User-Agent": UA } }).then(function(res) {
-    return res.text();
-  }).then(function(webpage) {
-    const re = new RegExp(`data-options=(["'])({.+?` + videoId + ".+?})\\1");
-    const m = webpage.match(re);
-    if (!m) throw new Error("No se encontro data-options en la pagina de ok.ru (puede haber cambiado el sitio)");
-    const player = JSON.parse(unescapeHTML(m[2]));
-    if (player.isExternalPlayer && player.url) {
-      throw new Error("Este video de ok.ru en realidad es un embed externo (" + player.url + "), no soportado");
-    }
-    const flashvars = player.flashvars || {};
-    if (flashvars.metadata) {
-      return typeof flashvars.metadata === "string" ? JSON.parse(flashvars.metadata) : flashvars.metadata;
-    }
-    if (flashvars.metadataUrl) {
-      const metadataUrl = decodeURIComponent(flashvars.metadataUrl);
-      const body = flashvars.location ? "st.location=" + encodeURIComponent(flashvars.location) : "";
-      return fetch(metadataUrl, {
-        method: "POST",
-        headers: { "User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded" },
-        body
-      }).then(function(res) {
-        return res.json();
-      });
-    }
-    throw new Error("El player de ok.ru no trajo ni metadata ni metadataUrl");
-  }).then(function(metadata) {
-    const hlsUrl = metadata.hlsManifestUrl || metadata.ondemandHls;
-    if (hlsUrl) return { url: hlsUrl, quality: "HD (HLS)" };
-    const videos = (metadata.videos || []).filter(function(v) {
-      return v && v.url;
-    });
-    if (!videos.length) {
-      throw new Error("ok.ru no devolvio ningun formato (puede ser un video pago o bloqueado)");
-    }
-    videos.sort(function(a, b) {
-      return OKRU_QUALITY_ORDEN.indexOf(a.name) - OKRU_QUALITY_ORDEN.indexOf(b.name);
-    });
-    const mejor = videos[videos.length - 1];
-    return { url: mejor.url, quality: (mejor.name || "SD").toUpperCase() };
-  });
-}
 function getStreams(tmdbId, mediaType, season, episode) {
-  if (mediaType !== "tv") {
-    return Promise.resolve(debugStream('mediaType recibido: "' + mediaType + '" (se esperaba "tv")'));
-  }
-  const numId = TMDB_TO_LACART[String(tmdbId)];
-  if (!numId) {
-    return Promise.resolve(debugStream("TMDB " + tmdbId + " no esta en el mapeo de LACartoons (510 series)"));
-  }
-  return findEpisodeUrl(numId, parseInt(season), parseInt(episode)).then(function(epUrl) {
-    if (!epUrl) {
-      return debugStream("Serie " + numId + " encontrada, pero no hay S" + season + "E" + episode + " en la pagina");
+  return __async(this, null, function* () {
+    try {
+      const title = yield getTmdbTitleLC(tmdbId, mediaType);
+      if (!title) return debugStream("No se pudo obtener el titulo desde TMDB para " + tmdbId);
+      const serieUrl = yield buscarSerie(title);
+      if (!serieUrl) return debugStream('"' + title + '" no aparecio en la busqueda de lacartoons.com');
+      const html = yield fetchHTML(serieUrl);
+      const episodios = extraerEpisodios(html);
+      if (!episodios.length) return debugStream("Serie encontrada (" + serieUrl + ") pero no se pudo leer la lista de episodios");
+      const seasonNum = parseInt(season) || 1;
+      const epNum = parseInt(episode) || 1;
+      const match = episodios.find((e) => e.season === seasonNum && e.episode === epNum);
+      if (!match) return debugStream("Serie encontrada, pero no hay S" + seasonNum + "E" + epNum + " en la pagina");
+      const embedSrc = yield findEmbedUrl(match.href);
+      if (!embedSrc) return debugStream("Se encontro el capitulo (" + match.href + ") pero no hay iframe de reproductor");
+      const resultado = yield resolveGenerico(embedSrc);
+      if (!resultado) return debugStream("Reproductor encontrado (" + embedSrc + ") pero no se pudo extraer el video real");
+      return [{
+        name: "LACartoons",
+        title: "LACartoons - Espa\xF1ol Latino",
+        url: resultado.url,
+        quality: "HD",
+        headers: { "User-Agent": UA, Referer: resultado.referer }
+      }];
+    } catch (e) {
+      return debugStream("ERROR: " + e.message);
     }
-    return findEmbedUrl(epUrl).then(function(embedSrc) {
-      if (!embedSrc) {
-        return debugStream("Se encontro el capitulo (" + epUrl + ") pero no hay ningun iframe de reproductor en la pagina");
-      }
-      const videoId = videoIdFromIframe(embedSrc);
-      if (videoId) {
-        return resolveLiveMaster(videoId).then(function(result) {
-          return [{
-            name: "LACartoons - HD - Espa\xF1ol Latino",
-            title: (result.title || "HD") + " - Espa\xF1ol Latino",
-            url: result.url,
-            quality: "HD",
-            headers: RPMVID_HEADERS
-          }];
-        }).catch(function(error) {
-          throw new Error("(embed: " + embedSrc + " | videoId: " + videoId + ") " + (error && error.message ? error.message : String(error)));
-        });
-      }
-      if (isOkRuIframe(embedSrc)) {
-        return extractOkRuStreams(embedSrc).then(function(result) {
-          return [{
-            name: "LACartoons - " + result.quality + " - Espa\xF1ol Latino (ok.ru)",
-            title: "ok.ru - " + result.quality + " - Espa\xF1ol Latino",
-            url: result.url,
-            quality: result.quality
-          }];
-        });
-      }
-      if (isAbyssCdn(embedSrc)) {
-        return debugStream("Reproductor detectado: abysscdn.com (via short.ink) -- resolutor todavia no implementado. embed: " + embedSrc);
-      }
-      return debugStream("El reproductor de este capitulo no es cubeembed/rpmvid, ok.ru ni abysscdn: " + embedSrc);
-    });
-  }).catch(function(error) {
-    return debugStream("ERROR: " + (error && error.message ? error.message : String(error)));
   });
 }
 module.exports = { getStreams };
