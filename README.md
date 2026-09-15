@@ -1,33 +1,71 @@
-# Addon Latam Providers fork
+# Addon Latam plugin 
+Contenido en Español/Latino: peliculas, series, anime y donghuas de distintos sitio.
 
 ## Instalar en Nuvio
 
-Settings → Plugins → agregar esta URL 
+Settings → Plugins → agregar esta URL:
 
 ```
-https://raw.githubusercontent.com/droydr13/pluggin-latino/main
+https://raw.githubusercontent.com/Droydr13/pluggin-latino/main
 ```
 
 ## Providers incluidos
 
-| Provider | Tipos | De dónde salió |
+| Provider | Tipos | Autor |
 |---|---|---|
-| LaMovie | movie, tv | fork "Nuvio Latino" (pluggin-latino) |
-| Embed69 | movie, tv | versión de "Nuvio Latino" (pluggin-latino) — tiene carrera entre varios espejos de StreamWish/VidHide, más resistente que las otras dos versiones que había repetidas |
-| CineCalidad | movie | fork "Latino Providers" (Nuvio-Latino) |
-| PelisSeriesHoy | movie, tv | fork "Latino Providers" (Nuvio-Latino) |
-| SeriesMetro | movie, tv | fork "Latino Providers" (Nuvio-Latino) |
-| HackStore | movie, tv | fork "Latino Providers" (Nuvio-Latino) |
-| LACartoons | tv | armado a mano para Addon Latam, portado del addon de Stremio `stremio-lacartoons` sin Playwright ni yt-dlp |
+| LaMovie | movie, tv | AdrianJael |
+| Embed69 | movie, tv | KennethJYS |
+| CineCalidad | movie | KennethJYS |
+| PelisSeriesHoy | movie, tv | KennethJYS |
+| SeriesMetro | movie, tv | KennethJYS |
+| HackStore | movie, tv | KennethJYS |
+| LACartoons | tv | Doyrd |
+| BrazucaPlay | movie, tv | Doyrd |
+| CinemaCity | movie, tv | Doyrd |
+| Cuevana (unbuendato) | movie, tv | Doyrd |
+| FuegoCine | movie, tv | Doyrd |
+| HackStore (v2) | movie, tv | Doyrd |
+| PelisGo | movie, tv | Doyrd |
+| PelisPanda | movie, tv | Doyrd |
+| PelisPedia | movie, tv | Doyrd |
+| PelisPlus | movie, tv | Doyrd |
+| PlayHubMax | movie, tv | Doyrd |
+| SoloLatino | movie, tv | Doyrd |
+| TioPlus | movie, tv | Doyrd |
+| VidEasy | movie, tv | Doyrd |
+| XuPalace | movie, tv | Doyrd |
+| AllCalidad | movie, tv | Doyrd |
+| AnimeAV1 | tv | Doyrd |
+| AnimeJL | tv | Doyrd |
+| AnimeFLV | tv | Doyrd |
+| Area Documental | movie, tv | Doyrd |
+| Doramasflix | movie, tv | Doyrd |
+| DocumaniaTV | movie, tv | Doyrd |
+| DoramasYT | tv | Doyrd |
+| LatAnime | tv | Doyrd |
+| EntrePeliculasYSeries | movie, tv | Doyrd |
+| HDFull | movie, tv | Doyrd |
+| JKAnime | tv | Doyrd |
+| Monoschinos | tv | Doyrd |
+| TioAnime | tv | Doyrd |
+| ReyDonghua | tv | Doyrd |
+| MundoDonghua | tv | Doyrd |
+| PeliculasFlix | movie | Doyrd |
+| RCN | movie, tv | Doyrd (+ ayuda de un colaborador)|
 
+Los primeros 6 (LaMovie, Embed69, CineCalidad, PelisSeriesHoy,
+SeriesMetro, HackStore) vienen tal cual de sus repos originales de
+Nuvio, están confirmados funcionando y no hace falta
+modificarlos. Todo lo demás lo armamos, mejoramos o portamos nosotros.
 
-## LACartoons — limitaciones conocidas
+## Avisos conocidos
 
-El sitio usa varios reproductores según el capítulo:
-- `cubeembed.rpmvid.com` — no soportado.
-- `ok.ru` — soportado.
-- `abysscdn.com` (a veces detrás de un acortador `short.ink`) — se
-  detecta pero **todavía no está resuelto**
-
-Si un capítulo no reproduce, la app va a mostrar un mensaje de
-`[DEBUG]` con el motivo exacto en vez de fallar en silencio.
+- **JKAnime** y **MundoDonghua**: cubren el camino principal de
+  extracción de cada sitio, no las cadenas de respaldo más largas y
+  complejas que tienen (GSPlay/Nozomi en uno, "protea_tab" en el otro).
+- **EntrePeliculasYSeries**: si el sitio en vez de mostrar la clave de
+  descifrado directo tira un desafío de "proof-of-work", esta versión
+  no lo resuelve (devuelve vacío en ese caso puntual).
+- **LACartoons**: usa una tabla fija de ~510 series mapeadas a TMDB
+  como método principal (más rápido y preciso), con una búsqueda en
+  vivo por título como respaldo para lo que no esté en esa tabla.
