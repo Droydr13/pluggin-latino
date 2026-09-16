@@ -74,11 +74,52 @@ function getTmdbTitleAC(tmdbId, mediaType) {
     try {
       const res = yield fetch(url, { signal: timeoutSignal(1e4) });
       const data = yield res.json();
-      return type === "movie" ? data.title || data.original_title : data.name || data.original_name;
+      const tituloEs = type === "movie" ? data.title || data.original_title : data.name || data.original_name;
+      const tituloOriginal = type === "movie" ? data.original_title : data.original_name;
+      return { tituloEs, tituloOriginal };
     } catch (e) {
       return null;
     }
   });
+}
+const STOP_WORDS_AC = /* @__PURE__ */ new Set(["the", "and", "for", "with", "from", "this", "that", "los", "las", "del", "una", "uno", "de", "la", "el", "en", "con", "por", "para"]);
+function limpiarRuidoAC(s) {
+  return s.replace(/\([^)]*\)/g, " ").replace(/\[[^\]]*\]/g, " ").replace(/\b(latino|castellano|subtitulado|sub espanol|hd|4k|temporada\s*\d+)\b/gi, " ").replace(/\b(19|20)\d{2}\b/g, " ").replace(/\s+/g, " ").trim();
+}
+function similitud(a, b) {
+  a = limpiarRuidoAC(a);
+  b = limpiarRuidoAC(b);
+  if (a === b) return 1;
+  if (!a.length || !b.length) return 0;
+  let puntajeSubstring = 0;
+  const [corto, largo] = a.length <= b.length ? [a, b] : [b, a];
+  if (largo.includes(corto)) puntajeSubstring = corto.length / largo.length;
+  const palabrasA = new Set(a.split(/\s+/).filter((p) => p.length > 2 && !STOP_WORDS_AC.has(p)));
+  const palabrasB = new Set(b.split(/\s+/).filter((p) => p.length > 2 && !STOP_WORDS_AC.has(p)));
+  let puntajePalabras = 0;
+  if (palabrasA.size && palabrasB.size) {
+    let coincidencias = 0;
+    for (const p of palabrasA) if (palabrasB.has(p)) coincidencias++;
+    puntajePalabras = coincidencias / Math.max(palabrasA.size, palabrasB.size);
+  }
+  return Math.max(puntajeSubstring, puntajePalabras);
+}
+function mejorCoincidencia(posts, candidatosTitulo) {
+  let mejor = null, mejorPuntaje = 0;
+  for (const post of posts) {
+    if (!post.title) continue;
+    const tituloPost = normalizarAC(post.title);
+    for (const candidato of candidatosTitulo) {
+      if (!candidato) continue;
+      const puntaje = similitud(tituloPost, normalizarAC(candidato));
+      if (puntaje > mejorPuntaje) { mejorPuntaje = puntaje; mejor = post; }
+    }
+  }
+  // Umbral: si ni el mejor resultado se parece razonablemente (la mitad
+  // de las palabras en comun, o uno es substring del otro con buena
+  // proporcion), mejor no devolver nada que devolver contenido
+  // equivocado -- que es justo lo que se estaba reportando.
+  return mejorPuntaje >= 0.5 ? mejor : null;
 }
 function unpackJS(code) {
   const m = code.match(new RegExp("eval\\(function\\(p,a,c,k,e,d\\)\\{.*?\\}\\('(.*)',(\\d+),(\\d+),'(.*?)'\\.split\\('\\|'\\)", "s"));
@@ -128,15 +169,21 @@ function resolveGenerico(embedUrl) {
 function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     try {
-      const title = yield getTmdbTitleAC(tmdbId, mediaType);
-      if (!title) return [];
+      const titulos = yield getTmdbTitleAC(tmdbId, mediaType);
+      if (!titulos || !titulos.tituloEs) return [];
       const isMovie = mediaType === "movie" || mediaType === "movies";
       const postTypes = isMovie ? "movies" : "tvshows,animes";
-      const buscar = yield acFetchJson(`${ALLCALIDAD_API}/search?query=${encodeURIComponent(title)}&page=1&post_type=${postTypes}&posts_per_page=24`);
-      const posts = buscar && buscar.data && buscar.data.posts || [];
+      const buscar = yield acFetchJson(`${ALLCALIDAD_API}/search?query=${encodeURIComponent(titulos.tituloEs)}&page=1&post_type=${postTypes}&posts_per_page=24`);
+      let posts = buscar && buscar.data && buscar.data.posts || [];
+      // Si buscar por el titulo en espanol no trajo nada, se intenta de
+      // nuevo con el titulo original (a veces el sitio solo indexa uno
+      // de los dos).
+      if (!posts.length && titulos.tituloOriginal && titulos.tituloOriginal !== titulos.tituloEs) {
+        const buscar2 = yield acFetchJson(`${ALLCALIDAD_API}/search?query=${encodeURIComponent(titulos.tituloOriginal)}&page=1&post_type=${postTypes}&posts_per_page=24`);
+        posts = buscar2 && buscar2.data && buscar2.data.posts || [];
+      }
       if (!posts.length) return [];
-      const tituloNorm = normalizarAC(title);
-      const best = posts.find((p) => p.title && normalizarAC(p.title) === tituloNorm) || posts[0];
+      const best = mejorCoincidencia(posts, [titulos.tituloEs, titulos.tituloOriginal]);
       if (!best) return [];
       let postIdParaPlayer = best._id;
       if (!isMovie && season && episode) {
