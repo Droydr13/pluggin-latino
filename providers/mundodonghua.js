@@ -176,6 +176,45 @@ function resolverDailymotion(watchUrl) {
     }
   });
 }
+function resolveGenerico(embedUrl, referer) {
+  return __async(this, null, function* () {
+    try {
+      const html = yield fetchText(embedUrl, { headers: { Referer: referer, "User-Agent": MUNDODONGHUA_UA } });
+      const patrones = [
+        /sources:\s*\[\s*\{\s*file:\s*"([^"]+)"/,
+        /file:\s*"([^"]+\.m3u8[^"]*)"/,
+        /"file":"([^"]+\.m3u8[^"]*)"/,
+        /src:\s*"([^"]+\.m3u8[^"]*)"/,
+        /https?:\/\/[^\s"'\\<>]+\.m3u8[^\s"'\\<>]*/,
+        /file:\s*"([^"]+\.mp4[^"]*)"/
+      ];
+      for (const p of patrones) {
+        const m = html.match(p);
+        if (m) return { url: m[1] || m[0], referer: getOrigin(embedUrl) + "/" };
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  });
+}
+function extraerUrlsAmplioMD(html) {
+  const rawUrls = [];
+  const bloques = html.match(/<script[^>]*>[\s\S]*?<\/script>/gi) || [];
+  for (const bloque of bloques) {
+    if (!bloque.includes("eval(function(p,a,c,k,e")) continue;
+    let unpacked = unpackJS(bloque);
+    if (!unpacked) continue;
+    unpacked = unpacked.replace("diasfem", "embedsito");
+    const urls = (unpacked.match(/https?:\/\/[^"'\\\s]+/g) || []).map((u) => u.replace("https://sbbrisk.com", "https://watchsb.com"));
+    rawUrls.push(...urls);
+    if (unpacked.includes("asura_player")) {
+      const m = unpacked.match(/file["']?\s*:\s*["']([^"']+)["']/);
+      if (m) rawUrls.push(m[1]);
+    }
+  }
+  return rawUrls;
+}
 function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     try {
@@ -229,6 +268,19 @@ function getStreams(tmdbId, mediaType, season, episode) {
             resueltos.push({ name: "MundoDonghua", title: "VOSE \xB7 HD", url, quality: "HD", headers: { "User-Agent": MUNDODONGHUA_UA, Referer: getOrigin(episodeUrl) + "/" } });
           }
         }
+      }
+      if (!resueltos.length) {
+        const rawUrls = extraerUrlsAmplioMD(html);
+        yield Promise.all(rawUrls.map((u) => __async(null, null, function* () {
+          try {
+            const r = yield resolveGenerico(u, getOrigin(episodeUrl) + "/");
+            const finalUrl = r ? r.url : u.match(/\.(m3u8|mp4)(\?|$)/) ? u : null;
+            if (finalUrl) {
+              resueltos.push({ name: "MundoDonghua", title: "VOSE \xB7 HD", url: finalUrl, quality: "HD", headers: { "User-Agent": MUNDODONGHUA_UA, Referer: r ? r.referer : getOrigin(episodeUrl) + "/" } });
+            }
+          } catch (e) {
+          }
+        })));
       }
       return resueltos;
     } catch (e) {
