@@ -2832,9 +2832,53 @@ function getStreams(tmdbId, mediaType, season, episode) {
       if (!isMovie && season && episode) {
         targetUrl = `${targetHref}/temporada-${parseInt(season)}/episodio-${parseInt(episode)}`;
       }
-      const pageRes = yield axios.get(targetUrl, { headers: { "User-Agent": HDFULL_UA, Cookie: cookieStr }, timeout: 15e3 });
-      const html = pageRes.data;
-      const $page = cheerio.load(html);
+      let pageRes = yield axios.get(targetUrl, { headers: { "User-Agent": HDFULL_UA, Cookie: cookieStr }, timeout: 15e3 });
+      let html = pageRes.data;
+      let $page = cheerio.load(html);
+      let hashPreCheck = null;
+      $page("script").each(function() {
+        if (hashPreCheck) return;
+        const txt = $page(this).html() || "";
+        if (txt.includes("var ad =")) {
+          const m = txt.match(/var ad = '([^']*)';/);
+          if (m) hashPreCheck = m[1];
+        }
+      });
+      // Respaldo (confirmado por Kodi/Alfa): si la URL armada por patron
+      // no encontro nada, la API real de episodios (a/episodes, con el
+      // sid de la serie) da la URL correcta sin tener que adivinarla.
+      if (!hashPreCheck && !isMovie && season && episode) {
+        try {
+          const $show = cheerio.load(pageRes.data);
+          let sidSerie = null;
+          $show("script").each(function() {
+            if (sidSerie) return;
+            const txt = $show(this).html() || "";
+            const m = txt.match(/var sid = '(\d+)'/);
+            if (m) sidSerie = m[1];
+          });
+          if (sidSerie) {
+            const epRes = yield axios.post(
+              `${HDFULL_BASE}/a/episodes`,
+              new URLSearchParams({ action: "season", start: "0", limit: "0", show: sidSerie, season: String(parseInt(season)) }).toString(),
+              { headers: { "User-Agent": HDFULL_UA, Cookie: cookieStr, Referer: targetHref, "Content-Type": "application/x-www-form-urlencoded" }, timeout: 15e3 }
+            );
+            const $epList = cheerio.load(epRes.data);
+            let epHref = null;
+            $epList("a").each(function() {
+              if (epHref) return;
+              const href = $epList(this).attr("href") || "";
+              if (href.includes(`episodio-${parseInt(episode)}`) || href.endsWith(`-${parseInt(episode)}`)) epHref = href;
+            });
+            if (epHref) {
+              targetUrl = epHref.startsWith("http") ? epHref : (HDFULL_BASE + (epHref.startsWith("/") ? "" : "/") + epHref);
+              pageRes = yield axios.get(targetUrl, { headers: { "User-Agent": HDFULL_UA, Cookie: cookieStr }, timeout: 15e3 });
+              html = pageRes.data;
+              $page = cheerio.load(html);
+            }
+          }
+        } catch (e) {}
+      }
       let hash = null;
       $page("script").each(function() {
         if (hash) return;
