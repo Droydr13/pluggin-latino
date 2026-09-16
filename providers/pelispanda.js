@@ -917,7 +917,7 @@ function require_quality() {
 function require_goodstream() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     var { detectQuality } = require_quality();
     var { getSessionUA } = require_http();
     function resolve3(embedUrl) {
@@ -1158,7 +1158,7 @@ function require_vimeos() {
 function require_buzzheavier() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     var { getStealthHeaders } = require_http();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -1288,7 +1288,7 @@ function resolve(embedUrl) {
 var import_axios, UA;
 var init_okru = __esm({
   "src/resolvers/okru.js"() {
-    import_axios = __toESM(require("axios"));
+    import_axios = __toESM(__axiosShim());
     UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
@@ -1297,7 +1297,7 @@ var init_okru = __esm({
 function require_pixeldrain() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -1415,7 +1415,7 @@ function resolve2(embedUrl) {
 var import_axios2, UA2;
 var init_turbovid = __esm({
   "src/resolvers/turbovid.js"() {
-    import_axios2 = __toESM(require("axios"));
+    import_axios2 = __toESM(__axiosShim());
     UA2 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
@@ -1533,7 +1533,7 @@ function require_embedseek() {
 function require_tplayer() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     var { getStealthHeaders } = require_http();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -1973,7 +1973,7 @@ function require_doodstream() {
 function require_vidnest() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -2073,7 +2073,7 @@ function require_vidsonic() {
 function require_barmonrey() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -2803,6 +2803,37 @@ var init_sorting = __esm({
 });
 
 // src/utils/engine.js
+function __axiosShim() {
+  function doRequest(method, url, bodyOrConfig, maybeConfig) {
+    let body = null, config = {};
+    if (method === "get") { config = bodyOrConfig || {}; }
+    else { body = bodyOrConfig; config = maybeConfig || {}; }
+    const headers = Object.assign({}, config.headers || {});
+    const opts = { method: method.toUpperCase(), headers };
+    if (config.timeout) opts.signal = timeoutSignalShim(config.timeout);
+    if (body !== null && body !== undefined) {
+      if (typeof body === "string") { opts.body = body; }
+      else if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) { opts.body = body.toString(); }
+      else { opts.body = JSON.stringify(body); if (!headers["Content-Type"] && !headers["content-type"]) headers["Content-Type"] = "application/json"; }
+    }
+    return fetch(url, opts).then((res) => {
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      const parse = ct.includes("application/json") ? res.json() : res.text();
+      return parse.then((data) => ({ data, status: res.status, headers: res.headers }));
+    });
+  }
+  return {
+    get: (url, config) => doRequest("get", url, config),
+    post: (url, body, config) => doRequest("post", url, body, config),
+  };
+}
+function timeoutSignalShim(ms) {
+  try {
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  } catch (e) {}
+  return void 0;
+}
+
 function require_engine() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
