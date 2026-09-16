@@ -1,4 +1,3 @@
-
 function __makeUrlLike(urlStr) {
   var originMatch = urlStr.match(/^([a-z]+:\/\/[^\/]+)/i);
   var origin = originMatch ? originMatch[1] : urlStr;
@@ -2661,6 +2660,13 @@ function require_extractor() {
           let searchTitle = providedTitle;
           if (!searchTitle || searchTitle === tmdbId) {
             searchTitle = yield getFallbackTitle(tmdbId, mediaType);
+          } else {
+            // La API de PelisPanda solo da resultados confiables con el
+            // titulo en espanol -- si el que llego de afuera no lo es
+            // (puede venir en ingles/original desde quien llama a esto),
+            // se reemplaza por el de TMDB en espanol.
+            const tituloEs = yield getFallbackTitle(tmdbId, mediaType);
+            if (tituloEs && tituloEs !== searchTitle) searchTitle = tituloEs;
           }
           if (!searchTitle) {
             console.log("[PelisPanda] Fall\xF3 obtenci\xF3n de t\xEDtulo.");
@@ -2886,7 +2892,130 @@ function require_engine() {
           })));
           validatedStreams.push(...batchResults);
         }
-        const processed = [];
+    // ==================== etiquetado enriquecido de calidad (de stream_labels.js) ====================
+    // Detecta codec, audio, HDR, fuente, tamano, etc a partir de la URL
+    // y metadata del stream, para mostrar una etiqueta mas completa que
+    // solo "HD". Portado self-contained (sin require cruzado a otro
+    // archivo) para no depender de si Nuvio permite eso o no.
+    var Q_WEIGHTS_PP = { "4K": 100, "2160p": 95, "1440p": 85, "1080p": 80, "720p": 70, "480p": 60, "360p": 50, "Auto": 30, "HD": 40, "Unknown": 0 };
+    function parseQualityPP(url, fallback) {
+      const t = (url || "").toLowerCase();
+      if (/2160|4k|uhd/i.test(t)) return "2160p";
+      if (/1440|2k/i.test(t)) return "1440p";
+      if (/1080/i.test(t)) return "1080p";
+      if (/720/i.test(t)) return "720p";
+      if (/480/i.test(t)) return "480p";
+      if (/360/i.test(t)) return "360p";
+      return fallback || "HD";
+    }
+    function parseCodecPP(url, text) {
+      const t = ((text || "") + " " + (url || "")).toLowerCase();
+      if (/av1/i.test(t)) return "AV1";
+      if (/hevc|x265|h\.?265/i.test(t)) return "x265";
+      if (/x264|h\.?264/i.test(t)) return "H.264";
+      if (/vp9/i.test(t)) return "VP9";
+      return "";
+    }
+    function parseAudioPP(text) {
+      const t = (text || "").toLowerCase();
+      if (/dolby\s*atmos|atmos/i.test(t)) return "Atmos";
+      if (/truehd/i.test(t)) { const ch = t.match(/truehd\s*(7\.1|5\.1)/i); return "TrueHD" + (ch ? " " + ch[1] : ""); }
+      if (/dts[\s.-]?hd/i.test(t)) return "DTS-HD";
+      if (/dts[\s.-]?x/i.test(t)) return "DTS:X";
+      if (/dts/i.test(t)) return "DTS";
+      if (/ddp|eac3|e-ac3/i.test(t)) { const ch2 = t.match(/(7\.1|5\.1|2\.0)/); return "EAC3" + (ch2 ? " " + ch2[1] : ""); }
+      if (/dd\s*5\.1|ac3\s*5\.1|dolby\s*digital|dolby\s*5/i.test(t)) return "DD 5.1";
+      if (/dd\s*2\.0|ac3\s*2\.0/i.test(t)) return "DD 2.0";
+      if (/aac/i.test(t)) { const ch3 = t.match(/(7\.1|5\.1|2\.0)/); return "AAC" + (ch3 ? " " + ch3[1] : ""); }
+      if (/opus/i.test(t)) return "Opus";
+      if (/mp3|mpeg/i.test(t)) return "MP3";
+      return "";
+    }
+    function parseHDRPP(text) {
+      const t = (text || "").toLowerCase();
+      if (/dolby\s*vision|dovi/i.test(t)) return "DV";
+      if (/hdr10\+/i.test(t)) return "HDR10+";
+      if (/hdr10/i.test(t)) return "HDR10";
+      if (/hdr/i.test(t)) return "HDR";
+      if (/sdr/i.test(t)) return "SDR";
+      if (/10[\s.-]?bit|hi10/i.test(t)) return "10-bit";
+      return "";
+    }
+    function parseSourcePP(text) {
+      const t = (text || "").toLowerCase();
+      if (/web[\s.-]?dl|webdl/i.test(t)) return "WEB-DL";
+      if (/webrip/i.test(t)) return "WEBRip";
+      if (/blu[\s.-]?ray|bluray|bdrip|brrip/i.test(t)) return "BluRay";
+      if (/hdrip/i.test(t)) return "HDRip";
+      if (/hdtv/i.test(t)) return "HDTV";
+      if (/dvdrip/i.test(t)) return "DVDRip";
+      if (/camrip|cam\b/i.test(t)) return "CAM";
+      if (/ts\b|telesync/i.test(t)) return "TS";
+      return "";
+    }
+    function parseSizePP(text) {
+      const m = (text || "").match(/\[?([\d.]+)\s*(GB|MB|gb|mb)\]?/i);
+      if (!m) return "";
+      return parseFloat(m[1]).toFixed(1) + " " + m[2].toUpperCase();
+    }
+    function parseServicePP(text) {
+      const t = (text || "").toLowerCase();
+      if (/netflix|nf\b/i.test(t)) return "Netflix";
+      if (/amazon|amzn|prime\s*video/i.test(t)) return "Prime Video";
+      if (/disney\+|disney\s*plus/i.test(t)) return "Disney+";
+      if (/apple\s*tv\+?|aptv/i.test(t)) return "Apple TV+";
+      if (/hbo\s*max/i.test(t)) return "Max";
+      if (/\bhbo\b/i.test(t)) return "HBO";
+      if (/hulu/i.test(t)) return "Hulu";
+      if (/paramount\+?/i.test(t)) return "Paramount+";
+      if (/peacock/i.test(t)) return "Peacock";
+      return "";
+    }
+    function parseIMAXPP(text) { return /\bimax\b/i.test(text || "") ? "IMAX" : ""; }
+    function parseFPSPP(text) { const m = (text || "").match(/\b(60|50|30|25|24)\s*fps\b/i); return m ? m[1] + "FPS" : ""; }
+    function buildStreamLabelPP(stream, providerName, rawLangEtiqueta) {
+      const url = stream.url || "";
+      const quality = stream.quality || parseQualityPP(url, "HD");
+      const server = stream.provider || stream.serverLabel || stream.serverName || "";
+      const rawText = stream.rawText || stream.description || "";
+      const combined = url + " " + rawText + " " + server;
+      const isReal = stream.isReal === true;
+      const checkMark = isReal ? " \u2705" : "";
+
+      const codec = parseCodecPP(url, combined);
+      const audio = parseAudioPP(combined);
+      const hdr = parseHDRPP(combined);
+      const source = parseSourcePP(combined);
+      const size = parseSizePP(combined);
+      const imax = parseIMAXPP(combined);
+      const fps = parseFPSPP(combined);
+      const service = parseServicePP(combined);
+
+      const nameParts = [providerName, quality.toUpperCase()];
+      if (imax) nameParts.push(imax);
+      if (service) nameParts.push(service);
+      const name = nameParts.join(" \u2022 ") + checkMark;
+
+      const line1Parts = [rawLangEtiqueta];
+      if (server) line1Parts.push(server);
+      if (size) line1Parts.push(size);
+      const line1 = line1Parts.filter(Boolean).join(" \u2022 ");
+
+      const line2Parts = [];
+      if (source) line2Parts.push(source);
+      if (codec) line2Parts.push(codec);
+      if (hdr) line2Parts.push(hdr);
+      if (audio) line2Parts.push(audio);
+      if (fps) line2Parts.push(fps);
+      const line2 = line2Parts.join(" \u2022 ");
+
+      const title = line1 && line2 ? `${line1}
+${line2}` : line1 || line2 || `${rawLangEtiqueta} - ${server || "Server"}`;
+
+      return { name, title, quality, _resWeight: Q_WEIGHTS_PP[quality] || Q_WEIGHTS_PP["HD"] };
+    }
+
+    const processed = [];
         const seenTitles = /* @__PURE__ */ new Set();
         for (const s of validatedStreams) {
           if (!s)
@@ -2897,12 +3026,12 @@ function require_engine() {
           if (!isAllowed && providerName !== "FuegoCine")
             continue;
           const server = normalizeServer(s.serverLabel || s.serverName || s.servername, s.url, s.serverName);
-          const quality = s.quality || "HD";
+          const quality = s.quality || parseQualityPP(s.url, "HD");
           const isReal = s.isReal === true;
           const isVerified = s.verified === true;
-          const checkMark = isReal ? " \u2705" : "";
-          const streamName = `${providerName} - ${quality}${checkMark}`;
-          const streamTitle = `${rawLang} - ${server}`;
+          const labelInfo = buildStreamLabelPP(Object.assign({}, s, { quality, provider: server }), providerName, rawLang);
+          const streamName = labelInfo.name;
+          const streamTitle = labelInfo.title;
           if (seenTitles.has(streamName + streamTitle + s.url))
             continue;
           seenTitles.add(streamName + streamTitle + s.url);
@@ -2910,7 +3039,8 @@ function require_engine() {
             name: streamName,
             title: streamTitle,
             url: s.url,
-            quality,
+            quality: labelInfo.quality,
+            _resWeight: labelInfo._resWeight,
             verified: isVerified,
             isReal,
             provider: server,
@@ -2938,7 +3068,8 @@ function getStreams(tmdbId, mediaType, season, episode, title, year) {
       const streams = yield extractStreams(tmdbId, mediaType, season, episode, title, year);
       return yield finalizeStreams(streams, "PelisPanda", title);
     } catch (e) {
-      return [{ name: "[PelisPanda] Error: " + e.message, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
+      console.log("[PelisPanda] Error: " + e.message);
+      return [];
     }
   });
 }
