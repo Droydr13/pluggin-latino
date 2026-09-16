@@ -21,9 +21,6 @@ https://raw.githubusercontent.com/Droydr13/pluggin-latino/main
 
 ## Avisos conocidos
 
-- **JKAnime** y **MundoDonghua**: cubren el camino principal de
-  extracción de cada sitio, no las cadenas de respaldo más largas y
-  complejas que tienen (GSPlay/Nozomi en uno, "protea_tab" en el otro).
 - **EntrePeliculasYSeries**: si el sitio en vez de mostrar la clave de
   descifrado directo tira un desafío de "proof-of-work", esta versión
   no lo resuelve (devuelve vacío en ese caso puntual).
