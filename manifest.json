@@ -569,7 +569,7 @@
     {
       "id": "mundodonghua",
       "name": "MundoDonghua",
-      "description": "Donghuas (animacion china) en Español desde MundoDonghua. Version simplificada: no cubre la cadena de respaldo 'protea_tab' mas compleja del sitio.",
+      "description": "Donghuas (animacion china) en Español desde MundoDonghua.",
       "version": "1.0.0",
       "author": "Doyrd",
       "supportedTypes": [
