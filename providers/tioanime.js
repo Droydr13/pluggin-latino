@@ -73,6 +73,18 @@ function getTmdbTitleTA(tmdbId, mediaType) {
 function parseJsLiteral(str) {
   return Function('"use strict"; return (' + str + ")")();
 }
+function buscarApiTA(title) {
+  return __async(this, null, function* () {
+    const res = yield fetch(`${TIOANIME_BASE}/api/search`, {
+      method: "POST",
+      headers: { "User-Agent": TIOANIME_UA, "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ value: title }).toString(),
+      signal: timeoutSignal(15e3)
+    });
+    const data = yield res.json();
+    return Array.isArray(data) ? data : [];
+  });
+}
 function extraerResultadosTA(html) {
   const resultados = [];
   const regex = /<article class="anime">[\s\S]*?href="([^"]+)"[\s\S]*?<h3[^>]*>([^<]+)<\/h3>/g;
@@ -153,21 +165,33 @@ function getStreams(tmdbId, mediaType, season, episode) {
     try {
       const title = yield getTmdbTitleTA(tmdbId, mediaType);
       if (!title) return [];
-      const resultados = yield buscarTA(title);
-      if (!resultados.length) return [];
       const tituloNorm = normalizarTA(title);
-      const match = resultados.find((r) => normalizarTA(r.title) === tituloNorm) || resultados[0];
-      const animeUrl = match.href.startsWith("http") ? match.href : TIOANIME_BASE + "/" + match.href.replace(/^\//, "");
-      const htmlAnime = yield fetchText(animeUrl);
-      const infoMatch = htmlAnime.match(/var anime_info\s*=\s*(\[.*?\])/);
-      const episodesMatch = htmlAnime.match(/var episodes\s*=\s*(\[.*?\])/);
-      if (!infoMatch || !episodesMatch) return [];
-      const animeInfo = parseJsLiteral(infoMatch[1]);
-      const episodesList = parseJsLiteral(episodesMatch[1]);
-      const slug = animeInfo[1];
-      if (!slug || !episodesList.length) return [];
       const epNum = mediaType === "movie" ? 1 : parseInt(episode) || 1;
-      if (!episodesList.includes(epNum)) return [];
+      let slug = null;
+      try {
+        const resultadosApi = yield buscarApiTA(title);
+        if (resultadosApi.length) {
+          const bestApi = resultadosApi.find((r) => normalizarTA(r.title) === tituloNorm) || resultadosApi[0];
+          if (bestApi && bestApi.slug) slug = bestApi.slug;
+        }
+      } catch (e) {
+      }
+      let episodesList = null;
+      if (!slug) {
+        const resultados = yield buscarTA(title);
+        if (!resultados.length) return [];
+        const match = resultados.find((r) => normalizarTA(r.title) === tituloNorm) || resultados[0];
+        const animeUrl = match.href.startsWith("http") ? match.href : TIOANIME_BASE + "/" + match.href.replace(/^\//, "");
+        const htmlAnime = yield fetchText(animeUrl);
+        const infoMatch = htmlAnime.match(/var anime_info\s*=\s*(\[.*?\])/);
+        const episodesMatch = htmlAnime.match(/var episodes\s*=\s*(\[.*?\])/);
+        if (!infoMatch) return [];
+        const animeInfo = parseJsLiteral(infoMatch[1]);
+        slug = animeInfo[1];
+        if (episodesMatch) episodesList = parseJsLiteral(episodesMatch[1]);
+      }
+      if (!slug) return [];
+      if (episodesList && !episodesList.includes(epNum)) return [];
       const episodeUrl = `${TIOANIME_BASE}/ver/${slug}-${epNum}`;
       const htmlEpisodio = yield fetchText(episodeUrl);
       const videosMatch = htmlEpisodio.match(/var videos\s*=\s*(\[[\s\S]*?\]);/);
