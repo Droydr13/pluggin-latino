@@ -537,6 +537,37 @@ function require_mirrors() {
   module2.exports = { MIRRORS, isMirror };
   return module2.exports;
 }
+function __axiosShim() {
+  function doRequest(method, url, bodyOrConfig, maybeConfig) {
+    let body = null, config = {};
+    if (method === "get") { config = bodyOrConfig || {}; }
+    else { body = bodyOrConfig; config = maybeConfig || {}; }
+    const headers = Object.assign({}, config.headers || {});
+    const opts = { method: method.toUpperCase(), headers };
+    if (config.timeout) opts.signal = timeoutSignalShim(config.timeout);
+    if (body !== null && body !== undefined) {
+      if (typeof body === "string") { opts.body = body; }
+      else if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) { opts.body = body.toString(); }
+      else { opts.body = JSON.stringify(body); if (!headers["Content-Type"] && !headers["content-type"]) headers["Content-Type"] = "application/json"; }
+    }
+    return fetch(url, opts).then((res) => {
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      const parse = ct.includes("application/json") ? res.json() : res.text();
+      return parse.then((data) => ({ data, status: res.status, headers: res.headers }));
+    });
+  }
+  return {
+    get: (url, config) => doRequest("get", url, config),
+    post: (url, body, config) => doRequest("post", url, body, config),
+  };
+}
+function timeoutSignalShim(ms) {
+  try {
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  } catch (e) {}
+  return void 0;
+}
+
 function require_engine() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
@@ -1246,7 +1277,7 @@ function require_quality() {
 function require_goodstream() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   var { detectQuality } = require_quality();
   var { getSessionUA } = require_http();
   function resolve3(embedUrl) {
@@ -1475,7 +1506,7 @@ function require_vimeos() {
 function require_buzzheavier() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   var { getStealthHeaders } = require_http();
   function resolve3(embedUrl) {
     return __async2(this, null, function* () {
@@ -1601,14 +1632,14 @@ function resolve(embedUrl) {
 var import_axios, UA;
 var init_okru = __esm({
   "src/resolvers/okru.js"() {
-    import_axios = __toESM(require("axios"));
+    import_axios = __toESM(__axiosShim());
     UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
 function require_pixeldrain() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   function resolve3(embedUrl) {
     return __async2(this, null, function* () {
       try {
@@ -1718,7 +1749,7 @@ function resolve2(embedUrl) {
 var import_axios2, UA2;
 var init_turbovid = __esm({
   "src/resolvers/turbovid.js"() {
-    import_axios2 = __toESM(require("axios"));
+    import_axios2 = __toESM(__axiosShim());
     UA2 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
@@ -1830,7 +1861,7 @@ function require_embedseek() {
 function require_tplayer() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   var { getStealthHeaders } = require_http();
   function resolve3(embedUrl) {
     return __async2(this, null, function* () {
@@ -2250,7 +2281,7 @@ function require_doodstream() {
 function require_vidnest() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   function resolve3(embedUrl) {
     return __async2(this, null, function* () {
       try {
@@ -2342,7 +2373,7 @@ function require_vidsonic() {
 function require_barmonrey() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   function resolve3(embedUrl) {
     return __async2(this, null, function* () {
       try {
@@ -2711,8 +2742,7 @@ function require_resolvers() {
 }
 var { finalizeStreams } = require_engine();
 var { resolveEmbed } = require_resolvers();
-const axios = require("axios");
-const cheerio = require("cheerio-without-node-native");
+const axios = __axiosShim();
 const HDFULL_BASE = "https://hdfull.love";
 const HDFULL_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 const TMDB_API_KEY_HDF = "439c478a771f35c05022f9feabcca01c";
@@ -2800,94 +2830,76 @@ function getStreams(tmdbId, mediaType, season, episode) {
       const cookies = yield ensureLoggedInHDF();
       const cookieStr = cookiesAString(cookies);
       const isMovie = mediaType === "movie";
+      const axios = __axiosShim();
+
       const csfrRes = yield axios.post(
         `${HDFULL_BASE}/buscar`,
         new URLSearchParams({ menu: "search", query: title }).toString(),
         { headers: { "User-Agent": HDFULL_UA, Cookie: cookieStr, Referer: `${HDFULL_BASE}/buscar`, "Content-Type": "application/x-www-form-urlencoded" }, timeout: 15e3 }
       );
-      const $csfr = cheerio.load(csfrRes.data);
-      const csfrToken = $csfr("input[value*='sid']").attr("value") || "";
+      const csfrMatch = csfrRes.data.match(/<input[^>]*value="([^"]*sid[^"]*)"/);
+      const csfrToken = csfrMatch ? csfrMatch[1] : "";
+
       const searchRes = yield axios.post(
         `${HDFULL_BASE}/buscar`,
         new URLSearchParams({ __csrf_magic: csfrToken, menu: "search", query: title }).toString(),
         { headers: { "User-Agent": HDFULL_UA, Cookie: cookieStr, Referer: `${HDFULL_BASE}/buscar`, "Content-Type": "application/x-www-form-urlencoded" }, timeout: 15e3 }
       );
-      const $search = cheerio.load(searchRes.data);
       let targetHref = null;
-      $search("div.container div.view").each(function() {
-        if (targetHref) return;
-        const link = $search(this).find("h5.left a.link");
-        const t = link.attr("title") || "";
-        const href = link.attr("href");
-        if (!href) return;
+      const bloqueRegex = /<div[^>]*class="[^"]*view[^"]*"[\s\S]{0,600}?<h5[^>]*class="[^"]*left[^"]*"[\s\S]{0,200}?<a\s+[^>]*class="[^"]*link[^"]*"[^>]*title="([^"]*)"[^>]*href="([^"]+)"/gi;
+      let mBloque;
+      while ((mBloque = bloqueRegex.exec(searchRes.data)) !== null) {
+        const t = mBloque[1] || "";
+        const href = mBloque[2];
         const esPelicula = href.includes("/pelicula");
-        if (isMovie && !esPelicula) return;
-        if (!isMovie && esPelicula) return;
+        if (isMovie && !esPelicula) continue;
+        if (!isMovie && esPelicula) continue;
         if (!targetHref || normalizarHDF(t) === tituloNorm) {
           targetHref = href.startsWith("/") ? HDFULL_BASE + href : href;
         }
-      });
+      }
       if (!targetHref) return [];
+
       let targetUrl = targetHref;
       if (!isMovie && season && episode) {
         targetUrl = `${targetHref}/temporada-${parseInt(season)}/episodio-${parseInt(episode)}`;
       }
       let pageRes = yield axios.get(targetUrl, { headers: { "User-Agent": HDFULL_UA, Cookie: cookieStr }, timeout: 15e3 });
       let html = pageRes.data;
-      let $page = cheerio.load(html);
-      let hashPreCheck = null;
-      $page("script").each(function() {
-        if (hashPreCheck) return;
-        const txt = $page(this).html() || "";
-        if (txt.includes("var ad =")) {
-          const m = txt.match(/var ad = '([^']*)';/);
-          if (m) hashPreCheck = m[1];
-        }
-      });
+      let hashMatch = html.match(/var ad = '([^']*)';/);
+      let hashPreCheck = hashMatch ? hashMatch[1] : null;
+
       // Respaldo (confirmado por Kodi/Alfa): si la URL armada por patron
       // no encontro nada, la API real de episodios (a/episodes, con el
       // sid de la serie) da la URL correcta sin tener que adivinarla.
       if (!hashPreCheck && !isMovie && season && episode) {
         try {
-          const $show = cheerio.load(pageRes.data);
-          let sidSerie = null;
-          $show("script").each(function() {
-            if (sidSerie) return;
-            const txt = $show(this).html() || "";
-            const m = txt.match(/var sid = '(\d+)'/);
-            if (m) sidSerie = m[1];
-          });
+          const sidMatch = pageRes.data.match(/var sid = '(\d+)'/);
+          const sidSerie = sidMatch ? sidMatch[1] : null;
           if (sidSerie) {
             const epRes = yield axios.post(
               `${HDFULL_BASE}/a/episodes`,
               new URLSearchParams({ action: "season", start: "0", limit: "0", show: sidSerie, season: String(parseInt(season)) }).toString(),
               { headers: { "User-Agent": HDFULL_UA, Cookie: cookieStr, Referer: targetHref, "Content-Type": "application/x-www-form-urlencoded" }, timeout: 15e3 }
             );
-            const $epList = cheerio.load(epRes.data);
             let epHref = null;
-            $epList("a").each(function() {
-              if (epHref) return;
-              const href = $epList(this).attr("href") || "";
-              if (href.includes(`episodio-${parseInt(episode)}`) || href.endsWith(`-${parseInt(episode)}`)) epHref = href;
-            });
+            const hrefRegex = /<a\s+[^>]*href="([^"]+)"/gi;
+            let mHref;
+            while ((mHref = hrefRegex.exec(epRes.data)) !== null) {
+              const href = mHref[1];
+              if (href.includes(`episodio-${parseInt(episode)}`) || href.endsWith(`-${parseInt(episode)}`)) { epHref = href; break; }
+            }
             if (epHref) {
               targetUrl = epHref.startsWith("http") ? epHref : (HDFULL_BASE + (epHref.startsWith("/") ? "" : "/") + epHref);
               pageRes = yield axios.get(targetUrl, { headers: { "User-Agent": HDFULL_UA, Cookie: cookieStr }, timeout: 15e3 });
               html = pageRes.data;
-              $page = cheerio.load(html);
             }
           }
         } catch (e) {}
       }
-      let hash = null;
-      $page("script").each(function() {
-        if (hash) return;
-        const txt = $page(this).html() || "";
-        if (txt.includes("var ad =")) {
-          const m = txt.match(/var ad = '([^']*)';/);
-          if (m) hash = m[1];
-        }
-      });
+
+      hashMatch = html.match(/var ad = '([^']*)';/);
+      let hash = hashMatch ? hashMatch[1] : null;
       if (!hash) {
         try {
           const streamRes = yield axios.post(
@@ -2895,19 +2907,12 @@ function getStreams(tmdbId, mediaType, season, episode) {
             new URLSearchParams({ max_id: "0", type: "1" }).toString(),
             { headers: { "User-Agent": HDFULL_UA, Cookie: cookieStr, Referer: targetUrl, "Content-Type": "application/x-www-form-urlencoded" }, timeout: 15e3 }
           );
-          const $stream = cheerio.load(streamRes.data);
-          $stream("script").each(function() {
-            if (hash) return;
-            const txt = $stream(this).html() || "";
-            if (txt.includes("var ad =")) {
-              const m = txt.match(/var ad = '([^']*)';/);
-              if (m) hash = m[1];
-            }
-          });
-        } catch (e) {
-        }
+          const hashMatch2 = streamRes.data.match(/var ad = '([^']*)';/);
+          if (hashMatch2) hash = hashMatch2[1];
+        } catch (e) {}
       }
       if (!hash) return [];
+
       let entries;
       try {
         entries = hdfullDecodeHash(hash);
