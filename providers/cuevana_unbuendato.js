@@ -153,6 +153,121 @@ function extraerPlayersDelJson(pageProps, esPelicula) {
   }
   return resultado;
 }
+function resolveOkRu(embedUrl) {
+  return __async(this, null, function* () {
+    const html = yield fetchText(embedUrl, { headers: { Referer: "https://ok.ru/" } });
+    const dataMatch = html.match(/data-options="([^"]+)"/);
+    if (!dataMatch) throw new Error("sin data-options en ok.ru");
+    const decoded = dataMatch[1].replace(/&quot;/g, '"');
+    const json = JSON.parse(decoded);
+    const metadataStr = json.flashvars && json.flashvars.metadata;
+    if (!metadataStr) throw new Error("sin metadata en ok.ru");
+    const metadata = JSON.parse(metadataStr);
+    const videos = metadata.videos || [];
+    const orden = { ultra: 5, quad: 4, full: 3, hd: 2, sd: 1, low: 0, lowest: -1, mobile: -2 };
+    videos.sort((a, b) => (orden[b.name] || 0) - (orden[a.name] || 0));
+    if (!videos.length) throw new Error("ok.ru sin videos");
+    return { url: videos[0].url.replace(/\\u0026/g, "&"), referer: "https://ok.ru/" };
+  });
+}
+const BLACKLIST_UNBUENDATO = ["netu", "waaw", "hqq", "mixdrop"];
+function intentarApiUnbuendato(tmdbId, mediaType, season, episode) {
+  return __async(this, null, function* () {
+    const rawId = String(tmdbId).split(":")[0];
+    const isMovie = mediaType === "movie";
+    let apiUrl = `https://cuevana.unbuendato.com/?id=${rawId}`;
+    if (!isMovie && season && episode) apiUrl += `&season=${season}&episode=${episode}`;
+    const res = yield fetch(apiUrl, { headers: { "User-Agent": CUEVANA_UA }, signal: timeoutSignal(1e4) });
+    const data = yield res.json();
+    if (!data || !data.success || !data.languages) return [];
+    const entradas = [];
+    for (const [langKey, servers] of Object.entries(data.languages)) {
+      const lKey = langKey.toLowerCase();
+      if (!lKey.includes("latino") && !lKey.includes("espa\xF1ol") && !lKey.includes("castellano")) continue;
+      for (const [serverKey, url] of Object.entries(servers)) {
+        if (!url) continue;
+        const sKey = serverKey.toLowerCase();
+        if (BLACKLIST_UNBUENDATO.some((b) => sKey.includes(b) || url.includes(b))) continue;
+        entradas.push({ url, servidor: serverKey, idioma: lKey.includes("latino") ? "Latino" : "Castellano" });
+      }
+    }
+    if (!entradas.length) return [];
+    const vistos = /* @__PURE__ */ new Set();
+    const resueltos = [];
+    yield Promise.all(entradas.map((e) => __async(null, null, function* () {
+      if (vistos.has(e.url)) return;
+      vistos.add(e.url);
+      try {
+        const r = e.url.includes("ok.ru") ? yield resolveOkRu(e.url) : yield resolveGenerico(e.url, "https://cuevana.unbuendato.com/");
+        if (r) {
+          resueltos.push({ name: "Cuevana", title: `${e.servidor} \xB7 ${e.idioma}`, url: r.url, quality: "HD", headers: { "User-Agent": CUEVANA_UA, Referer: r.referer } });
+        }
+      } catch (err) {
+      }
+    })));
+    return resueltos;
+  });
+}
+function intentarSubmenuWv3(title, isMovie, season, episode) {
+  return __async(this, null, function* () {
+    const base = "https://wv3.cuevana3.eu";
+    const html = yield fetchText(`${base}/search?q=${encodeURIComponent(title)}`);
+    const regex = /<a\s+href="([^"]+)"[^>]*class="[^"]*TPostMv[^"]*"|class="[^"]*TPostMv[^"]*"[^>]*>[\s\S]{0,20}?<a\s+href="([^"]+)"/gi;
+    let targetHref = null, m;
+    while ((m = regex.exec(html)) !== null) {
+      const href = m[1] || m[2];
+      const esSerie = href.includes("/serie/");
+      if (isMovie && esSerie) continue;
+      if (!isMovie && !esSerie) continue;
+      targetHref = href;
+      break;
+    }
+    if (!targetHref) return [];
+    const showUrl = targetHref.startsWith("http") ? targetHref : base + "/" + targetHref.replace(/^\//, "");
+    let targetUrl = showUrl;
+    if (!isMovie && season && episode) {
+      const htmlShow = yield fetchText(showUrl);
+      const nextData = extraerNextData(htmlShow);
+      const pageProps = getPageProps(nextData);
+      const serie = pageProps && (pageProps.post || pageProps.thisSerie);
+      const temporada = serie && serie.seasons && serie.seasons.find((s) => s.number === parseInt(season));
+      const ep = temporada && (temporada.episodes || []).find((e) => e.number === parseInt(episode));
+      if (ep && ep.url && ep.url.slug) {
+        targetUrl = base + "/" + ep.url.slug.replace("series/", "serie/").replace("seasons/", "temporada/").replace("episodes/", "episodio/");
+      }
+    }
+    const htmlContent = yield fetchText(targetUrl);
+    const bloques = htmlContent.split(/(?=<li[^>]*class="[^"]*open_submenu[^"]*")/i).slice(1);
+    const promesasSubmenu = [];
+    for (const bloque of bloques) {
+      const cabecera = bloque.slice(0, 150).toLowerCase();
+      if (!cabecera.includes("latino") && !cabecera.includes("espa\xF1ol") && !cabecera.includes("castellano")) continue;
+      const dataTrRegex = /class="[^"]*clili[^"]*"[^>]*data-tr="([^"]+)"/gi;
+      let mTr;
+      while ((mTr = dataTrRegex.exec(bloque)) !== null) {
+        const dataTr = mTr[1];
+        const iframeUrl = dataTr.startsWith("http") ? dataTr : base + "/" + dataTr.replace(/^\//, "");
+        promesasSubmenu.push(
+          fetchText(iframeUrl).then((htmlIframe) => {
+            const mUrl = htmlIframe.match(/var url = '([^']+)'/);
+            return mUrl ? mUrl[1] : null;
+          }).catch(() => null)
+        );
+      }
+    }
+    const urls = (yield Promise.all(promesasSubmenu)).filter(Boolean);
+    if (!urls.length) return [];
+    const resueltos = [];
+    yield Promise.all(urls.map((u) => __async(null, null, function* () {
+      try {
+        const r = u.includes("ok.ru") ? yield resolveOkRu(u) : yield resolveGenerico(u, base + "/");
+        if (r) resueltos.push({ name: "Cuevana", title: `HD \xB7 Latino`, url: r.url, quality: "HD", headers: { "User-Agent": CUEVANA_UA, Referer: r.referer } });
+      } catch (e) {
+      }
+    })));
+    return resueltos;
+  });
+}
 function intentarMirror(base, title, isMovie, season, episode) {
   return __async(this, null, function* () {
     const html = yield fetchText(`${base}/search?q=${encodeURIComponent(title)}`);
@@ -195,9 +310,14 @@ function intentarMirror(base, title, isMovie, season, episode) {
 function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     const isMovie = mediaType === "movie";
+    if (!isMovie && (!season || !episode)) return [];
+    try {
+      const r1 = yield intentarApiUnbuendato(tmdbId, mediaType, season, episode);
+      if (r1.length) return r1;
+    } catch (e) {
+    }
     const title = yield getTmdbInfoCuevana(tmdbId, mediaType);
     if (!title) return [];
-    if (!isMovie && (!season || !episode)) return [];
     for (const base of CUEVANA_MIRRORS) {
       try {
         const resultado = yield intentarMirror(base, title, isMovie, season, episode);
@@ -221,6 +341,11 @@ function getStreams(tmdbId, mediaType, season, episode) {
       } catch (e) {
         continue;
       }
+    }
+    try {
+      const r3 = yield intentarSubmenuWv3(title, isMovie, season, episode);
+      if (r3.length) return r3;
+    } catch (e) {
     }
     return [];
   });
