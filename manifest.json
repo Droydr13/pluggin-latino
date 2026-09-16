@@ -169,7 +169,7 @@
         "movie",
         "tv"
       ],
-      "filename": "providers/cuevana.js",
+      "filename": "providers/cuevana_unbuendato.js",
       "enabled": true,
       "contentLanguage": [
         "es"
