@@ -1,4 +1,3 @@
-
 function __makeUrlLike(urlStr) {
   var originMatch = urlStr.match(/^([a-z]+:\/\/[^\/]+)/i);
   var origin = originMatch ? originMatch[1] : urlStr;
@@ -2942,45 +2941,87 @@ function getStreams(tmdbId, mediaType, season, episode) {
       if (!targetHref) return [];
 
       // 2) si es serie, buscar el episodio correspondiente dentro de la pagina
+      // (por el numero REAL en <p class="ep-num">, no por posicion --
+      // confirmado por Kodi/Alfa, la posicion puede fallar si la pagina
+      // no lista los episodios en orden perfecto)
       let targetUrl = targetHref;
       if (!isMovie && season && episode) {
         const { $: $show } = yield getDoc(targetHref);
         const panel = $show(`div[data-season-panel="${parseInt(season)}"]`);
-        const episodios = panel.find("a.ep-item");
-        const epIdx = parseInt(episode) - 1;
-        const epHref = episodios.eq(epIdx).attr("href");
+        const epNum = parseInt(episode);
+        let epHref = null;
+        panel.find("a.ep-item").each(function () {
+          if (epHref) return;
+          const numTexto = $show(this).find("p.ep-num").text().trim().replace(/^E/i, "");
+          if (parseInt(numTexto) === epNum) epHref = $show(this).attr("href");
+        });
         if (epHref) targetUrl = epHref.startsWith("http") ? epHref : SOLOLATINO_BASE + "/" + epHref.replace(/^\//, "");
       }
 
-      // 3) sacar el token csrf y los data-player-token de cada boton de servidor
-      const { $: $content } = yield getDoc(targetUrl);
-      const csrf = $content('meta[name="csrf-token"]').attr("content") || "";
-      const tokens = [];
-      $content("button.server-btn").each(function () {
-        const tok = $content(this).attr("data-player-token");
-        if (tok) tokens.push(tok);
-      });
-      if (!tokens.length) return [];
+      // 2.5) Metodo rapido (de latinuvio-V2): sololatino.net a veces
+      // referencia el ID de IMDb de la pelicula/serie directo en su
+      // pagina -- si aparece, se le puede delegar la resolucion entera
+      // al provider de embed69.js que ya tenemos, en vez de scrapear
+      // todo el sistema de tokens propio de sololatino. Se intenta
+      // primero por ser mas rapido; si no da nada, se sigue con la
+      // cadena normal de abajo.
+      try {
+        const { $: $imdbPage } = yield getDoc(targetUrl);
+        const htmlTarget = $imdbPage.html() || "";
+        const imdbMatch = htmlTarget.match(/\/title\/(tt\d+)/);
+        if (imdbMatch) {
+          const embed69 = require("./embed69.js");
+          const streamsEmbed69 = yield embed69.getStreams(imdbMatch[1], isMovie ? "movie" : "tv", season, episode).catch(() => []);
+          const playables = (streamsEmbed69 || []).filter((s) => s.url && (s.url.includes(".m3u8") || s.url.includes(".mp4") || s.url.includes("/hls")));
+          if (playables.length) {
+            return playables.map((s) => Object.assign({}, s, { name: "SoloLatino", title: s.title || "SoloLatino" }));
+          }
+        }
+      } catch (e) {}
 
-      // 4) cada token se resuelve por separado contra /api/player-url
-      const postHeaders = {
-        "User-Agent": SOLOLATINO_UA,
-        "Content-Type": "application/json",
-        "X-CSRF-TOKEN": csrf,
-        "Accept": "application/json",
-        "Referer": targetUrl,
-      };
-      const crudos = [];
-      yield Promise.all(tokens.map((tok) => {
-        return axios3.post(`${SOLOLATINO_BASE}/api/player-url`, { t: tok }, { headers: postHeaders })
-          .then((res) => {
-            const info = res.data;
-            if (!info || !info.url) return;
-            crudos.push(info.url);
-          })
-          .catch(() => {});
-      }));
-      if (!crudos.length) return [];
+      // 3) Confirmado por Kodi/Alfa: primero se revisa si hay
+      // data-server-url directo en la pagina (caso simple) -- si no hay
+      // ninguno, recien ahi se cae al metodo de tokens+API.
+      const { $: $content } = yield getDoc(targetUrl);
+      const crudosDirectos = [];
+      $content("[data-server-url]").each(function () {
+        const u = $content(this).attr("data-server-url");
+        if (u) crudosDirectos.push(u);
+      });
+
+      let crudos = crudosDirectos;
+      if (!crudos.length) {
+        const csrf = $content('meta[name="csrf-token"]').attr("content") || "";
+        const tokens = [];
+        $content("button.server-btn").each(function () {
+          // Confirmado por Kodi/Alfa: los servidores marcados "premium"
+          // se saltan, requieren cuenta paga del lado del sitio.
+          const nombreServidor = $content(this).text().trim().toLowerCase();
+          if (nombreServidor.includes("premium")) return;
+          const tok = $content(this).attr("data-player-token");
+          if (tok) tokens.push(tok);
+        });
+        if (!tokens.length) return [];
+
+        // 4) cada token se resuelve por separado contra /api/player-url
+        const postHeaders = {
+          "User-Agent": SOLOLATINO_UA,
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": csrf,
+          "Accept": "application/json",
+          "Referer": targetUrl,
+        };
+        yield Promise.all(tokens.map((tok) => {
+          return axios3.post(`${SOLOLATINO_BASE}/api/player-url`, { t: tok }, { headers: postHeaders })
+            .then((res) => {
+              const info = res.data;
+              if (!info || !info.url) return;
+              crudos.push(info.url);
+            })
+            .catch(() => {});
+        }));
+        if (!crudos.length) return [];
+      }
 
       // 5) resolver cada url segun su tipo (mp4 directo, embed69, xupalace, o iframe generico)
       const resueltos = [];
@@ -2996,7 +3037,15 @@ function getStreams(tmdbId, mediaType, season, episode) {
             const re = /(?:go_to_player|go_to_playerVast)\('([^']+)'/g;
             let m;
             while ((m = re.exec(html)) !== null) {
-              const r = yield resolveEmbed(m[1]).catch(() => null);
+              let vid = m[1];
+              // Confirmado por Kodi/Alfa: 1fichier necesita reconstruir
+              // la url a partir del parametro que trae, no se puede
+              // pasar tal cual a un resolutor generico.
+              if (vid.includes("1fichier=") || vid.toLowerCase().includes("1fichier")) {
+                const idMatch = vid.match(/=\??([A-Za-z0-9]+)/);
+                if (idMatch) vid = `https://1fichier.com/?${idMatch[1]}`;
+              }
+              const r = yield resolveEmbed(vid).catch(() => null);
               if (r) resueltos.push(r);
             }
             return;
@@ -3020,7 +3069,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
       return yield finalizeStreams(resueltos, "SoloLatino", title);
     } catch (e) {
       console.log(`[SoloLatino] Error: ${e.message}`);
-      return [{ name: `[SoloLatino] Error: ${e.message}`, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
+      return [];
     }
   });
 }
