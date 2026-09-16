@@ -542,6 +542,37 @@ function require_mirrors() {
 
 
 // src/utils/engine.js
+function __axiosShim() {
+  function doRequest(method, url, bodyOrConfig, maybeConfig) {
+    let body = null, config = {};
+    if (method === "get") { config = bodyOrConfig || {}; }
+    else { body = bodyOrConfig; config = maybeConfig || {}; }
+    const headers = Object.assign({}, config.headers || {});
+    const opts = { method: method.toUpperCase(), headers };
+    if (config.timeout) opts.signal = timeoutSignalShim(config.timeout);
+    if (body !== null && body !== undefined) {
+      if (typeof body === "string") { opts.body = body; }
+      else if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) { opts.body = body.toString(); }
+      else { opts.body = JSON.stringify(body); if (!headers["Content-Type"] && !headers["content-type"]) headers["Content-Type"] = "application/json"; }
+    }
+    return fetch(url, opts).then((res) => {
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      const parse = ct.includes("application/json") ? res.json() : res.text();
+      return parse.then((data) => ({ data, status: res.status, headers: res.headers }));
+    });
+  }
+  return {
+    get: (url, config) => doRequest("get", url, config),
+    post: (url, body, config) => doRequest("post", url, body, config),
+  };
+}
+function timeoutSignalShim(ms) {
+  try {
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  } catch (e) {}
+  return void 0;
+}
+
 function require_engine() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
@@ -1279,7 +1310,7 @@ function require_quality() {
 function require_goodstream() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     var { detectQuality } = require_quality();
     var { getSessionUA } = require_http();
     function resolve3(embedUrl) {
@@ -1520,7 +1551,7 @@ function require_vimeos() {
 function require_buzzheavier() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     var { getStealthHeaders } = require_http();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -1650,7 +1681,7 @@ function resolve(embedUrl) {
 var import_axios, UA;
 var init_okru = __esm({
   "src/resolvers/okru.js"() {
-    import_axios = __toESM(require("axios"));
+    import_axios = __toESM(__axiosShim());
     UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
@@ -1659,7 +1690,7 @@ var init_okru = __esm({
 function require_pixeldrain() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -1777,7 +1808,7 @@ function resolve2(embedUrl) {
 var import_axios2, UA2;
 var init_turbovid = __esm({
   "src/resolvers/turbovid.js"() {
-    import_axios2 = __toESM(require("axios"));
+    import_axios2 = __toESM(__axiosShim());
     UA2 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
@@ -1895,7 +1926,7 @@ function require_embedseek() {
 function require_tplayer() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     var { getStealthHeaders } = require_http();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -2335,7 +2366,7 @@ function require_doodstream() {
 function require_vidnest() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -2435,7 +2466,7 @@ function require_vidsonic() {
 function require_barmonrey() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -2822,7 +2853,7 @@ function require_resolvers() {
 
 
 // src/sololatino/index.js
-var axios3 = require("axios");
+var axios3 = __axiosShim();
 var { finalizeStreams } = require_engine();
 var { setSessionUA } = require_http();
 var { resolveEmbed } = require_resolvers();
@@ -2905,7 +2936,7 @@ function slugificarSL(s) {
 
 var TMDB_API_KEY_SL = '439c478a771f35c05022f9feabcca01c';
 function getTmdbTitleSL(tmdbId, mediaType) {
-  const axios3 = require('axios');
+  const axios3 = __axiosShim();
   const type = mediaType === 'movie' || mediaType === 'movies' ? 'movie' : 'tv';
   const url = `https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY_SL}&language=es-MX`;
   return axios3.get(url).then((r) => {
@@ -2918,26 +2949,26 @@ function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     const title = yield getTmdbTitleSL(tmdbId, mediaType);
     if (!title) return [];
-    const axios3 = require("axios");
-    const cheerio3 = require("cheerio-without-node-native");
     const isMovie = mediaType === "movie" || mediaType === "movies";
 
     function getDoc(url, opts) {
-      return axios3.get(url, Object.assign({ headers: { "User-Agent": SOLOLATINO_UA } }, opts || {})).then((r) => ({ $: cheerio3.load(r.data), headers: r.headers }));
+      return fetch(url, Object.assign({ headers: { "User-Agent": SOLOLATINO_UA } }, opts || {})).then((r) => r.text().then((html) => ({ html, headers: r.headers })));
     }
 
     try {
       // 1) buscar el titulo en sololatino.net
-      const { $: $search } = yield getDoc(`${SOLOLATINO_BASE}/buscar?q=${encodeURIComponent(title)}`);
+      const { html: htmlSearch } = yield getDoc(`${SOLOLATINO_BASE}/buscar?q=${encodeURIComponent(title)}`);
       let targetHref = null;
-      $search("div.card").each(function () {
-        if (targetHref) return;
-        const href = $search(this).find("a").attr("href") || "";
+      const cardRegex = /<div[^>]*class="[^"]*card[^"]*"[\s\S]{0,300}?<a\s+[^>]*href="([^"]+)"/gi;
+      let mCard;
+      while ((mCard = cardRegex.exec(htmlSearch)) !== null) {
+        const href = mCard[1];
         const esPelicula = href.includes("/pelicula/");
-        if (isMovie && !esPelicula) return;
-        if (!isMovie && esPelicula) return;
+        if (isMovie && !esPelicula) continue;
+        if (!isMovie && esPelicula) continue;
         targetHref = href.startsWith("http") ? href : SOLOLATINO_BASE + "/" + href.replace(/^\//, "");
-      });
+        break;
+      }
       if (!targetHref) return [];
 
       // 2) si es serie, buscar el episodio correspondiente dentro de la pagina
@@ -2946,15 +2977,16 @@ function getStreams(tmdbId, mediaType, season, episode) {
       // no lista los episodios en orden perfecto)
       let targetUrl = targetHref;
       if (!isMovie && season && episode) {
-        const { $: $show } = yield getDoc(targetHref);
-        const panel = $show(`div[data-season-panel="${parseInt(season)}"]`);
+        const { html: htmlShow } = yield getDoc(targetHref);
         const epNum = parseInt(episode);
-        let epHref = null;
-        panel.find("a.ep-item").each(function () {
-          if (epHref) return;
-          const numTexto = $show(this).find("p.ep-num").text().trim().replace(/^E/i, "");
-          if (parseInt(numTexto) === epNum) epHref = $show(this).attr("href");
-        });
+        const panelMatch = htmlShow.match(new RegExp(`<div[^>]*data-season-panel="${parseInt(season)}"[\\s\\S]*?(?=<div[^>]*data-season-panel="|$)`));
+        const panelHtml = panelMatch ? panelMatch[0] : "";
+        const epItemRegex = /<a\s+[^>]*class="[^"]*ep-item[^"]*"[^>]*href="([^"]+)"[\s\S]{0,200}?<p[^>]*class="[^"]*ep-num[^"]*"[^>]*>([^<]*)<\/p>/gi;
+        let mEp, epHref = null;
+        while ((mEp = epItemRegex.exec(panelHtml)) !== null) {
+          const numTexto = mEp[2].trim().replace(/^E/i, "");
+          if (parseInt(numTexto) === epNum) { epHref = mEp[1]; break; }
+        }
         if (epHref) targetUrl = epHref.startsWith("http") ? epHref : SOLOLATINO_BASE + "/" + epHref.replace(/^\//, "");
       }
 
@@ -2966,8 +2998,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
       // primero por ser mas rapido; si no da nada, se sigue con la
       // cadena normal de abajo.
       try {
-        const { $: $imdbPage } = yield getDoc(targetUrl);
-        const htmlTarget = $imdbPage.html() || "";
+        const { html: htmlTarget } = yield getDoc(targetUrl);
         const imdbMatch = htmlTarget.match(/\/title\/(tt\d+)/);
         if (imdbMatch) {
           const embed69 = require("./embed69.js");
@@ -2982,25 +3013,28 @@ function getStreams(tmdbId, mediaType, season, episode) {
       // 3) Confirmado por Kodi/Alfa: primero se revisa si hay
       // data-server-url directo en la pagina (caso simple) -- si no hay
       // ninguno, recien ahi se cae al metodo de tokens+API.
-      const { $: $content } = yield getDoc(targetUrl);
+      const { html: htmlContent } = yield getDoc(targetUrl);
       const crudosDirectos = [];
-      $content("[data-server-url]").each(function () {
-        const u = $content(this).attr("data-server-url");
-        if (u) crudosDirectos.push(u);
-      });
+      const dataServerRegex = /data-server-url="([^"]+)"/g;
+      let mDs;
+      while ((mDs = dataServerRegex.exec(htmlContent)) !== null) crudosDirectos.push(mDs[1]);
 
       let crudos = crudosDirectos;
       if (!crudos.length) {
-        const csrf = $content('meta[name="csrf-token"]').attr("content") || "";
+        const csrfMatch = htmlContent.match(/<meta[^>]*name="csrf-token"[^>]*content="([^"]+)"/);
+        const csrf = csrfMatch ? csrfMatch[1] : "";
         const tokens = [];
-        $content("button.server-btn").each(function () {
+        const btnRegex = /<button\s+[^>]*class="[^"]*server-btn[^"]*"[^>]*>([\s\S]*?)<\/button>/gi;
+        let mBtn;
+        while ((mBtn = btnRegex.exec(htmlContent)) !== null) {
+          const bloqueBtn = mBtn[0];
           // Confirmado por Kodi/Alfa: los servidores marcados "premium"
           // se saltan, requieren cuenta paga del lado del sitio.
-          const nombreServidor = $content(this).text().trim().toLowerCase();
-          if (nombreServidor.includes("premium")) return;
-          const tok = $content(this).attr("data-player-token");
-          if (tok) tokens.push(tok);
-        });
+          const textoBtn = bloqueBtn.replace(/<[^>]+>/g, "").trim().toLowerCase();
+          if (textoBtn.includes("premium")) continue;
+          const tokMatch = bloqueBtn.match(/data-player-token="([^"]+)"/);
+          if (tokMatch) tokens.push(tokMatch[1]);
+        }
         if (!tokens.length) return [];
 
         // 4) cada token se resuelve por separado contra /api/player-url
@@ -3012,9 +3046,9 @@ function getStreams(tmdbId, mediaType, season, episode) {
           "Referer": targetUrl,
         };
         yield Promise.all(tokens.map((tok) => {
-          return axios3.post(`${SOLOLATINO_BASE}/api/player-url`, { t: tok }, { headers: postHeaders })
-            .then((res) => {
-              const info = res.data;
+          return fetch(`${SOLOLATINO_BASE}/api/player-url`, { method: "POST", headers: postHeaders, body: JSON.stringify({ t: tok }) })
+            .then((res) => res.json())
+            .then((info) => {
               if (!info || !info.url) return;
               crudos.push(info.url);
             })
@@ -3032,8 +3066,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
             return;
           }
           if (url.startsWith("https://xupalace.org/video")) {
-            const { $: $x } = yield getDoc(url);
-            const html = $x.html();
+            const { html } = yield getDoc(url);
             const re = /(?:go_to_player|go_to_playerVast)\('([^']+)'/g;
             let m;
             while ((m = re.exec(html)) !== null) {
@@ -3055,10 +3088,10 @@ function getStreams(tmdbId, mediaType, season, episode) {
           if (r) resueltos.push(r);
           else {
             // ultimo recurso: puede que "url" sea en si una pagina con un iframe adentro
-            const { $: $g } = yield getDoc(url).catch(() => ({ $: null }));
-            const iframeSrc = $g ? $g("iframe").first().attr("src") : null;
-            if (iframeSrc) {
-              const r2 = yield resolveEmbed(iframeSrc).catch(() => null);
+            const { html: htmlG } = yield getDoc(url).catch(() => ({ html: null }));
+            const iframeMatch = htmlG ? htmlG.match(/<iframe[^>]+src="([^"]+)"/) : null;
+            if (iframeMatch) {
+              const r2 = yield resolveEmbed(iframeMatch[1]).catch(() => null);
               if (r2) resueltos.push(r2);
             }
           }
