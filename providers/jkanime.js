@@ -174,12 +174,6 @@ function getStreams(tmdbId, mediaType, season, episode) {
         } catch (e) {
         }
       }
-      const iframeMatches = html.match(/iframe[^>]*class[^>]*width/g) || [];
-      iframeMatches.forEach((raw) => {
-        let src = raw.replace(/iframe(\.class|\.src=")|="player_conte".*src="|"\.scrolling|"\.width/g, "").replace(/^"|"$/g, "").trim();
-        src = src.replace(`${JKANIME_BASE}/jkfembed.php?u=`, "https://embedsito.com/v/").replace(`${JKANIME_BASE}/jkokru.php?u=`, "http://ok.ru/videoembed/").replace(`${JKANIME_BASE}/jkvmixdrop.php?u=`, "https://mixdrop.co/e/").replace(`${JKANIME_BASE}/jk.php?u=`, `${JKANIME_BASE}/`).replace("/jkfembed.php?u=", "https://embedsito.com/v/").replace("/jkokru.php?u=", "http://ok.ru/videoembed/").replace("/jkvmixdrop.php?u=", "https://mixdrop.co/e/").replace("/jk.php?u=", `${JKANIME_BASE}/`);
-        if (src.startsWith("http")) rawUrls.push(src);
-      });
       const resueltos = [];
       yield Promise.all(rawUrls.map((u) => __async(null, null, function* () {
         try {
