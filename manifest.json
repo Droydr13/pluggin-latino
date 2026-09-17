@@ -176,22 +176,6 @@
       ]
     },
     {
-      "id": "hackstore2",
-      "name": "HackStore (v2)",
-      "description": "Version alternativa del scraper de HackStore (hackstore.mx)",
-      "version": "1.0.0",
-      "author": "Doyrd",
-      "supportedTypes": [
-        "movie",
-        "tv"
-      ],
-      "filename": "providers/hackstore2.js",
-      "enabled": true,
-      "contentLanguage": [
-        "es"
-      ]
-    },
-    {
       "id": "pelisgo",
       "name": "PelisGo",
       "description": "Peliculas y series en Latino desde PelisGo.",
