@@ -1,4 +1,3 @@
-
 function __makeUrlLike(urlStr) {
   var originMatch = urlStr.match(/^([a-z]+:\/\/[^\/]+)/i);
   var origin = originMatch ? originMatch[1] : urlStr;
@@ -543,6 +542,37 @@ function require_mirrors() {
 
 
 // src/utils/engine.js
+function __axiosShim() {
+  function doRequest(method, url, bodyOrConfig, maybeConfig) {
+    let body = null, config = {};
+    if (method === "get") { config = bodyOrConfig || {}; }
+    else { body = bodyOrConfig; config = maybeConfig || {}; }
+    const headers = Object.assign({}, config.headers || {});
+    const opts = { method: method.toUpperCase(), headers };
+    if (config.timeout) opts.signal = timeoutSignalShim(config.timeout);
+    if (body !== null && body !== undefined) {
+      if (typeof body === "string") { opts.body = body; }
+      else if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) { opts.body = body.toString(); }
+      else { opts.body = JSON.stringify(body); if (!headers["Content-Type"] && !headers["content-type"]) headers["Content-Type"] = "application/json"; }
+    }
+    return fetch(url, opts).then((res) => {
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      const parse = ct.includes("application/json") ? res.json() : res.text();
+      return parse.then((data) => ({ data, status: res.status, headers: res.headers }));
+    });
+  }
+  return {
+    get: (url, config) => doRequest("get", url, config),
+    post: (url, body, config) => doRequest("post", url, body, config),
+  };
+}
+function timeoutSignalShim(ms) {
+  try {
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  } catch (e) {}
+  return void 0;
+}
+
 function require_engine() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
@@ -1280,7 +1310,7 @@ function require_quality() {
 function require_goodstream() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     var { detectQuality } = require_quality();
     var { getSessionUA } = require_http();
     function resolve3(embedUrl) {
@@ -1521,7 +1551,7 @@ function require_vimeos() {
 function require_buzzheavier() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     var { getStealthHeaders } = require_http();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -1651,7 +1681,7 @@ function resolve(embedUrl) {
 var import_axios, UA;
 var init_okru = __esm({
   "src/resolvers/okru.js"() {
-    import_axios = __toESM(require("axios"));
+    import_axios = __toESM(__axiosShim());
     UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
@@ -1660,7 +1690,7 @@ var init_okru = __esm({
 function require_pixeldrain() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -1778,7 +1808,7 @@ function resolve2(embedUrl) {
 var import_axios2, UA2;
 var init_turbovid = __esm({
   "src/resolvers/turbovid.js"() {
-    import_axios2 = __toESM(require("axios"));
+    import_axios2 = __toESM(__axiosShim());
     UA2 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
@@ -1896,7 +1926,7 @@ function require_embedseek() {
 function require_tplayer() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     var { getStealthHeaders } = require_http();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -2336,7 +2366,7 @@ function require_doodstream() {
 function require_vidnest() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -2436,7 +2466,7 @@ function require_vidsonic() {
 function require_barmonrey() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -2826,7 +2856,7 @@ function require_resolvers() {
 function require_tmdb() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios3 = require("axios");
+    var axios3 = __axiosShim();
     var TMDB_API_KEY = "439c478a771f35c05022f9feabcca01c";
     var titleCache = /* @__PURE__ */ new Map();
     function getTmdbTitle2(tmdbId, mediaType, language = "en-US", retries = 2) {
@@ -2938,11 +2968,6 @@ var { finalizeStreams } = require_engine();
 var { resolveEmbed } = require_resolvers();
 var { getTmdbTitle, getTmdbInfo } = require_tmdb();
 var { fetchHtml, request } = require_http();
-var spawnSync = null;
-try {
-  spawnSync = require("child_process").spawnSync;
-} catch (e) {
-}
 var BASE_URL = "https://tioplus.app";
 var UA3 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36";
 function toDoubleBase64(str) {
@@ -2961,20 +2986,12 @@ function getRedirectUrl(serverEncoded, referer) {
     const playerUrl = `${BASE_URL}/player/${doubleB64}`;
     const tryDownload = (isRetry = false) => __async(this, null, function* () {
       try {
-        let html = "";
-        if (spawnSync && typeof process !== "undefined") {
-          const args = ["-s", "-k", "--http1.1", "-A", UA3, "-H", `Referer: ${referer}`, playerUrl];
-          const result = spawnSync("curl.exe", args);
-          html = result.stdout ? result.stdout.toString() : "";
-        } else {
-          html = yield fetchHtml(playerUrl, {
-            headers: { "User-Agent": UA3, "Referer": referer }
-          });
-        }
+        const html = yield fetchHtml(playerUrl, {
+          headers: { "User-Agent": UA3, "Referer": referer }
+        });
         if (html.includes("saturando la red")) {
           if (isRetry)
             return null;
-          console.log("[TioPlus] Red saturada, esperando 6 segundos...");
           yield new Promise((r) => setTimeout(r, 6500));
           return yield tryDownload(true);
         }
@@ -3011,13 +3028,7 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
         const url = `${BASE_URL}/search/${searchQuery}`;
         let html = "";
         try {
-          if (spawnSync && typeof process !== "undefined") {
-            const args = ["-s", "-k", "--http1.1", "-A", UA3, url];
-            const result = spawnSync("curl.exe", args);
-            html = result.stdout ? result.stdout.toString() : "";
-          } else {
-            html = yield fetchHtml(url, { headers: { "User-Agent": UA3 } });
-          }
+          html = yield fetchHtml(url, { headers: { "User-Agent": UA3 } });
         } catch (e) {
           console.log(`[TioPlus] Error en b\xFAsqueda de ${titleQuery}: ${e.message}`);
           return { candidates: [], url };
@@ -3121,7 +3132,7 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
       return yield finalizeStreams(resolvedStreams, "TioPlus", mediaTitle);
     } catch (error) {
       console.error(`[TioPlus] Error: ${error.message}`);
-      return [{ name: `[TioPlus] Error: ${error.message}`, title: String((error && error.stack) || (error && error.message) || error).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
+      return [];
     }
   });
 }
