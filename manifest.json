@@ -595,6 +595,22 @@
       "contentLanguage": [
         "es"
       ]
+    },
+    {
+      "id": "vitaminagg",
+      "name": "VitaminaGG",
+      "description": "Peliculas, series y anime en Latino desde VitaminaGG.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/vitaminagg.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
     }
   ]
 }
