@@ -1,4 +1,3 @@
-
 function __makeUrlLike(urlStr) {
   var originMatch = urlStr.match(/^([a-z]+:\/\/[^\/]+)/i);
   var origin = originMatch ? originMatch[1] : urlStr;
@@ -994,7 +993,7 @@ function require_quality() {
 function require_goodstream() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     var { detectQuality } = require_quality();
     var { getSessionUA } = require_http2();
     function resolve3(embedUrl) {
@@ -1235,7 +1234,7 @@ function require_vimeos() {
 function require_buzzheavier() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     var { getStealthHeaders } = require_http2();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -1365,7 +1364,7 @@ function resolve(embedUrl) {
 var import_axios, UA;
 var init_okru = __esm({
   "src/resolvers/okru.js"() {
-    import_axios = __toESM(require("axios"));
+    import_axios = __toESM(__axiosShim());
     UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
@@ -1374,7 +1373,7 @@ var init_okru = __esm({
 function require_pixeldrain() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -1492,7 +1491,7 @@ function resolve2(embedUrl) {
 var import_axios2, UA2;
 var init_turbovid = __esm({
   "src/resolvers/turbovid.js"() {
-    import_axios2 = __toESM(require("axios"));
+    import_axios2 = __toESM(__axiosShim());
     UA2 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
@@ -1610,7 +1609,7 @@ function require_embedseek() {
 function require_tplayer() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     var { getStealthHeaders } = require_http2();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
@@ -2050,7 +2049,7 @@ function require_doodstream() {
 function require_vidnest() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -2150,7 +2149,7 @@ function require_vidsonic() {
 function require_barmonrey() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     function resolve3(embedUrl) {
       return __async(this, null, function* () {
         try {
@@ -2714,7 +2713,7 @@ function require_resolvers() {
 function require_tmdb() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var axios4 = require("axios");
+    var axios4 = __axiosShim();
     var TMDB_API_KEY = "439c478a771f35c05022f9feabcca01c";
     var titleCache = /* @__PURE__ */ new Map();
     function getTmdbTitle2(tmdbId, mediaType, language = "en-US", retries = 2) {
@@ -2877,6 +2876,37 @@ var init_sorting = __esm({
 });
 
 // src/utils/engine.js
+function __axiosShim() {
+  function doRequest(method, url, bodyOrConfig, maybeConfig) {
+    let body = null, config = {};
+    if (method === "get") { config = bodyOrConfig || {}; }
+    else { body = bodyOrConfig; config = maybeConfig || {}; }
+    const headers = Object.assign({}, config.headers || {});
+    const opts = { method: method.toUpperCase(), headers };
+    if (config.timeout) opts.signal = timeoutSignalShim(config.timeout);
+    if (body !== null && body !== undefined) {
+      if (typeof body === "string") { opts.body = body; }
+      else if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) { opts.body = body.toString(); }
+      else { opts.body = JSON.stringify(body); if (!headers["Content-Type"] && !headers["content-type"]) headers["Content-Type"] = "application/json"; }
+    }
+    return fetch(url, opts).then((res) => {
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      const parse = ct.includes("application/json") ? res.json() : res.text();
+      return parse.then((data) => ({ data, status: res.status, headers: res.headers }));
+    });
+  }
+  return {
+    get: (url, config) => doRequest("get", url, config),
+    post: (url, body, config) => doRequest("post", url, body, config),
+  };
+}
+function timeoutSignalShim(ms) {
+  try {
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  } catch (e) {}
+  return void 0;
+}
+
 function require_engine() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
@@ -3013,7 +3043,6 @@ function require_engine() {
 function require_extractor() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-    var cheerio = require("cheerio");
     var { fetchText, BASE_URL } = require_http();
     var { resolveEmbed } = require_resolvers();
     var { validateStream } = require_m3u8();
@@ -3044,8 +3073,9 @@ function require_extractor() {
         return "";
       return t.toLowerCase().replace(/[\u00e1\u00e0\u00e4\u00e2]/g, "a").replace(/[\u00e9\u00e8\u00eb\u00ea]/g, "e").replace(/[\u00ed\u00ec\u00ef\u00ee]/g, "i").replace(/[\u00f3\u00f2\u00f6\u00f4]/g, "o").replace(/[\u00fa\u00f9\u00fc\u00fb]/g, "u").replace(/\u00f1/g, "n").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
     }
-    function getStreams2(tmdbId, mediaType, season, episode, query) {
+    function getStreams2(tmdbId, mediaType, season, episode, query, baseUrlOverride) {
       return __async(this, null, function* () {
+        const BASE_URL_ACTIVO = baseUrlOverride || BASE_URL;
         try {
           console.log(`[PelisPlusHD] Extracting: ${query || tmdbId} (TMDB: ${tmdbId})`);
           let titlesToTry = [query];
@@ -3067,7 +3097,7 @@ function require_extractor() {
           }
           const searchPromises = titlesToTry.slice(0, 5).map((t) => __async(this, null, function* () {
             try {
-              const searchUrl = `${BASE_URL}/search?s=${encodeURIComponent(t)}`;
+              const searchUrl = `${BASE_URL_ACTIVO}/search?s=${encodeURIComponent(t)}`;
               const html = yield fetchText(searchUrl);
               const matches = [];
               const aRegex = /<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
@@ -3094,7 +3124,7 @@ function require_extractor() {
                 const isUrlMatch = href.toLowerCase().includes(t.toLowerCase().replace(/\s+/g, "-")) || tWords.length > 0 && tWords.every((w) => href.toLowerCase().includes(w));
                 if (titleMatch(t, resultTitle) || titleMatch(query, resultTitle) || isWordMatch || isUrlMatch) {
                   console.log(`[PelisPlusHD] Match Found: ${resultTitle} (${href})`);
-                  matches.push({ href: BASE_URL + (href.startsWith("/") ? href : "/" + href), title: resultTitle });
+                  matches.push({ href: BASE_URL_ACTIVO + (href.startsWith("/") ? href : "/" + href), title: resultTitle });
                 }
               }
               return matches;
@@ -3127,53 +3157,61 @@ function require_extractor() {
             movieUrl = `${movieUrl}/temporada/${season}/capitulo/${episode}`;
             console.log(`[PelisPlusHD] Episode URL: ${movieUrl}`);
           }
-          const pageHtml = yield fetchText(movieUrl);
           const rawResults = [];
           const seenUrls = /* @__PURE__ */ new Set();
-          const $movie = cheerio.load(pageHtml);
-          $movie("li[data-url], li.playurl").each((i, el) => {
-            const lang = $movie(el).attr("data-name") || "";
-            const directUrl = $movie(el).attr("data-url");
-            const serverId = $movie(el).attr("data-id");
-            const serverType = $movie(el).attr("data-tipo");
-            const serverName = $movie(el).text().trim();
+
+          const liRegex = /<li\b[^>]*(?:data-url|class="[^"]*playurl[^"]*")[^>]*>/gi;
+          let liMatch;
+          while ((liMatch = liRegex.exec(pageHtml)) !== null) {
+            const tagAbierto = liMatch[0];
+            const finCierre = pageHtml.indexOf("</li>", liMatch.index);
+            const bloqueCompleto = finCierre > -1 ? pageHtml.slice(liMatch.index, finCierre) : tagAbierto;
+            const lang = (tagAbierto.match(/data-name="([^"]*)"/) || [])[1] || "";
+            const directUrl = (tagAbierto.match(/data-url="([^"]*)"/) || [])[1];
+            const serverId = (tagAbierto.match(/data-id="([^"]*)"/) || [])[1];
+            const serverType = (tagAbierto.match(/data-tipo="([^"]*)"/) || [])[1];
+            const serverName = bloqueCompleto.replace(/<[^>]+>/g, "").trim();
             const isSupported = lang.toLowerCase().includes("latino") || lang.toLowerCase().includes("espa\xF1ol") || lang.toLowerCase().includes("castellano");
             if (isSupported) {
               const urlToUse = directUrl || serverId;
               if (urlToUse && !seenUrls.has(urlToUse)) {
                 seenUrls.add(urlToUse);
-                rawResults.push({
-                  serverName,
-                  serverUrl: directUrl || serverId,
-                  language: lang.toLowerCase().includes("latino") ? "Latino" : "Castellano"
-                });
+                rawResults.push({ serverName, serverUrl: directUrl, serverId, serverType, language: lang.toLowerCase().includes("latino") ? "Latino" : "Castellano" });
               }
             }
-          });
-          if (rawResults.length === 0) {
-            console.log(`[PelisPlusHD] No Latino servers in playurl. Trying Universal Scan...`);
-            $movie("li[data-url]").each((i, el) => {
-              var _a, _b;
-              const sUrl = $movie(el).attr("data-url");
-              let sName = $movie(el).attr("data-name") || $movie(el).text() || "";
-              const isSupported = sName.toLowerCase().includes("latino") || sName.toLowerCase().includes("espa\xF1ol") || sName.toLowerCase().includes("castellano") || ((_a = $movie(el).attr("title")) == null ? void 0 : _a.toLowerCase().includes("latino")) || ((_b = $movie(el).attr("title")) == null ? void 0 : _b.toLowerCase().includes("espa\xF1ol"));
-              if (sUrl && isSupported) {
-                rawResults.push({ serverUrl: sUrl, serverName: sName, language: sName.toLowerCase().includes("latino") ? "Latino" : "Castellano" });
-              }
-            });
           }
+
           if (rawResults.length === 0) {
-            console.log(`[PelisPlusHD] No links in Universal Scan. Trying Span Data (#link_url)...`);
+            const liUniversalRegex = /<li\b[^>]*data-url="([^"]*)"[^>]*>([\s\S]{0,300}?)<\/li>/gi;
+            let m2;
+            while ((m2 = liUniversalRegex.exec(pageHtml)) !== null) {
+              const sUrl = m2[1];
+              const tagYContenido = m2[0];
+              let sName = (tagYContenido.match(/data-name="([^"]*)"/) || [])[1] || m2[2].replace(/<[^>]+>/g, "").trim();
+              const tituloAttr = (tagYContenido.match(/title="([^"]*)"/) || [])[1] || "";
+              const sNameLower = sName.toLowerCase();
+              const isSupported = sNameLower.includes("latino") || sNameLower.includes("espa\xF1ol") || sNameLower.includes("castellano") || tituloAttr.toLowerCase().includes("latino") || tituloAttr.toLowerCase().includes("espa\xF1ol");
+              if (sUrl && isSupported) {
+                rawResults.push({ serverUrl: sUrl, serverName: sName, language: sNameLower.includes("latino") ? "Latino" : "Castellano" });
+              }
+            }
+          }
+
+          if (rawResults.length === 0) {
             const isLatinoPage = pageHtml.includes("Espa\xF1ol Latino") || pageHtml.includes("Espa\xF1ol Castellano") || pageHtml.includes("Castellano");
             if (isLatinoPage) {
-              $movie("#link_url span").each((i, el) => {
-                const sUrl = $movie(el).attr("url");
-                const lid = $movie(el).attr("lid");
-                if (sUrl) {
-                  const sName = $movie(`li[data-id="${lid}"] a`).text().trim() || "Servidor";
-                  rawResults.push({ serverUrl: sUrl, serverName: sName, language: pageHtml.includes("Latino") ? "Latino" : "Castellano" });
+              const linkUrlBlockMatch = pageHtml.match(/id="link_url"[\s\S]*?<\/div>/i);
+              if (linkUrlBlockMatch) {
+                const spanRegex = /<span[^>]*url="([^"]*)"[^>]*lid="([^"]*)"[^>]*>/gi;
+                let m3;
+                while ((m3 = spanRegex.exec(linkUrlBlockMatch[0])) !== null) {
+                  const sUrl = m3[1];
+                  const lid = m3[2];
+                  const liTexto = pageHtml.match(new RegExp(`<li[^>]*data-id="${lid}"[^>]*>[\\s\\S]{0,200}?<a[^>]*>([^<]*)<\\/a>`));
+                  const sName = liTexto ? liTexto[1].trim() : "Servidor";
+                  if (sUrl) rawResults.push({ serverUrl: sUrl, serverName: sName, language: pageHtml.includes("Latino") ? "Latino" : "Castellano" });
                 }
-              });
+              }
             }
           }
           if (rawResults.length === 0) {
@@ -3212,7 +3250,7 @@ function require_extractor() {
             try {
               let embedUrl = res.serverUrl;
               if (!embedUrl && res.serverId) {
-                const embedRes = yield axios.get(`${BASE_URL}/ajax/embed?id=${res.serverId}&tipo=${res.serverType}`, { timeout: 4e3 });
+                const embedRes = yield axios.get(`${BASE_URL_ACTIVO}/ajax/embed?id=${res.serverId}&tipo=${res.serverType}`, { timeout: 4e3 });
                 embedUrl = embedRes.data.url || embedRes.data;
               }
               if (!embedUrl || isFinished)
@@ -3221,7 +3259,7 @@ function require_extractor() {
               if (!finalUrl || isFinished)
                 return null;
               const directUrl = typeof finalUrl === "string" ? finalUrl : finalUrl.url;
-              const headers = typeof finalUrl === "object" && finalUrl.headers ? finalUrl.headers : { "Referer": BASE_URL };
+              const headers = typeof finalUrl === "object" && finalUrl.headers ? finalUrl.headers : { "Referer": BASE_URL_ACTIVO };
               const streamData = {
                 url: directUrl,
                 quality: "HD",
@@ -3305,23 +3343,16 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
       console.log(`[PelisPlusHD] Target Title: "${mediaTitle}"`);
       let streams = yield extractor.extract(tmdbId, mediaType, season, episode, mediaTitle);
 
-      // pelisplushd.la es el dominio principal; ww3.pelisplus.to y
-      // pelisplushd.bz son espejos que trajo CloudStream -- si el
-      // principal no encuentra nada, se prueban antes de rendirse
-      // (son sitios que rotan de dominio seguido por bloqueos).
       if (!streams || streams.length === 0) {
-        const dominioOriginal = BASE_URL;
         for (const dominioAlterno of DOMINIOS_RESPALDO_PELISPLUS) {
           try {
-            BASE_URL = dominioAlterno;
             console.log(`[PelisPlusHD] Reintentando con espejo: ${dominioAlterno}`);
-            streams = yield extractor.extract(tmdbId, mediaType, season, episode, mediaTitle);
+            streams = yield extractor.extract(tmdbId, mediaType, season, episode, mediaTitle, dominioAlterno);
             if (streams && streams.length > 0) break;
           } catch (e) {
             console.log(`[PelisPlusHD] Espejo ${dominioAlterno} fallo: ${e.message}`);
           }
         }
-        BASE_URL = dominioOriginal;
       }
 
       if (!streams || streams.length === 0) {
@@ -3331,7 +3362,7 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
       return streams;
     } catch (error) {
       console.error(`[PelisPlusHD] Fatal Error: ${error.message}`);
-      return [{ name: `[PelisPlusHD] Fatal Error: ${error.message}`, title: String((error && error.stack) || (error && error.message) || error).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
+      return [];
     }
   });
 }
