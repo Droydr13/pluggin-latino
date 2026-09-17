@@ -517,6 +517,37 @@ function require_mirrors() {
   module2.exports = { MIRRORS, isMirror };
   return module2.exports;
 }
+function __axiosShim() {
+  function doRequest(method, url, bodyOrConfig, maybeConfig) {
+    let body = null, config = {};
+    if (method === "get") { config = bodyOrConfig || {}; }
+    else { body = bodyOrConfig; config = maybeConfig || {}; }
+    const headers = Object.assign({}, config.headers || {});
+    const opts = { method: method.toUpperCase(), headers };
+    if (config.timeout) opts.signal = timeoutSignalShim(config.timeout);
+    if (body !== null && body !== undefined) {
+      if (typeof body === "string") { opts.body = body; }
+      else if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) { opts.body = body.toString(); }
+      else { opts.body = JSON.stringify(body); if (!headers["Content-Type"] && !headers["content-type"]) headers["Content-Type"] = "application/json"; }
+    }
+    return fetch(url, opts).then((res) => {
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      const parse = ct.includes("application/json") ? res.json() : res.text();
+      return parse.then((data) => ({ data, status: res.status, headers: res.headers }));
+    });
+  }
+  return {
+    get: (url, config) => doRequest("get", url, config),
+    post: (url, body, config) => doRequest("post", url, body, config),
+  };
+}
+function timeoutSignalShim(ms) {
+  try {
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  } catch (e) {}
+  return void 0;
+}
+
 function require_engine() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
@@ -1226,7 +1257,7 @@ function require_quality() {
 function require_goodstream() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   var { detectQuality } = require_quality();
   var { getSessionUA } = require_http();
   function resolve3(embedUrl) {
@@ -1455,7 +1486,7 @@ function require_vimeos() {
 function require_buzzheavier() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   var { getStealthHeaders } = require_http();
   function resolve3(embedUrl) {
     return __async(this, null, function* () {
@@ -1581,14 +1612,14 @@ function resolve(embedUrl) {
 var import_axios, UA;
 var init_okru = __esm({
   "src/resolvers/okru.js"() {
-    import_axios = __toESM(require("axios"));
+    import_axios = __toESM(__axiosShim());
     UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
 function require_pixeldrain() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   function resolve3(embedUrl) {
     return __async(this, null, function* () {
       try {
@@ -1698,7 +1729,7 @@ function resolve2(embedUrl) {
 var import_axios2, UA2;
 var init_turbovid = __esm({
   "src/resolvers/turbovid.js"() {
-    import_axios2 = __toESM(require("axios"));
+    import_axios2 = __toESM(__axiosShim());
     UA2 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
   }
 });
@@ -1810,7 +1841,7 @@ function require_embedseek() {
 function require_tplayer() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   var { getStealthHeaders } = require_http();
   function resolve3(embedUrl) {
     return __async(this, null, function* () {
@@ -2230,7 +2261,7 @@ function require_doodstream() {
 function require_vidnest() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   function resolve3(embedUrl) {
     return __async(this, null, function* () {
       try {
@@ -2322,7 +2353,7 @@ function require_vidsonic() {
 function require_barmonrey() {
   var module2 = { exports: {} };
   var exports2 = module2.exports;
-  var axios3 = require("axios");
+  var axios3 = __axiosShim();
   function resolve3(embedUrl) {
     return __async(this, null, function* () {
       try {
@@ -2693,58 +2724,58 @@ var { finalizeStreams } = require_engine();
 var { resolveEmbed } = require_resolvers();
 var ANIMEAV1_BASE = "https://animeav1.com";
 var ANIMEAV1_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-function av1GetDoc(url, opts) {
-  const axios3 = require("axios");
-  const cheerio3 = require("cheerio-without-node-native");
-  return axios3.get(url, Object.assign({ headers: { "User-Agent": ANIMEAV1_UA } }, opts || {})).then((r) => cheerio3.load(r.data));
+function av1FetchText(url, opts) {
+  return fetch(url, Object.assign({ headers: { "User-Agent": ANIMEAV1_UA } }, opts || {})).then((r) => r.text());
 }
 function normalizarAV1(s) {
-  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+function extraerResultadosAV1(html) {
+  const resultados = [];
+  const regex = /<article[^>]*>[\s\S]{0,50}?<a\s+[^>]*href="([^"]+)"[\s\S]{0,300}?<header[^>]*>[\s\S]{0,100}?<h3[^>]*>([^<]+)<\/h3>/gi;
+  let m;
+  while ((m = regex.exec(html)) !== null) {
+    resultados.push({ href: m[1], title: m[2].trim() });
+  }
+  return resultados;
 }
 function getStreams(tmdbId, mediaType, season, episode, title) {
   return __async(this, null, function* () {
     if (!title) return [];
     try {
-      const $search = yield av1GetDoc(`${ANIMEAV1_BASE}/catalogo?search=${encodeURIComponent(title)}`);
-      let targetHref = null;
+      const htmlSearch = yield av1FetchText(`${ANIMEAV1_BASE}/catalogo?search=${encodeURIComponent(title)}`);
+      const resultados = extraerResultadosAV1(htmlSearch);
+      if (!resultados.length) return [];
       const tituloNorm = normalizarAV1(title);
-      $search("main section div.grid article").each(function() {
-        if (targetHref) return;
-        const t = $search(this).find("header h3").text().trim();
-        const href = $search(this).find("a").attr("href");
-        if (!href) return;
-        if (!targetHref || normalizarAV1(t) === tituloNorm) {
-          targetHref = href.startsWith("http") ? href : ANIMEAV1_BASE + href;
-        }
-      });
-      if (!targetHref) return [];
+      const match = resultados.find((r) => normalizarAV1(r.title) === tituloNorm) || resultados[0];
+      const targetHref = match.href.startsWith("http") ? match.href : ANIMEAV1_BASE + match.href;
+
       const epNum = parseInt(episode) || 1;
-      const $show = yield av1GetDoc(targetHref);
+      const htmlShow = yield av1FetchText(targetHref);
       let epUrl = targetHref;
-      const epRegex = /\/(\d+)$/;
-      $show("main section.from-mute article").each(function() {
-        const href = $show(this).find("a").attr("href");
-        if (!href) return;
-        const full = ANIMEAV1_BASE + href;
-        const m = full.match(epRegex);
-        if (m && parseInt(m[1]) === epNum) epUrl = full;
-      });
-      const $ep = yield av1GetDoc(epUrl);
-      let embedsJson = null;
-      $ep("script").each(function() {
-        if (embedsJson) return;
-        const scriptTxt = $ep(this).html() || "";
-        if (!scriptTxt.includes("embeds:{")) return;
-        const m = scriptTxt.match(/embeds:(\{(?:DUB|SUB):\[.*?\]\})/);
-        if (m) {
-          try {
-            const fixed = m[1].replace(/SUB/g, '"SUB"').replace(/DUB/g, '"DUB"').replace(/url/g, '"url"').replace(/server/g, '"server"');
-            embedsJson = JSON.parse(fixed);
-          } catch (e) {
-          }
+      const bloqueRegex = /<section[^>]*class="[^"]*from-mute[^"]*"[\s\S]*?<\/section>/i;
+      const bloqueMatch = htmlShow.match(bloqueRegex);
+      if (bloqueMatch) {
+        const hrefRegex = /<a\s+[^>]*href="([^"]+)"/g;
+        let mHref;
+        while ((mHref = hrefRegex.exec(bloqueMatch[0])) !== null) {
+          const full = ANIMEAV1_BASE + mHref[1];
+          const epMatch = full.match(/\/(\d+)$/);
+          if (epMatch && parseInt(epMatch[1]) === epNum) { epUrl = full; break; }
         }
-      });
+      }
+
+      const htmlEp = yield av1FetchText(epUrl);
+      let embedsJson = null;
+      const m = htmlEp.match(/embeds:(\{(?:DUB|SUB):\[.*?\]\})/);
+      if (m) {
+        try {
+          const fixed = m[1].replace(/SUB/g, '"SUB"').replace(/DUB/g, '"DUB"').replace(/url/g, '"url"').replace(/server/g, '"server"');
+          embedsJson = JSON.parse(fixed);
+        } catch (e) {}
+      }
       if (!embedsJson) return [];
+
       const todos = [].concat(embedsJson.SUB || [], embedsJson.DUB || []);
       const resueltos = [];
       yield Promise.all(todos.map((servidor) => __async(this, null, function* () {
@@ -2762,7 +2793,7 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
       return yield finalizeStreams(resueltos, "AnimeAV1", title);
     } catch (e) {
       console.log(`[AnimeAV1] Error: ${e.message}`);
-      return [{ name: `[AnimeAV1] Error: ${e.message}`, title: String((e && e.stack) || (e && e.message) || e).slice(0, 300), url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" }];
+      return [];
     }
   });
 }
