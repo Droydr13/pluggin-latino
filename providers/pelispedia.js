@@ -348,14 +348,20 @@ async function extractStreamsPP(url) {
   const seenUrls = new Set();
 
   const bloqueRegex = /id="options-\d+"[\s\S]{0,50}?<iframe[^>]+src="([^"]+)"/gi;
+  const iframesEncontrados = [];
   let m;
-  while ((m = bloqueRegex.exec(html)) !== null) {
-    const iframeUrl = m[1];
+  while ((m = bloqueRegex.exec(html)) !== null) iframesEncontrados.push(m[1]);
+
+  const spanRegex = /<span[^>]*class="[^"]*server[^"]*"[^>]*>([^<]*)<\/span>/gi;
+  const idiomasEncontrados = [];
+  while ((m = spanRegex.exec(html)) !== null) idiomasEncontrados.push(m[1].trim().replace(/-/g, ""));
+
+  iframesEncontrados.forEach((iframeUrl, i) => {
     if (!seenUrls.has(iframeUrl)) {
       seenUrls.add(iframeUrl);
-      streams.push({ servername: "Servidor", url: iframeUrl, language: "Latino", quality: "1080p", necesitaSegundaEtapa: true });
+      streams.push({ servername: "Servidor", url: iframeUrl, language: idiomasEncontrados[i] || "Latino", quality: "1080p", necesitaSegundaEtapa: true });
     }
-  }
+  });
 
   if (!streams.length) {
     const playerRegex = /<div[^>]*class="[^"]*player-content[^"]*"[\s\S]*?<iframe[^>]+src="([^"]+)"/gi;
@@ -440,7 +446,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
           if (r.url) {
             streams.push({
               name: "Pelispedia",
-              title: `${r.quality || "1080p"} \u00b7 Latino \u00b7 ${r.servername || embed.servername || "Server"}`,
+              title: `${r.quality || "1080p"} \u00b7 ${embed.language || "Latino"} \u00b7 ${r.servername || embed.servername || "Server"}`,
               url: r.url,
               headers: r.headers || { "User-Agent": PP_UA, Referer: embed.url },
             });
