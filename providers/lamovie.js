@@ -473,42 +473,6 @@ function getEpisodeId(seriesId, seasonNum, episodeNum) {
     return null;
   });
 }
-function processOneEmbed(embed) {
-  var resolver = getResolver(embed.url);
-  if (!resolver) {
-    console.log("[LaMovie] Sin resolver: " + embed.url);
-    return Promise.resolve(null);
-  }
-  return resolver(embed.url).then(function (result) {
-    if (!result || !result.url) return null;
-    var serverName = getServerName(embed.url);
-    var qualityLabel = embed.quality || result.quality || "1080p";
-    var displayQuality = serverName + " \xB7 " + qualityLabel;
-    return {
-      name: "LaMovie",
-      title: displayQuality,
-      url: result.url,
-      quality: displayQuality,
-      headers: result.headers || {}
-    };
-  }).catch(function (err) {
-    console.log("[LaMovie] Error embed: " + err.message);
-    return null;
-  });
-}
-function processEmbeds(embeds) {
-  var results = [];
-  function next(i) {
-    if (i >= embeds.length) return Promise.resolve(results);
-    return processOneEmbed(embeds[i]).then(function (result) {
-      if (result) results.push(result);
-      return next(i + 1);
-    }).catch(function () {
-      return next(i + 1);
-    });
-  }
-  return next(0);
-}
 function getStreams(tmdbId, mediaType, season, episode) {
   var resolvedType = mediaType === "series" ? "tv" : mediaType || "movie";
   try {
@@ -603,7 +567,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
                     var qualityLabel = embed.quality || result.quality || "1080p";
 
                     var streamName = "LaMovie";
-                    var streamTitle = embed.language + " - " + serverName + " " + qualityLabel;
+                    var streamTitle = embed.language + " \u00b7 " + qualityLabel + " \u00b7 " + serverName;
 
                     results.push({
                       name: streamName,
