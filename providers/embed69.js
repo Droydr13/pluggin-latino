@@ -391,7 +391,7 @@ function we(e, o, t, l) {
         if (p.length > 0) {
           for (let { url: h, quality: $, lang: R, servername: k, headers: B } of p) {
             let j = R === "LAT" ? "Latino" : R === "ESP" ? "Espa\xF1ol" : "Subtitulado", z = de[k] || k;
-            w.push({ name: "Embed69", title: `${$ || "1080p"} \xB7 ${j} \xB7 ${z}`, url: h, quality: $ || "1080p", headers: B || {} }), console.log(`[Embed69] Resolved: ${k} quality=${$} url=${h == null ? void 0 : h.substring(0, 50)}`);
+            w.push({ name: "Embed69", title: `${j} \xB7 ${$ || "1080p"} \xB7 ${z}`, url: h, quality: $ || "1080p", headers: B || {} }), console.log(`[Embed69] Resolved: ${k} quality=${$} url=${h == null ? void 0 : h.substring(0, 50)}`);
           }
           console.log(`[Embed69] \u2713 Streams encontrados en ${d}, omitiendo idiomas de menor prioridad`);
           break;
