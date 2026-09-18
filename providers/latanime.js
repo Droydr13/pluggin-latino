@@ -103,7 +103,11 @@ function extraerEpisodios(html) {
     const texto = m[2].replace(/<[^>]+>/g, "").trim();
     const epMatch = texto.match(/(\d+)\s*$/);
     if (!epMatch) continue;
-    episodios.push({ href: m[1], episodio: parseInt(epMatch[1]) });
+    let idioma = "Latino";
+    if (/castellano/i.test(texto)) idioma = "Castellano";
+    else if (/catal[a\u00e1]n/i.test(texto)) idioma = "Catal\u00e1n";
+    else if (/vose|subtitulado/i.test(texto)) idioma = "VOSE";
+    episodios.push({ href: m[1], episodio: parseInt(epMatch[1]), idioma });
   }
   return episodios;
 }
@@ -169,6 +173,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
       const match = resultados.find((r) => normalizarLA(r.title) === tituloNorm) || resultados[0];
       const targetHref = match.href.startsWith("http") ? match.href : LATANIME_BASE + "/" + match.href.replace(/^\//, "");
       let episodeUrl = targetHref;
+      let idiomaDetectado = "Latino";
       if (mediaType !== "movie" && episode) {
         const epNum = parseInt(episode);
         const showHtml = yield fetchText(targetHref);
@@ -176,6 +181,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
         const epMatch = episodios.find((e) => e.episodio === epNum);
         if (!epMatch) return [];
         episodeUrl = epMatch.href.startsWith("http") ? epMatch.href : LATANIME_BASE + "/" + epMatch.href.replace(/^\//, "");
+        idiomaDetectado = epMatch.idioma;
       }
       const html = yield fetchText(episodeUrl);
       const rawUrls = [];
@@ -196,7 +202,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
           if (resultado) {
             resueltos.push({
               name: "LatAnime",
-              title: `${nombreDesdeHost(fixedUrl)} \xB7 HD`,
+              title: `${nombreDesdeHost(fixedUrl)} \xB7 ${idiomaDetectado}`,
               url: resultado.url,
               quality: "HD",
               headers: { "User-Agent": LATANIME_UA, Referer: resultado.referer }
