@@ -202,11 +202,13 @@ function getStreams(tmdbId, mediaType, season, episode) {
         try {
           const resultado = yield resolveGenerico(embed.url);
           if (resultado) {
+            const langAC = (embed.lang && String(embed.lang).trim()) || "Latino";
+            const qualityAC = (embed.quality && String(embed.quality).trim()) || "HD";
             resueltos.push({
               name: "AllCalidad",
-              title: `${embed.lang || "Latino"} \xB7 ${embed.quality || "HD"}`,
+              title: `${langAC} \xB7 ${qualityAC}`,
               url: resultado.url,
-              quality: embed.quality || "HD",
+              quality: qualityAC,
               headers: { "User-Agent": AC_UA, Referer: resultado.referer }
             });
           }

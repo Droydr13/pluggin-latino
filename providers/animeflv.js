@@ -245,7 +245,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
           }
           resueltos.push({
             name: "AnimeFLV",
-            title: `${nombreDesdeHost(url)} \xB7 ${idioma}`,
+            title: `${idioma} \xB7 HD \xB7 ${nombreDesdeHost(url)}`,
             url: finalUrl,
             quality: "HD",
             headers: { "User-Agent": ANIMEFLV_UA, Referer: referer }

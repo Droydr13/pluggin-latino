@@ -446,7 +446,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
           if (r.url) {
             streams.push({
               name: "Pelispedia",
-              title: `${r.quality || "1080p"} \u00b7 ${embed.language || "Latino"} \u00b7 ${r.servername || embed.servername || "Server"}`,
+              title: `${embed.language || "Latino"} \u00b7 ${r.quality || "1080p"} \u00b7 ${r.servername || embed.servername || "Server"}`,
               url: r.url,
               headers: r.headers || { "User-Agent": PP_UA, Referer: embed.url },
             });

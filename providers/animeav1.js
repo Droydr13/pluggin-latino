@@ -653,7 +653,7 @@ function require_engine() {
         const isVerified = s.verified === true;
         const checkMark = isReal ? " \u2705" : "";
         const streamName = `${providerName} - ${quality}${checkMark}`;
-        const streamTitle = `${rawLang} - ${server}`;
+        const streamTitle = `${rawLang} \xB7 ${quality} \xB7 ${server}`;
         if (seenTitles.has(streamName + streamTitle + s.url))
           continue;
         seenTitles.add(streamName + streamTitle + s.url);
@@ -2776,18 +2776,20 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
       }
       if (!embedsJson) return [];
 
-      const todos = [].concat(embedsJson.SUB || [], embedsJson.DUB || []);
+      const subList = (embedsJson.SUB || []).map((s) => Object.assign({}, s, { _lang: "Subtitulado" }));
+      const dubList = (embedsJson.DUB || []).map((s) => Object.assign({}, s, { _lang: "Latino" }));
+      const todos = [].concat(subList, dubList);
       const resueltos = [];
       yield Promise.all(todos.map((servidor) => __async(this, null, function* () {
         if (!servidor.url) return;
         let url = servidor.url;
         if (url.includes("player.zilla-networks.com")) {
           url = url.replace("/play/", "/m3u8/");
-          resueltos.push({ url, serverName: "PlayerZilla", quality: "1080p", headers: { "User-Agent": ANIMEAV1_UA, Referer: ANIMEAV1_BASE + "/" } });
+          resueltos.push({ url, serverName: "PlayerZilla", quality: "1080p", lang: servidor._lang, headers: { "User-Agent": ANIMEAV1_UA, Referer: ANIMEAV1_BASE + "/" } });
           return;
         }
         const r = yield resolveEmbed(url).catch(() => null);
-        if (r) resueltos.push(Object.assign({}, r, { serverName: servidor.server || r.serverName }));
+        if (r) resueltos.push(Object.assign({}, r, { serverName: servidor.server || r.serverName, lang: servidor._lang }));
       })));
       if (!resueltos.length) return [];
       return yield finalizeStreams(resueltos, "AnimeAV1", title);

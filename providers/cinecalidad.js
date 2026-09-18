@@ -390,7 +390,7 @@ function he(e) {
       if (!s)
         return console.log(`[${t}] Sin resolver`), null;
       let o = yield s(e);
-      return o != null && o.url ? { name: "CineCalidad", title: `${o.quality || "Unknown"} \xB7 ${t}`, url: o.url, quality: o.quality || "Unknown", headers: o.headers || {} } : (console.log(`[${t}] Sin URL final`), null);
+      return o != null && o.url ? { name: "CineCalidad", title: `Latino \xB7 ${o.quality || "Unknown"} \xB7 ${t}`, url: o.url, quality: o.quality || "Unknown", headers: o.headers || {} } : (console.log(`[${t}] Sin URL final`), null);
     } catch (s) {
       return null;
     }

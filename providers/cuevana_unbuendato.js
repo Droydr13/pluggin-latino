@@ -200,7 +200,7 @@ function intentarApiUnbuendato(tmdbId, mediaType, season, episode) {
       try {
         const r = e.url.includes("ok.ru") ? yield resolveOkRu(e.url) : yield resolveGenerico(e.url, "https://cuevana.unbuendato.com/");
         if (r) {
-          resueltos.push({ name: "Cuevana", title: `${e.servidor} \xB7 ${e.idioma}`, url: r.url, quality: "HD", headers: { "User-Agent": CUEVANA_UA, Referer: r.referer } });
+          resueltos.push({ name: "Cuevana", title: `${e.idioma} \xB7 HD \xB7 ${e.servidor}`, url: r.url, quality: "HD", headers: { "User-Agent": CUEVANA_UA, Referer: r.referer } });
         }
       } catch (err) {
       }
@@ -241,7 +241,8 @@ function intentarSubmenuWv3(title, isMovie, season, episode) {
     const promesasSubmenu = [];
     for (const bloque of bloques) {
       const cabecera = bloque.slice(0, 150).toLowerCase();
-      if (!cabecera.includes("latino") && !cabecera.includes("espa\xF1ol") && !cabecera.includes("castellano")) continue;
+      const idiomaSubmenu = cabecera.includes("castellano") ? "Castellano" : cabecera.includes("latino") ? "Latino" : cabecera.includes("espa\xF1ol") ? "Latino" : null;
+      if (!idiomaSubmenu) continue;
       const dataTrRegex = /class="[^"]*clili[^"]*"[^>]*data-tr="([^"]+)"/gi;
       let mTr;
       while ((mTr = dataTrRegex.exec(bloque)) !== null) {
@@ -250,18 +251,19 @@ function intentarSubmenuWv3(title, isMovie, season, episode) {
         promesasSubmenu.push(
           fetchText(iframeUrl).then((htmlIframe) => {
             const mUrl = htmlIframe.match(/var url = '([^']+)'/);
-            return mUrl ? mUrl[1] : null;
+            return mUrl ? { url: mUrl[1], idioma: idiomaSubmenu } : null;
           }).catch(() => null)
         );
       }
     }
-    const urls = (yield Promise.all(promesasSubmenu)).filter(Boolean);
-    if (!urls.length) return [];
+    const entradasSubmenu = (yield Promise.all(promesasSubmenu)).filter(Boolean);
+    if (!entradasSubmenu.length) return [];
     const resueltos = [];
-    yield Promise.all(urls.map((u) => __async(null, null, function* () {
+    yield Promise.all(entradasSubmenu.map((entrada) => __async(null, null, function* () {
       try {
+        const u = entrada.url;
         const r = u.includes("ok.ru") ? yield resolveOkRu(u) : yield resolveGenerico(u, base + "/");
-        if (r) resueltos.push({ name: "Cuevana", title: `HD \xB7 Latino`, url: r.url, quality: "HD", headers: { "User-Agent": CUEVANA_UA, Referer: r.referer } });
+        if (r) resueltos.push({ name: "Cuevana", title: `${entrada.idioma} \xB7 HD`, url: r.url, quality: "HD", headers: { "User-Agent": CUEVANA_UA, Referer: r.referer } });
       } catch (e) {
       }
     })));
@@ -329,7 +331,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
             const finalUrl = r ? r.url : p.url;
             resueltos.push({
               name: "Cuevana",
-              title: `${p.servidor} \xB7 HD`,
+              title: `${p.idioma || "Latino"} \xB7 HD \xB7 ${p.servidor}`,
               url: finalUrl,
               quality: "HD",
               headers: { "User-Agent": CUEVANA_UA, Referer: r ? r.referer : resultado.referer }

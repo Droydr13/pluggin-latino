@@ -140,6 +140,8 @@ function getStreams(tmdbId, mediaType, season, episode) {
       if (!resultados.length) return [];
       const match = resultados.find((r) => normalizarAJ(r.title) === tituloNorm) || resultados[0];
       const targetHref = match.href.startsWith("http") ? match.href : ANIMEJL_BASE + match.href;
+      const hrefLower = targetHref.toLowerCase();
+      const idiomaAJ = hrefLower.includes("-latino") ? "Latino" : hrefLower.includes("-castellano") ? "Castellano" : "VOSE";
       const htmlShow = yield fetchText(targetHref);
       const episodesMatch = htmlShow.match(/var\s*episodes\s*=\s*(\[[\s\S]*?\]);/);
       if (!episodesMatch) return [];
@@ -166,7 +168,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
           if (resultado) {
             resueltos.push({
               name: "AnimeJL",
-              title: `${nombreDesdeHost(u)} \xB7 HD`,
+              title: `${idiomaAJ} \xB7 HD \xB7 ${nombreDesdeHost(u)}`,
               url: resultado.url,
               quality: "HD",
               headers: { "User-Agent": ANIMEJL_UA, Referer: resultado.referer }

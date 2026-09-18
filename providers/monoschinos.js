@@ -185,7 +185,7 @@ async function intentarMetodoNuevo(title, mediaType, episode) {
     if (r && r.url) {
       resueltos.push({
         name: "Monoschinos",
-        title: `${servidor} \u00b7 HD`,
+        title: `Latino \u00b7 HD \u00b7 ${servidor}`,
         url: r.url,
         quality: r.quality || "HD",
         headers: { Referer: r.referer || embedUrl, "User-Agent": MC_UA },
@@ -229,7 +229,7 @@ async function intentarMetodoViejo(title, mediaType, episode) {
     if (r && r.url) {
       resueltos.push({
         name: "Monoschinos",
-        title: `${getOrigin(u).replace(/^https?:\/\//, "")} \u00b7 HD`,
+        title: `Latino \u00b7 HD \u00b7 ${getOrigin(u).replace(/^https?:\/\//, "")}`,
         url: r.url,
         quality: "HD",
         headers: { Referer: r.referer, "User-Agent": MC_UA },

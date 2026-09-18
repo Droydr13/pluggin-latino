@@ -201,7 +201,7 @@ function intentarGraphQL(mediaType, title, season, episode) {
         if (resultado) {
           resueltos.push({
             name: "Doramasflix",
-            title: `${IDIOMA_POR_ID[entrada.lang] || entrada.lang || "Latino"} \xB7 ${formatQuality(resultado.url) || "HD"}`,
+            title: `${IDIOMA_POR_ID[entrada.lang] || entrada.lang || "Latino"} \xB7 ${formatQuality(resultado.url) || "HD"} \xB7 Doramasflix`,
             url: resultado.url,
             quality: formatQuality(resultado.url) || "HD",
             headers: { "User-Agent": DORAMASFLIX_UA, Referer: resultado.referer }
@@ -551,7 +551,7 @@ function intentarHTML(mediaType, title, season, episode) {
         if (resultado) {
           resueltos.push({
             name: "Doramasflix",
-            title: `${s.name} \xB7 ${formatQuality(resultado.url) || "HD"}`,
+            title: `Latino \xB7 ${formatQuality(resultado.url) || "HD"} \xB7 ${s.name}`,
             url: resultado.url,
             quality: formatQuality(resultado.url) || "HD",
             headers: { "User-Agent": DORAMASFLIX_UA, Referer: resultado.referer }

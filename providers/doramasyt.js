@@ -188,6 +188,8 @@ function getStreams(tmdbId, mediaType, season, episode) {
       const resultados = extraerResultadosDY(searchHtml);
       if (!resultados.length) return [];
       const match = resultados.find((r) => normalizarDY(r.title) === tituloNorm) || resultados[0];
+      const matchTitleLower = (match.title || "").toLowerCase();
+      const idiomaDY = matchTitleLower.includes("latino") ? "Latino" : matchTitleLower.includes("castellano") ? "Castellano" : "VOSE";
       const targetHref = match.href.startsWith("http") ? match.href : DORAMASYT_BASE + "/" + match.href.replace(/^\//, "");
       let episodeUrl = targetHref;
       if (mediaType !== "movie" && episode) {
@@ -232,7 +234,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
             const nombreServidor = SERVIDORES_DY[texto.toLowerCase()] || nombreDesdeHost(fixedUrl);
             resueltos.push({
               name: "DoramasYT",
-              title: `${nombreServidor} \xB7 HD`,
+              title: `${idiomaDY} \xB7 HD \xB7 ${nombreServidor}`,
               url: resultado.url,
               quality: "HD",
               headers: { "User-Agent": DORAMASYT_UA, Referer: resultado.referer }

@@ -421,7 +421,7 @@ var streamLabels = (function(){try{return require('./stream_labels.js')}catch(e)
 var buildStreamLabel = streamLabels ? streamLabels.buildStreamLabel : function(s, pn) {
   var q = s.quality || 'HD', server = s.serverName || s.serverLabel || s.servername || '';
   var lang = s.lang || s.language || s.audio || 'Latino', isReal = s.isReal === true;
-  return { name: pn + ' - ' + q + (isReal ? ' \u2705' : ''), title: lang + ' - ' + server, quality: q, _resWeight: 0, _sizeWeight: 0 };
+  return { name: pn + ' - ' + q + (isReal ? ' \u2705' : ''), title: lang + ' \u00b7 ' + q + ' \u00b7 ' + server, quality: q, _resWeight: 0, _sizeWeight: 0 };
 };
 
 // src/utils/ua.js

@@ -307,7 +307,7 @@ async function resolverEmbedHS(embed) {
     const calidad = resultado.quality || "Unknown";
     return {
       name: "Hackstore",
-      title: `${calidad} \u00b7 ${embed.lang} \u00b7 ${nombreServidorHS(embed.url)}`,
+      title: `${embed.lang} \u00b7 ${calidad} \u00b7 ${nombreServidorHS(embed.url)}`,
       quality: calidad,
       url: resultado.url,
       headers: resultado.headers || {},

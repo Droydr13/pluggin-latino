@@ -183,7 +183,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
           if (resultado) {
             resueltos.push({
               name: "JKAnime",
-              title: `${nombreDesdeHost(fixedUrl)} \xB7 ${idioma}`,
+              title: `${idioma} \xB7 HD \xB7 ${nombreDesdeHost(fixedUrl)}`,
               url: resultado.url,
               quality: "HD",
               headers: { "User-Agent": JKANIME_UA, Referer: resultado.referer }

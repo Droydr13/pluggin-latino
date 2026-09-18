@@ -638,7 +638,7 @@ function require_engine() {
           const isVerified = s.verified === true;
           const checkMark = isReal ? " \u2705" : "";
           const streamName = `${providerName} - ${quality}${checkMark}`;
-          const streamTitle = `${rawLang} - ${server}`;
+          const streamTitle = `${rawLang} \xB7 ${quality} \xB7 ${server}`;
           if (seenTitles.has(streamName + streamTitle + s.url))
             continue;
           seenTitles.add(streamName + streamTitle + s.url);

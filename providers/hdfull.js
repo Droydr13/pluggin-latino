@@ -673,7 +673,7 @@ function require_engine() {
         const isVerified = s.verified === true;
         const checkMark = isReal ? " \u2705" : "";
         const streamName = `${providerName} - ${quality}${checkMark}`;
-        const streamTitle = `${rawLang} - ${server}`;
+        const streamTitle = `${rawLang} \xB7 ${quality} \xB7 ${server}`;
         if (seenTitles.has(streamName + streamTitle + s.url))
           continue;
         seenTitles.add(streamName + streamTitle + s.url);
@@ -2926,7 +2926,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
         const rawUrl = fixHostsLinksHDF(urlFn(entry.code));
         try {
           const r = yield resolveEmbed(rawUrl);
-          if (r) resueltos.push(Object.assign({}, r, { serverName: (entry.lang || "Latino") + (r.serverName ? " \xB7 " + r.serverName : "") }));
+          if (r) resueltos.push(Object.assign({}, r, { lang: entry.lang || "Latino" }));
         } catch (e) {
         }
       })));

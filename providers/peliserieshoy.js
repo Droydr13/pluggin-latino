@@ -116,9 +116,9 @@ function V(e, t, n, r) {
               return console.log(`[PelisSeriesHoy] \u{1F5D1}\uFE0F Descartando servidor problem\xE1tico (HTML/Filemoon): ${p}`), null;
             if (u.sig) {
               let k = `${f}/p.php?url=${encodeURIComponent(c)}&sig=${encodeURIComponent(u.sig)}`;
-              return { name: "PelisSeriesHoy", title: `${w} \xB7 ${$} \xB7 ${p}`, url: k, quality: w, headers: { Referer: f } };
+              return { name: "PelisSeriesHoy", title: `${$} \xB7 ${w} \xB7 ${p}`, url: k, quality: w, headers: { Referer: f } };
             }
-            return u.type === "mp4" || c.includes(".mp4") || c.includes(".m3u8") ? { name: "PelisSeriesHoy", title: `${w} \xB7 ${$} \xB7 ${p}`, url: c, quality: w, headers: { Referer: f } } : null;
+            return u.type === "mp4" || c.includes(".mp4") || c.includes(".m3u8") ? { name: "PelisSeriesHoy", title: `${$} \xB7 ${w} \xB7 ${p}`, url: c, quality: w, headers: { Referer: f } } : null;
           } catch (u) {
             console.log(`[PelisSeriesHoy] Error en resolver ${l}: ${u.message}`);
           }

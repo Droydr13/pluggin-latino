@@ -481,7 +481,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
           return resolveLiveMaster(videoId).then(function(result) {
             return [{
               name: "LACartoons - HD - Espa\xF1ol Latino",
-              title: (result.title || "HD") + " - Espa\xF1ol Latino",
+              title: "Latino \xB7 " + (result.title || "HD") + " \xB7 Directo",
               url: result.url,
               quality: "HD",
               headers: RPMVID_HEADERS
@@ -494,7 +494,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
           return extractOkRuStreams(embedSrc).then(function(result) {
             return [{
               name: "LACartoons - " + result.quality + " - Espa\xF1ol Latino (ok.ru)",
-              title: "ok.ru - " + result.quality + " - Espa\xF1ol Latino",
+              title: "Latino \xB7 " + result.quality + " \xB7 Ok.ru",
               url: result.url,
               quality: result.quality
             }];

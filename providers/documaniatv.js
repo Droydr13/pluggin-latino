@@ -108,7 +108,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
 
     return [{
       name: 'DocumaniaTV',
-      title: '720p \u00b7 Directo',
+      title: 'Latino \u00b7 720p \u00b7 Directo',
       url: finalUrl,
       quality: '720p',
       headers: { 'User-Agent': DOCUMANIATV_UA, Referer: DOCUMANIATV_BASE + '/' },

@@ -2923,11 +2923,6 @@ function require_engine() {
           })));
           validatedStreams.push(...batchResults);
         }
-    // ==================== etiquetado enriquecido de calidad (de stream_labels.js) ====================
-    // Detecta codec, audio, HDR, fuente, tamano, etc a partir de la URL
-    // y metadata del stream, para mostrar una etiqueta mas completa que
-    // solo "HD". Portado self-contained (sin require cruzado a otro
-    // archivo) para no depender de si Nuvio permite eso o no.
     var Q_WEIGHTS_PP = { "4K": 100, "2160p": 95, "1440p": 85, "1080p": 80, "720p": 70, "480p": 60, "360p": 50, "Auto": 30, "HD": 40, "Unknown": 0 };
     function parseQualityPP(url, fallback) {
       const t = (url || "").toLowerCase();
@@ -3027,21 +3022,7 @@ function require_engine() {
       if (service) nameParts.push(service);
       const name = nameParts.join(" \u2022 ") + checkMark;
 
-      const line1Parts = [rawLangEtiqueta];
-      if (server) line1Parts.push(server);
-      if (size) line1Parts.push(size);
-      const line1 = line1Parts.filter(Boolean).join(" \u2022 ");
-
-      const line2Parts = [];
-      if (source) line2Parts.push(source);
-      if (codec) line2Parts.push(codec);
-      if (hdr) line2Parts.push(hdr);
-      if (audio) line2Parts.push(audio);
-      if (fps) line2Parts.push(fps);
-      const line2 = line2Parts.join(" \u2022 ");
-
-      const title = line1 && line2 ? `${line1}
-${line2}` : line1 || line2 || `${rawLangEtiqueta} - ${server || "Server"}`;
+      const title = `${rawLangEtiqueta} \xB7 ${quality} \xB7 ${server || "Servidor"}`;
 
       return { name, title, quality, _resWeight: Q_WEIGHTS_PP[quality] || Q_WEIGHTS_PP["HD"] };
     }

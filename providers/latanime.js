@@ -202,7 +202,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
           if (resultado) {
             resueltos.push({
               name: "LatAnime",
-              title: `${nombreDesdeHost(fixedUrl)} \xB7 ${idiomaDetectado}`,
+              title: `${idiomaDetectado} \xB7 HD \xB7 ${nombreDesdeHost(fixedUrl)}`,
               url: resultado.url,
               quality: "HD",
               headers: { "User-Agent": LATANIME_UA, Referer: resultado.referer }

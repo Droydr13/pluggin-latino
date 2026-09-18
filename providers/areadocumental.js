@@ -158,7 +158,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
       }
       return [{
         name: "AreaDocumental",
-        title: "720p \xB7 Directo",
+        title: "Latino \xB7 720p \xB7 Directo",
         url: videoUrl,
         quality: "720p",
         headers
