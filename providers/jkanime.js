@@ -159,7 +159,8 @@ function getStreams(tmdbId, mediaType, season, episode) {
       const epNum = mediaType !== "movie" && episode ? parseInt(episode) : 1;
       const episodeUrl = `${targetHref.replace(/\/$/, "")}/${epNum}`;
       const html = yield fetchText(episodeUrl);
-      const rawUrls = [];
+      const rawEntries = [];
+      const IDIOMAS_JK = { "3": "Latino", "1": "VOSE" };
       const serversMatch = html.match(/var servers = \[([\s\S]*?)\];/);
       if (serversMatch) {
         try {
@@ -167,7 +168,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
           lista.forEach((s) => {
             if (!s.remote) return;
             try {
-              rawUrls.push(base64DecodeUtf8(s.remote));
+              rawEntries.push({ url: base64DecodeUtf8(s.remote), idioma: IDIOMAS_JK[String(s.lang)] || "VOSE" });
             } catch (e) {
             }
           });
@@ -175,14 +176,14 @@ function getStreams(tmdbId, mediaType, season, episode) {
         }
       }
       const resueltos = [];
-      yield Promise.all(rawUrls.map((u) => __async(null, null, function* () {
+      yield Promise.all(rawEntries.map(({ url: u, idioma }) => __async(null, null, function* () {
         try {
           const fixedUrl = fixHostsLinksJK(u);
           const resultado = yield resolveGenerico(fixedUrl);
           if (resultado) {
             resueltos.push({
               name: "JKAnime",
-              title: `${nombreDesdeHost(fixedUrl)} \xB7 HD`,
+              title: `${nombreDesdeHost(fixedUrl)} \xB7 ${idioma}`,
               url: resultado.url,
               quality: "HD",
               headers: { "User-Agent": JKANIME_UA, Referer: resultado.referer }
