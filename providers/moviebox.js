@@ -1,6 +1,5 @@
 const CryptoJS = require('crypto-js');
 
-const PLUGIN = 'Addon Latam Plugin';
 const FUENTE = 'MovieBox';
 const TMDB_KEY = '1865f43a0549ca50d341dd9ab8b29f49';
 const API = 'https://api3.aoneroom.com';
@@ -317,10 +316,9 @@ function calidad(valor) {
 }
 
 function tarjeta(titulo, cal, audio, peso, url, cabeceras) {
-  const lineas = [titulo, `Calidad: ${cal}`, `Audio: ${audio}`];
-  if (peso) lineas.push(`Tamaño: ${peso}`);
-  lineas.push(`Fuente: ${FUENTE}`);
-  return { name: PLUGIN, title: lineas.join('\n'), url, quality: cal, headers: cabeceras, provider: 'moviebox' };
+  const s = { name: FUENTE, title: titulo, url, quality: `Calidad: ${cal}`, language: `Audio: ${audio}`, headers: cabeceras, provider: FUENTE };
+  if (peso) s.size = `Tamaño: ${peso}`;
+  return s;
 }
 
 function idiomasEnEspanol(sujeto, subjectId) {
@@ -387,7 +385,7 @@ async function enlaces(subjectId, temporada, episodio, titulo) {
       console.log(`[MovieBox] ${e.message}`);
     }
   }
-  const orden = (s) => parseInt(s.quality, 10) || 0;
+  const orden = (s) => (/Latino/.test(s.language) ? 10000 : 0) + (Number((s.quality.match(/(\d{3,4})p/) || [])[1]) || 0);
   return salida.sort((a, b) => orden(b) - orden(a));
 }
 
