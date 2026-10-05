@@ -1,13 +1,36 @@
 const CryptoJS = require('crypto-js');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
+const PRESUPUESTO = 40000;
+let inicio = Date.now();
 
 function esperar(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function restante() {
+  return PRESUPUESTO - (Date.now() - inicio);
+}
+
 function conLimite(promesa, ms, valor) {
-  return Promise.race([promesa, esperar(ms).then(() => valor)]);
+  let listo = false;
+  const trabajo = Promise.resolve(promesa).then((v) => {
+    listo = true;
+    return v;
+  }, () => {
+    listo = true;
+    return valor;
+  });
+  const reloj = (async () => {
+    let resta = ms;
+    while (!listo && resta > 0) {
+      const paso = Math.min(200, resta);
+      await esperar(paso);
+      resta -= paso;
+    }
+    return valor;
+  })();
+  return Promise.race([trabajo, reloj]);
 }
 
 const caidos = new Set();
@@ -15,8 +38,10 @@ const caidos = new Set();
 async function pedir(url, opciones) {
   const host = String(url || '').replace(/^https?:\/\//i, '').split(/[/?#]/)[0].toLowerCase();
   if (caidos.has(host)) return null;
+  const queda = restante();
+  if (queda < 2000) return null;
   const o = Object.assign({}, opciones || {});
-  const limite = o.limite || 10000;
+  const limite = Math.min(o.limite || 10000, queda);
   delete o.limite;
   o.headers = Object.assign({
     'User-Agent': UA,
@@ -57,6 +82,18 @@ function cookies(respuesta) {
   const crudo = respuesta && respuesta.headers && respuesta.headers.get('set-cookie');
   if (!crudo) return '';
   return crudo.split(/,(?=\s*[A-Za-z0-9_.\-]+=)|\n/).map((c) => c.split(';')[0].trim()).filter((c) => c.includes('=')).join('; ');
+}
+
+function conClases(html, clases) {
+  const cuerpo = String(html || '');
+  const inicios = [];
+  const patron = /<[a-z][a-z0-9]*\b[^>]*?\bclass\s*=\s*["']([^"']*)["'][^>]*>/gi;
+  let m;
+  while ((m = patron.exec(cuerpo))) {
+    const tiene = m[1].split(/\s+/);
+    if (clases.every((c) => tiene.includes(c))) inicios.push(m.index);
+  }
+  return inicios.map((inicio, i) => cuerpo.slice(inicio, i + 1 < inicios.length ? inicios[i + 1] : cuerpo.length));
 }
 
 function origen(url) {
@@ -852,14 +889,20 @@ function pesoAudio(a) {
   return { Latino: 3, 'Español': 2, Castellano: 1 }[a] || 0;
 }
 
+async function directo(item) {
+  const salida = enlace(item.url, item.servidor || nombreServidor(item.url), item.headers || { 'User-Agent': UA }, item.calidad || '');
+  for (const s of salida) if (!s.calidad) s.calidad = (await calidadHls(s.url, s.headers)) || calidadTexto(s.url);
+  return salida;
+}
+
 async function armar(lista, titulo, fuente) {
   const vistos = new Set();
-  const resultados = await Promise.all(lista.map((item) => conLimite(resolver(item.url, item.referer).then((salida) => salida.map((s) => Object.assign({}, s, {
+  const resultados = await Promise.all(lista.map((item) => conLimite((item.directo ? directo(item) : resolver(item.url, item.referer)).then((salida) => salida.map((s) => Object.assign({}, s, {
     audio: s.audio || item.audio || '',
     calidad: s.calidad || item.calidad || '',
     tamano: s.tamano || item.tamano || '',
     servidorSitio: item.servidor || ''
-  }))), 25000, []).catch(() => [])));
+  }))), Math.max(1000, Math.min(25000, restante() + 3000)), [])));
   const tarjetas = [];
   for (const s of [].concat(...resultados)) {
     if (!s.url || vistos.has(s.url)) continue;
@@ -883,13 +926,26 @@ async function enCadena(tareas, procesar) {
   return [];
 }
 
+async function enOrden(tareas, procesar) {
+  for (const tarea of tareas) {
+    const lista = await Promise.resolve().then(tarea).catch(() => []);
+    if (!lista || !lista.length) continue;
+    const salida = await procesar(lista);
+    if (salida.length) return salida;
+  }
+  return [];
+}
+
 function limitar(buscador) {
-  return (...argumentos) => conLimite(Promise.resolve().then(() => buscador(...argumentos)).catch(() => []), 40000, []);
+  return (...argumentos) => {
+    inicio = Date.now();
+    caidos.clear();
+    return conLimite(Promise.resolve().then(() => buscador(...argumentos)), PRESUPUESTO + 5000, []);
+  };
 }
 
 const FUENTE = 'Cuevana';
 const BASE = 'https://wv3.cuevana3.eu';
-const ESPEJOS = ['https://www.cuevana2.run'];
 const EVITAR = /netu|waaw|hqq|jetload/i;
 
 function datosNext(html) {
@@ -909,14 +965,13 @@ function rutaEpisodio(base, slug) {
 
 async function buscarEn(base, titulos, tipo) {
   for (const titulo of titulos) {
-    const html = await texto(`${base}/search?q=${encodeURIComponent(titulo)}`);
-    const items = html.split(/<li[^>]*class="[^"]*TPostMv/i).slice(1);
+    const html = await texto(`${base}/search?q=${encodeURIComponent(titulo)}`, { limite: 20000 });
     let mejor = null;
     let puntos = 0;
-    for (const item of items) {
-      const href = (item.match(/<a[^>]+href="([^"]+)"/) || [])[1];
-      const nombre = limpiarHtml((item.match(/<span class="Title">([\s\S]*?)<\/span>/) || [])[1]);
-      if (!href) continue;
+    for (const item of conClases(html, ['TPostMv'])) {
+      const href = (item.match(/<a[^>]+href=["']([^"']+)["']/) || [])[1];
+      const nombre = limpiarHtml((item.match(/<span[^>]*class=["'][^"']*\bTitle\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/) || [])[1]);
+      if (!href || !nombre) continue;
       const esSerie = /\/serie\//.test(href);
       if ((tipo === 'tv') !== esSerie) continue;
       const s = parecido(nombre, titulo);
@@ -931,7 +986,7 @@ async function buscarEn(base, titulos, tipo) {
 }
 
 async function paginaEpisodio(base, pagina, temporada, episodio) {
-  const props = datosNext(await texto(pagina));
+  const props = datosNext(await texto(pagina, { limite: 20000 }));
   const serie = props && (props.thisSerie || props.post);
   const t = serie && (serie.seasons || []).find((s) => Number(s.number) === temporada);
   const e = t && (t.episodes || []).find((x) => Number(x.number) === episodio);
@@ -945,15 +1000,18 @@ async function metodoSubmenu(titulos, tipo, temporada, episodio) {
   if (!pagina) return [];
   if (tipo === 'tv') pagina = await paginaEpisodio(BASE, pagina, temporada, episodio);
   if (!pagina) return [];
-  const html = await texto(pagina);
-  const bloques = html.split(/(?=<li[^>]*class="[^"]*open_submenu)/i).filter((b) => /^<li[^>]*open_submenu/i.test(b));
+  const html = await texto(pagina, { limite: 20000 });
   const tareas = [];
-  for (const bloque of bloques) {
+  for (const bloque of conClases(html, ['open_submenu'])) {
     const audio = audioDe(limpiarHtml(bloque.slice(0, 300)).split(' ').slice(0, 3).join(' '));
-    const patron = /class="[^"]*clili[^"]*"[^>]*data-tr="([^"]+)"/gi;
+    const patron = /<li\b[^>]*>/gi;
     let m;
     while ((m = patron.exec(bloque))) {
-      const marco = absoluta(m[1], BASE);
+      const etiqueta = m[0];
+      if (!/class=["'][^"']*\bclili\b/.test(etiqueta)) continue;
+      const tr = (etiqueta.match(/data-tr=["']([^"']+)["']/) || [])[1];
+      if (!tr) continue;
+      const marco = absoluta(entidades(tr), BASE);
       tareas.push(texto(marco, { headers: { Referer: pagina } }).then((h) => {
         const u = (h.match(/var url = '([^']+)'/) || [])[1];
         return u && !EVITAR.test(u) ? { url: u, audio, referer: `${BASE}/` } : null;
@@ -981,43 +1039,6 @@ async function metodoApi(datos, tipo, temporada, episodio) {
   return lista;
 }
 
-function jugadores(props, tipo, base) {
-  const contenedor = tipo === 'movie' ? props.post : props.episode;
-  const players = contenedor && contenedor.players;
-  const lista = [];
-  for (const idioma of Object.keys(players || {})) {
-    const audio = audioDe(idioma);
-    if (!audio || audio === 'Subtitulado') continue;
-    for (const p of players[idioma] || []) {
-      if (p.result && !EVITAR.test(`${p.cyberlocker} ${p.result}`)) lista.push({ url: p.result, audio, referer: `${base}/` });
-    }
-  }
-  return lista;
-}
-
-async function metodoEspejos(titulos, tipo, temporada, episodio) {
-  for (const base of ESPEJOS) {
-    const pagina = await buscarEn(base, titulos, tipo);
-    if (!pagina) continue;
-    let props = datosNext(await texto(pagina));
-    if (props && tipo === 'tv') {
-      const serie = props.post || props.thisSerie;
-      const t = serie && (serie.seasons || []).find((s) => Number(s.number) === temporada);
-      const e = t && (t.episodes || []).find((x) => Number(x.number) === episodio);
-      const nombre = pagina.replace(/\/+$/, '').split('/').pop();
-      const destinos = e && e.url && e.url.slug ? [rutaEpisodio(base, e.url.slug)] : [`${base}/episodio/${nombre}-${temporada}x${episodio}`, `${pagina}/seasons/${temporada}/episodes/${episodio}`];
-      props = null;
-      for (const destino of destinos) {
-        props = datosNext(await texto(destino));
-        if (props) break;
-      }
-    }
-    const lista = props ? jugadores(props, tipo, base) : [];
-    if (lista.length) return lista;
-  }
-  return [];
-}
-
 async function getStreams(tmdbId, mediaType, season, episode) {
   try {
     const tipo = mediaType === 'movie' ? 'movie' : 'tv';
@@ -1027,10 +1048,9 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     const episodio = Number(episode) || 1;
     const titulos = titulosPosibles(datos);
     const titulo = encabezado(datos, tipo, temporada, episodio);
-    return await enCadena([
-      () => metodoApi(datos, tipo, temporada, episodio),
+    return await enOrden([
       () => metodoSubmenu(titulos, tipo, temporada, episodio),
-      () => metodoEspejos(titulos, tipo, temporada, episodio)
+      () => metodoApi(datos, tipo, temporada, episodio)
     ], (lista) => armar(lista, titulo, FUENTE));
   } catch (e) {
     console.log(`[${FUENTE}] ${e.message}`);

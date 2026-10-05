@@ -1,13 +1,36 @@
 const CryptoJS = require('crypto-js');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
+const PRESUPUESTO = 40000;
+let inicio = Date.now();
 
 function esperar(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function restante() {
+  return PRESUPUESTO - (Date.now() - inicio);
+}
+
 function conLimite(promesa, ms, valor) {
-  return Promise.race([promesa, esperar(ms).then(() => valor)]);
+  let listo = false;
+  const trabajo = Promise.resolve(promesa).then((v) => {
+    listo = true;
+    return v;
+  }, () => {
+    listo = true;
+    return valor;
+  });
+  const reloj = (async () => {
+    let resta = ms;
+    while (!listo && resta > 0) {
+      const paso = Math.min(200, resta);
+      await esperar(paso);
+      resta -= paso;
+    }
+    return valor;
+  })();
+  return Promise.race([trabajo, reloj]);
 }
 
 const caidos = new Set();
@@ -15,8 +38,10 @@ const caidos = new Set();
 async function pedir(url, opciones) {
   const host = String(url || '').replace(/^https?:\/\//i, '').split(/[/?#]/)[0].toLowerCase();
   if (caidos.has(host)) return null;
+  const queda = restante();
+  if (queda < 2000) return null;
   const o = Object.assign({}, opciones || {});
-  const limite = o.limite || 10000;
+  const limite = Math.min(o.limite || 10000, queda);
   delete o.limite;
   o.headers = Object.assign({
     'User-Agent': UA,
@@ -57,6 +82,18 @@ function cookies(respuesta) {
   const crudo = respuesta && respuesta.headers && respuesta.headers.get('set-cookie');
   if (!crudo) return '';
   return crudo.split(/,(?=\s*[A-Za-z0-9_.\-]+=)|\n/).map((c) => c.split(';')[0].trim()).filter((c) => c.includes('=')).join('; ');
+}
+
+function conClases(html, clases) {
+  const cuerpo = String(html || '');
+  const inicios = [];
+  const patron = /<[a-z][a-z0-9]*\b[^>]*?\bclass\s*=\s*["']([^"']*)["'][^>]*>/gi;
+  let m;
+  while ((m = patron.exec(cuerpo))) {
+    const tiene = m[1].split(/\s+/);
+    if (clases.every((c) => tiene.includes(c))) inicios.push(m.index);
+  }
+  return inicios.map((inicio, i) => cuerpo.slice(inicio, i + 1 < inicios.length ? inicios[i + 1] : cuerpo.length));
 }
 
 function origen(url) {
@@ -852,14 +889,20 @@ function pesoAudio(a) {
   return { Latino: 3, 'Español': 2, Castellano: 1 }[a] || 0;
 }
 
+async function directo(item) {
+  const salida = enlace(item.url, item.servidor || nombreServidor(item.url), item.headers || { 'User-Agent': UA }, item.calidad || '');
+  for (const s of salida) if (!s.calidad) s.calidad = (await calidadHls(s.url, s.headers)) || calidadTexto(s.url);
+  return salida;
+}
+
 async function armar(lista, titulo, fuente) {
   const vistos = new Set();
-  const resultados = await Promise.all(lista.map((item) => conLimite(resolver(item.url, item.referer).then((salida) => salida.map((s) => Object.assign({}, s, {
+  const resultados = await Promise.all(lista.map((item) => conLimite((item.directo ? directo(item) : resolver(item.url, item.referer)).then((salida) => salida.map((s) => Object.assign({}, s, {
     audio: s.audio || item.audio || '',
     calidad: s.calidad || item.calidad || '',
     tamano: s.tamano || item.tamano || '',
     servidorSitio: item.servidor || ''
-  }))), 25000, []).catch(() => [])));
+  }))), Math.max(1000, Math.min(25000, restante() + 3000)), [])));
   const tarjetas = [];
   for (const s of [].concat(...resultados)) {
     if (!s.url || vistos.has(s.url)) continue;
@@ -883,8 +926,22 @@ async function enCadena(tareas, procesar) {
   return [];
 }
 
+async function enOrden(tareas, procesar) {
+  for (const tarea of tareas) {
+    const lista = await Promise.resolve().then(tarea).catch(() => []);
+    if (!lista || !lista.length) continue;
+    const salida = await procesar(lista);
+    if (salida.length) return salida;
+  }
+  return [];
+}
+
 function limitar(buscador) {
-  return (...argumentos) => conLimite(Promise.resolve().then(() => buscador(...argumentos)).catch(() => []), 40000, []);
+  return (...argumentos) => {
+    inicio = Date.now();
+    caidos.clear();
+    return conLimite(Promise.resolve().then(() => buscador(...argumentos)), PRESUPUESTO + 5000, []);
+  };
 }
 
 const FUENTE = 'CineHdPlus';
@@ -955,8 +1012,7 @@ function formulario(cuerpo) {
 }
 
 async function desenredar(h) {
-  const valor = /%[0-9a-f]{2}/i.test(h) ? h : encodeURIComponent(h);
-  const paso1 = await texto(`${API}/ir/goto.php?h=${valor}`, { headers: { Referer: `${BASE}/` } });
+  const paso1 = await texto(`${API}/ir/goto.php?h=${h}`, { headers: { Referer: `${BASE}/` } });
   const url1 = campo(paso1, 'url');
   if (!url1) return '';
   const paso2 = await texto(`${API}/ir/rd.php`, formulario(`url=${encodeURIComponent(url1)}`));
@@ -982,20 +1038,27 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     let pagina = await buscar(titulosPosibles(datos), tipo);
     if (pagina && tipo === 'tv') pagina = await paginaEpisodio(pagina, temporada, episodio);
     if (!pagina) return [];
-    const html = await texto(pagina);
+    const html = entidades(await texto(pagina));
     const tareas = [];
     const vistos = new Set();
-    const limpio = entidades(html);
-    const patron = /player\.php\?h=([^&"'\s<>]+)/gi;
-    let m;
-    while ((m = patron.exec(limpio))) {
-      const h = m[1];
-      if (vistos.has(h)) continue;
+    const agregar = (h, etiqueta) => {
+      if (!h || vistos.has(h)) return;
       vistos.add(h);
-      const contexto = limpio.slice(Math.max(0, m.index - 600), m.index);
-      const etiqueta = (contexto.match(/data-lang=["']([^"']*)["'][^>]*$/i) || [])[1] || (contexto.match(/\b(LAT|CAS|SUB|Latino|Castellano|Subtitulado)\b(?![\s\S]*\b(?:LAT|CAS|SUB|Latino|Castellano|Subtitulado)\b)/i) || [])[1];
       const audio = audioDe(etiqueta) || audioCodigo(etiqueta) || 'Latino';
       tareas.push(desenredar(h).then((url) => (url && /^https?:/.test(url) && !EVITAR.test(url) ? { url, audio, referer: `${BASE}/` } : null)).catch(() => null));
+    };
+    const botones = /<button\b[^>]*>/gi;
+    let b;
+    while ((b = botones.exec(html))) {
+      if (!/class=["'][^"']*\bplayer-tab\b/.test(b[0])) continue;
+      const destino = (b[0].match(/data-url=["']([^"']+)["']/) || [])[1] || '';
+      agregar((destino.split('player.php?h=')[1] || '').split('&')[0], (b[0].match(/data-lang=["']([^"']*)["']/) || [])[1]);
+    }
+    const patron = /player\.php\?h=([^&"'\s<>]+)/gi;
+    let m;
+    while ((m = patron.exec(html))) {
+      const contexto = html.slice(Math.max(0, m.index - 600), m.index);
+      agregar(m[1], (contexto.match(/data-lang=["']([^"']*)["'][^>]*$/i) || [])[1] || (contexto.match(/\b(LAT|CAS|SUB|Latino|Castellano|Subtitulado)\b(?![\s\S]*\b(?:LAT|CAS|SUB|Latino|Castellano|Subtitulado)\b)/i) || [])[1]);
     }
     const lista = (await Promise.all(tareas)).filter(Boolean);
     return await armar(lista, encabezado(datos, tipo, temporada, episodio), FUENTE);

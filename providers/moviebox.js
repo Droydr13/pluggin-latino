@@ -23,6 +23,31 @@ let marca = '';
 let modelo = '';
 let token = '';
 
+function esperar(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function reloj(ms, estado) {
+  return (async () => {
+    let resta = ms;
+    while (!estado.listo && resta > 0) {
+      const paso = Math.min(200, resta);
+      await esperar(paso);
+      resta -= paso;
+    }
+  })();
+}
+
+function conLimite(promesa, ms) {
+  const estado = { listo: false };
+  const trabajo = Promise.resolve(promesa).finally(() => {
+    estado.listo = true;
+  });
+  return Promise.race([trabajo, reloj(ms, estado).then(() => {
+    throw new Error('tiempo agotado');
+  })]);
+}
+
 function azar(lista) {
   return lista[Math.floor(Math.random() * lista.length)];
 }
@@ -132,7 +157,7 @@ async function pedir(metodo, url, cuerpo, extras, sinToken) {
   const hosts = HOSTS.includes(host) ? [host].concat(HOSTS.filter((h) => h !== host)).slice(0, 3) : [host];
   for (let i = 0; i < hosts.length; i++) {
     try {
-      const respuesta = await fetch(url.replace(host, hosts[i]), opciones);
+      const respuesta = await conLimite(fetch(url.replace(host, hosts[i]), opciones), 10000);
       if (!respuesta.ok) {
         if ((respuesta.status === 403 || respuesta.status === 429 || respuesta.status >= 500) && i + 1 < hosts.length) continue;
         return null;
@@ -160,8 +185,8 @@ async function obtenerToken() {
 async function datosTmdb(tmdbId, tipo) {
   const base = `https://api.themoviedb.org/3/${tipo}/${tmdbId}?api_key=${TMDB_KEY}`;
   const [ingles, espanol] = await Promise.all([
-    fetch(base).then((r) => r.json()).catch(() => null),
-    fetch(`${base}&language=es-MX`).then((r) => r.json()).catch(() => null)
+    conLimite(fetch(base), 10000).then((r) => r.json()).catch(() => null),
+    conLimite(fetch(`${base}&language=es-MX`), 10000).then((r) => r.json()).catch(() => null)
   ]);
   if (!ingles && !espanol) return null;
   const en = ingles || {};
@@ -411,4 +436,14 @@ async function getStreams(tmdbId, mediaType, season, episode) {
   }
 }
 
-module.exports = { getStreams };
+function limitar(buscador) {
+  return (...argumentos) => {
+    const estado = { listo: false };
+    const trabajo = Promise.resolve().then(() => buscador(...argumentos)).catch(() => []).finally(() => {
+      estado.listo = true;
+    });
+    return Promise.race([trabajo, reloj(40000, estado).then(() => [])]);
+  };
+}
+
+module.exports = { getStreams: limitar(getStreams) };
