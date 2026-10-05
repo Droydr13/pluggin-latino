@@ -831,24 +831,27 @@ async function armar(lista, titulo, fuente) {
   return tarjetas.sort((a, b) => b.orden - a.orden).map((x) => x.t);
 }
 
-const FUENTE = 'CineCalidad';
-const BASES = ['https://www.cinecalidad.ec', 'https://www.cinecalidad.vg'];
+const FUENTE = 'CineHdPlus';
+const BASE = 'https://cinehdplus.org';
+const API = 'https://api.cinehdplus.org';
+const EVITAR = /waaw|netu|hqq/i;
 
-async function buscar(base, titulos, tipo) {
+async function buscar(titulos, tipo) {
   for (const titulo of titulos) {
-    const html = await texto(`${base}/?s=${encodeURIComponent(titulo)}`);
+    const html = await texto(`${BASE}/?s=${encodeURIComponent(titulo)}`);
     let mejor = null;
     let puntos = 0;
-    for (const art of html.split(/<article[^>]*class="[^"]*\bitem\b/i).slice(1)) {
-      const href = (art.match(/<a[^>]+href="([^"]+)"/) || [])[1];
-      const nombre = limpiarHtml((art.match(/class="in_title"[^>]*>([\s\S]*?)<\/div>/) || [])[1]);
-      if (!href) continue;
-      const esPeli = /\/ver-pelicula\//.test(href);
+    const patron = /<a[^>]+href=["']((?:https?:\/\/(?:www\.)?cinehdplus\.[a-z]+)?\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+    let m;
+    while ((m = patron.exec(html))) {
+      const nombre = entidades((m[2].match(/<img[^>]+alt=["']([^"']+)["']/i) || [])[1]);
+      if (!nombre) continue;
+      const esPeli = /\/pelicula/.test(m[1]);
       if ((tipo === 'movie') !== esPeli) continue;
       const s = parecido(nombre, titulo);
       if (s > puntos) {
         puntos = s;
-        mejor = absoluta(href, base);
+        mejor = absoluta(m[1], BASE);
       }
     }
     if (mejor && puntos >= 0.8) return mejor;
@@ -856,61 +859,40 @@ async function buscar(base, titulos, tipo) {
   return null;
 }
 
-function episodioEn(html, temporada, episodio) {
-  const items = html.split(/<li[^>]*>/i);
-  for (const li of items) {
-    const num = limpiarHtml((li.match(/class="numerando"[^>]*>([\s\S]*?)<\//) || [])[1]).replace(/[SE]/gi, '');
-    const partes = num.split('-').map((x) => parseInt(x, 10)).filter((x) => !isNaN(x));
-    if (partes.length === 2 && partes[0] === temporada && partes[1] === episodio) {
-      const href = (li.match(/<a[^>]+href="([^"]+)"/) || [])[1];
-      if (href) return href;
-    }
-  }
-  return null;
-}
-
-async function porSlug(base, datos) {
-  for (const t of titulosPosibles(datos)) {
-    const s = slug(t);
-    if (!s) continue;
-    for (const variante of [s, `${s}-2`, `${s}-3`]) {
-      const url = `${base}/pelicula/${variante}/`;
-      const html = await texto(url, { headers: { Referer: `${base}/` } });
-      if (!html) continue;
-      const anio = (html.match(/<h1[^>]*>[^<]*\((\d{4})\)[^<]*<\/h1>/) || [])[1];
-      if (!anio || !datos.anio || anio === datos.anio) return { url, html };
-    }
-  }
-  return null;
-}
-
-async function intermedio(url, referer) {
-  if (!/cinecalidad\./i.test(dominio(url))) return url;
-  const html = await texto(url, { headers: { Referer: referer } });
-  const destino = (html.match(/id=["']btn_enlace["'][^>]*>[\s\S]*?href=["']([^"']+)["']/i) || html.match(/<iframe[^>]+src=["']([^"']+)["']/i) || [])[1];
-  return destino ? absoluta(destino, url) : '';
-}
-
-async function enlacesPagina(html, base, pagina) {
-  const crudos = [];
-  const po = /<li[^>]*data-option=["']([^"']+)["'][^>]*>([\s\S]*?)<\/li>/gi;
+async function paginaEpisodio(serie, temporada, episodio) {
+  const html = await texto(serie);
+  const bloque = html.split(/(?=<div[^>]*id=["']season-content-\d+["'])/i).find((b) => new RegExp(`^<div[^>]*id=["']season-content-${temporada}["']`, 'i').test(b));
+  if (!bloque) return null;
+  const enlaces = [];
+  const patron = /<a[^>]+class=["'][^"']*\bgroup\b[^"']*["'][^>]*href=["']([^"']+)["']|<a[^>]+href=["']([^"']+)["'][^>]*class=["'][^"']*\bgroup\b/gi;
   let m;
-  while ((m = po.exec(html))) {
-    const destino = /^https?:/.test(m[1]) ? m[1] : atobSeguro(m[1]);
-    if (/^https?:/.test(destino)) crudos.push({ url: destino, audio: audioDe(limpiarHtml(m[2])) || 'Latino' });
-  }
-  const ps = /data-src=["']([A-Za-z0-9+/=]{20,})["']/g;
-  while ((m = ps.exec(html))) {
-    const destino = atobSeguro(m[1]);
-    if (/^https?:/.test(destino)) crudos.push({ url: destino, audio: 'Latino' });
-  }
-  const vistos = new Set();
-  const unicos = crudos.filter((x) => !vistos.has(x.url) && vistos.add(x.url));
-  const lista = await Promise.all(unicos.map(async (x) => {
-    const url = await intermedio(x.url, pagina).catch(() => '');
-    return url ? { url, audio: x.audio, referer: `${base}/` } : null;
-  }));
-  return lista.filter(Boolean);
+  while ((m = patron.exec(bloque))) enlaces.push(m[1] || m[2]);
+  return enlaces[episodio - 1] ? absoluta(enlaces[episodio - 1], BASE) : null;
+}
+
+function campo(html, id) {
+  return entidades((html.match(new RegExp(`<input[^>]*id=["']${id}["'][^>]*value=["']([^"']*)["']`, 'i')) || html.match(new RegExp(`<input[^>]*value=["']([^"']*)["'][^>]*id=["']${id}["']`, 'i')) || [])[1] || '');
+}
+
+function formulario(cuerpo) {
+  return { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Referer: `${API}/`, Origin: API }, body: cuerpo };
+}
+
+async function desenredar(h) {
+  const paso1 = await texto(`${API}/ir/goto.php?h=${encodeURIComponent(h)}`, { headers: { Referer: `${BASE}/` } });
+  const url1 = campo(paso1, 'url');
+  if (!url1) return '';
+  const paso2 = await texto(`${API}/ir/rd.php`, formulario(`url=${encodeURIComponent(url1)}`));
+  const url2 = campo(paso2, 'url');
+  if (!url2) return '';
+  const paso3 = await texto(`${API}/ir/redir_ddh.php`, formulario(`url=${encodeURIComponent(url2)}&dl=0`));
+  const accion = entidades((paso3.match(/<form[^>]*action=["']([^"']+)["']/i) || [])[1] || '');
+  const vid = campo(paso3, 'vid');
+  const hash = campo(paso3, 'hash');
+  if (!accion || !vid || !hash) return '';
+  const final = await texto(absoluta(accion, API), formulario(`vid=${encodeURIComponent(vid)}&hash=${encodeURIComponent(hash)}`));
+  const codificado = (final.match(/link\s*=\s*'([^']+)'/) || [])[1];
+  return codificado ? atobSeguro(codificado) : '';
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
@@ -920,26 +902,22 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     if (!datos) return [];
     const temporada = Number(season) || 1;
     const episodio = Number(episode) || 1;
-    const titulo = encabezado(datos, tipo, temporada, episodio);
-    for (const base of BASES) {
-      let pagina = await buscar(base, titulosPosibles(datos), tipo);
-      let html = '';
-      if (pagina && tipo === 'tv') pagina = episodioEn(await texto(pagina), temporada, episodio);
-      if (pagina) {
-        pagina = absoluta(pagina, base);
-        html = await texto(pagina);
-      } else if (tipo === 'movie') {
-        const directo = await porSlug(base, datos);
-        if (directo) {
-          pagina = directo.url;
-          html = directo.html;
-        }
-      }
-      if (!html) continue;
-      const salida = await armar(await enlacesPagina(html, base, pagina), titulo, FUENTE);
-      if (salida.length) return salida;
+    let pagina = await buscar(titulosPosibles(datos), tipo);
+    if (pagina && tipo === 'tv') pagina = await paginaEpisodio(pagina, temporada, episodio);
+    if (!pagina) return [];
+    const html = await texto(pagina);
+    const tareas = [];
+    const patron = /<button[^>]*class=["'][^"']*player-tab[^"']*["'][^>]*>/gi;
+    let m;
+    while ((m = patron.exec(html))) {
+      const boton = m[0];
+      const audio = audioDe((boton.match(/data-lang=["']([^"']*)["']/i) || [])[1]);
+      const h = (entidades((boton.match(/data-url=["']([^"']*)["']/i) || [])[1] || '').match(/player\.php\?h=([^&"']+)/) || [])[1];
+      if (!h) continue;
+      tareas.push(desenredar(h).then((url) => (url && /^https?:/.test(url) && !EVITAR.test(url) ? { url, audio, referer: `${BASE}/` } : null)).catch(() => null));
     }
-    return [];
+    const lista = (await Promise.all(tareas)).filter(Boolean);
+    return await armar(lista, encabezado(datos, tipo, temporada, episodio), FUENTE);
   } catch (e) {
     console.log(`[${FUENTE}] ${e.message}`);
     return [];
