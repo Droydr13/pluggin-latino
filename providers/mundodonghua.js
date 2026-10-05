@@ -2,25 +2,42 @@ const CryptoJS = require('crypto-js');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
 
+function esperar(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function conLimite(promesa, ms, valor) {
+  return Promise.race([promesa, esperar(ms).then(() => valor)]);
+}
+
+const caidos = new Set();
+
 async function pedir(url, opciones) {
-  const o = opciones || {};
-  const headers = Object.assign({
+  const host = String(url || '').replace(/^https?:\/\//i, '').split(/[/?#]/)[0].toLowerCase();
+  if (caidos.has(host)) return null;
+  const o = Object.assign({}, opciones || {});
+  const limite = o.limite || 10000;
+  delete o.limite;
+  o.headers = Object.assign({
     'User-Agent': UA,
     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'es-MX,es;q=0.9,en;q=0.8'
   }, o.headers || {});
+  let r = null;
   try {
-    return await fetch(url, Object.assign({}, o, { headers }));
+    r = await conLimite(fetch(url, o), limite, null);
   } catch (e) {
-    return null;
+    r = null;
   }
+  if (!r) caidos.add(host);
+  return r;
 }
 
 async function texto(url, opciones) {
   const r = await pedir(url, opciones);
   if (!r || !r.ok) return '';
   try {
-    return (await r.text()) || '';
+    return (await conLimite(r.text(), 10000, '')) || '';
   } catch (e) {
     return '';
   }
@@ -125,7 +142,7 @@ function calidadTexto(t) {
 
 async function calidadHls(url, headers) {
   if (!/m3u8|\/hls|master|playlist|\.txt/i.test(url)) return '';
-  const t = await texto(url, { headers });
+  const t = await texto(url, { headers, limite: 5000 });
   let alto = 0;
   const patron = /RESOLUTION=\d+x(\d+)/gi;
   let m;
@@ -143,6 +160,8 @@ function buscarVideo(t, base) {
     /["']?hls[24]["']?\s*:\s*["']([^"']+)["']/i,
     /sources\s*:\s*\[\s*\{\s*(?:src|file)\s*:\s*["']([^"']+)["']/i,
     /file\s*:\s*["']([^"']+\.(?:m3u8|mp4|txt)[^"']*)["']/i,
+    /["']file["']\s*:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']/i,
+    /sources\s*:\s*\[\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']/i,
     /src\s*:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']/i,
     /["'](https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)["']/i,
     /["'](https?:\/\/[^"'\s]+\.mp4[^"'\s]*)["']/i
@@ -238,13 +257,12 @@ async function resolverEmpaquetado(url, servidor, referer, siguiendo) {
 }
 
 async function resolverStreamwish(url, referer) {
+  const propio = await resolverEmpaquetado(url, 'StreamWish', referer);
+  if (propio.length) return propio;
   const id = url.replace(/[?#].*$/, '').split('/').filter(Boolean).pop().replace(/\.html$/, '');
-  const espejos = [url, `https://hglink.to/e/${id}`, `https://vibuxer.com/e/${id}`, `https://streamwish.to/e/${id}`, `https://embedwish.com/e/${id}`, `https://strwish.com/e/${id}`];
-  for (const espejo of [...new Set(espejos)]) {
-    const r = await resolverEmpaquetado(espejo, 'StreamWish', referer);
-    if (r.length) return r;
-  }
-  return [];
+  const espejos = [`https://hglink.to/e/${id}`, `https://streamwish.to/e/${id}`, `https://vibuxer.com/e/${id}`].filter((e) => dominio(e) !== dominio(url));
+  const listas = await Promise.all(espejos.map((e) => resolverEmpaquetado(e, 'StreamWish', referer, true)));
+  return listas.find((l) => l.length) || [];
 }
 
 const SHA_K = Int32Array.from([0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2]);
@@ -458,7 +476,7 @@ async function resolverVimeos(url, referer) {
   const casa = origen(embed);
   const cabeceras = { Referer: `${casa}/`, Origin: casa, 'User-Agent': UA };
   let ultimo = '';
-  for (let intento = 0; intento < 5; intento++) {
+  for (let intento = 0; intento < 3; intento++) {
     const html = await texto(embed, { headers: { Referer: referer || 'https://la.movie/tv/' } });
     const codigo = `${desempacar(html)}\n${html}`;
     const video = (codigo.match(/file\s*:\s*["']([^"']+\.m3u8[^"']*)["']/) || codigo.match(/["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/) || [])[1];
@@ -466,7 +484,7 @@ async function resolverVimeos(url, referer) {
       ultimo = absoluta(video, embed);
       if (!/[?&]i=/.test(ultimo) || /[?&]i=0\.0(&|$)/.test(ultimo)) break;
     }
-    await new Promise((r) => setTimeout(r, 400));
+    await esperar(400);
   }
   return enlace(ultimo, 'Vimeos', cabeceras);
 }
@@ -711,8 +729,14 @@ async function resolver(url, referer, profundidad) {
     if (/embed69\./.test(h)) return await resolverAgregado(await abrirEmbed69(u, referer), u, nivel);
     if (/xupalace\./.test(h) && /\/video\//.test(u)) return await resolverAgregado(await abrirXupalace(u), u, nivel);
     const servidor = SERVIDORES.find(([patron]) => patron.test(h)) || (/^https?:\/\/[^/]+\/?#[\w-]+$/.test(u) ? [null, 'Rpmvid', resolverVidstack] : null);
-    if (/\.(m3u8|mp4|mkv)(\?|#|$)/i.test(u)) salida = enlace(u, nombreServidor(u), referer ? { Referer: referer, 'User-Agent': UA } : { 'User-Agent': UA });
-    else salida = servidor ? await servidor[2](u, referer) : await resolverGenerico(u, nombreServidor(u), referer, nivel);
+    if (/\.(m3u8|mp4|mkv)(\?|#|$)/i.test(u)) {
+      salida = enlace(u, nombreServidor(u), referer ? { Referer: referer, 'User-Agent': UA } : { 'User-Agent': UA });
+    } else if (servidor) {
+      salida = await servidor[2](u, referer);
+      if (!salida.length) salida = await resolverGenerico(u, servidor[1] || nombreServidor(u), referer, nivel);
+    } else {
+      salida = await resolverGenerico(u, nombreServidor(u), referer, nivel);
+    }
   } catch (e) {
     salida = [];
   }
@@ -830,10 +854,12 @@ function pesoAudio(a) {
 
 async function armar(lista, titulo, fuente) {
   const vistos = new Set();
-  const resultados = await Promise.all(lista.map(async (item) => {
-    const salida = await resolver(item.url, item.referer);
-    return salida.map((s) => Object.assign({}, s, { audio: s.audio || item.audio || '', calidad: s.calidad || item.calidad || '', tamano: s.tamano || item.tamano || '', servidorSitio: item.servidor || '' }));
-  }));
+  const resultados = await Promise.all(lista.map((item) => conLimite(resolver(item.url, item.referer).then((salida) => salida.map((s) => Object.assign({}, s, {
+    audio: s.audio || item.audio || '',
+    calidad: s.calidad || item.calidad || '',
+    tamano: s.tamano || item.tamano || '',
+    servidorSitio: item.servidor || ''
+  }))), 25000, []).catch(() => [])));
   const tarjetas = [];
   for (const s of [].concat(...resultados)) {
     if (!s.url || vistos.has(s.url)) continue;
@@ -844,6 +870,21 @@ async function armar(lista, titulo, fuente) {
     });
   }
   return tarjetas.sort((a, b) => b.orden - a.orden).map((x) => x.t);
+}
+
+async function enCadena(tareas, procesar) {
+  const pendientes = tareas.map((tarea) => Promise.resolve().then(tarea).catch(() => []));
+  for (const pendiente of pendientes) {
+    const lista = await pendiente;
+    if (!lista || !lista.length) continue;
+    const salida = await procesar(lista);
+    if (salida.length) return salida;
+  }
+  return [];
+}
+
+function limitar(buscador) {
+  return (...argumentos) => conLimite(Promise.resolve().then(() => buscador(...argumentos)).catch(() => []), 40000, []);
 }
 
 const ROMANOS = { ii: 2, iii: 3, iv: 4, v: 5, vi: 6 };
@@ -979,6 +1020,12 @@ async function buscar(consulta) {
 
 async function episodio(url, numero) {
   const html = await texto(url);
+  const nombre = url.replace(/\/+$/, '').split('/').pop();
+  const directo = new RegExp(`href=["']((?:https?:\\/\\/[^/"']+)?\\/ver\\/${nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\/(\\d+))\\/?["']`, 'gi');
+  let d;
+  while ((d = directo.exec(html))) {
+    if (Number(d[2]) === numero) return absoluta(d[1], BASE);
+  }
   const patron = /class=["'][^"']*md-episode-item[^"']*["'][\s\S]*?<a[^>]+href=["']([^"']+)["']/gi;
   let m;
   while ((m = patron.exec(html))) {
@@ -1024,4 +1071,4 @@ async function getStreams(tmdbId, mediaType, season, episode) {
   }
 }
 
-module.exports = { getStreams };
+module.exports = { getStreams: limitar(getStreams) };
