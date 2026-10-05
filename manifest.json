@@ -1,12 +1,12 @@
 {
   "name": "Addon Latam Plugin",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "scrapers": [
     {
       "id": "lamovie",
       "name": "LaMovie",
       "description": "Proveedor premium con enlaces directos en 1080p y enfoque Latino.",
-      "version": "3.5.0",
+      "version": "3.6.0",
       "author": "AdrianJael",
       "supportedTypes": [
         "movie",
@@ -29,7 +29,7 @@
       "id": "moviebox",
       "name": "MovieBox",
       "description": "Peliculas y series de MovieBox, solo con audio en Español y Latino.",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "author": "AdrianJael",
       "supportedTypes": [
         "movie",
@@ -69,7 +69,7 @@
       "id": "cinecalidad",
       "name": "CineCalidad",
       "description": "Películas en Latino desde CineCalidad. Vimeos, VOE, StreamWish.",
-      "version": "3.5.0",
+      "version": "3.6.0",
       "author": "KennethJYS",
       "supportedTypes": [
         "movie",
@@ -117,7 +117,7 @@
       "id": "hackstore",
       "name": "HackStore",
       "description": "Streams en Latino desde HackStore.",
-      "version": "3.5.0",
+      "version": "3.6.0",
       "author": "KennethJYS",
       "supportedTypes": [
         "movie",
@@ -276,7 +276,7 @@
       "id": "allcalidad",
       "name": "AllCalidad",
       "description": "Peliculas, series y animes en Latino desde AllCalidad (API JSON propia).",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -582,6 +582,70 @@
         "tv"
       ],
       "filename": "providers/vitaminagg.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "vimeus",
+      "name": "Vimeus",
+      "description": "Peliculas, series y animes desde Vimeus usando el ID de TMDB.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/vimeus.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "homecine",
+      "name": "HomeCine",
+      "description": "Peliculas y series en Latino y Castellano desde HomeCine.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/homecine.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "areshd",
+      "name": "AresHD",
+      "description": "Peliculas y series en Latino, Castellano y Subtitulado desde AresHD.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/areshd.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "allpeliculasse",
+      "name": "AllpeliculasSE",
+      "description": "Peliculas y series en Latino desde AllPeliculas.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/allpeliculasse.js",
       "enabled": true,
       "contentLanguage": [
         "es"
