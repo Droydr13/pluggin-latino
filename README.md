@@ -21,6 +21,6 @@ https://raw.githubusercontent.com/Droydr13/pluggin-latino/main
 
 ## Avisos conocidos
 
-- **EntrePeliculasYSeries**: si el sitio en vez de mostrar la clave de
-  descifrado directo tira un desafío de "proof-of-work", esta versión
-  no lo resuelve (devuelve vacío en ese caso puntual).
+- **AnimeJL** y **EntrePeliculasYSeries** usan protección de Cloudflare;
+  cuando el sitio pide verificación de navegador, Nuvio no puede pasarla y
+  esos dos devuelven vacío hasta que el sitio deje de pedirla.
