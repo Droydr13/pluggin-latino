@@ -1065,103 +1065,64 @@ function limitar(buscador) {
   };
 }
 
-const FUENTE = 'CineCalidad';
-const BASES = ['https://www.cinecalidad.ec', 'https://www.cinecalidad.vg'];
+const FUENTE = 'AresHD';
+const BASE = 'https://areshd.com';
 
-async function buscar(base, titulos, tipo) {
+async function buscar(titulos, tipo, anio) {
+  let mejor = null;
+  let puntos = 0;
   for (const titulo of titulos) {
-    const html = await texto(`${base}/?s=${encodeURIComponent(titulo)}`);
-    let mejor = null;
-    let puntos = 0;
-    for (const art of html.split(/<article[^>]*class="[^"]*\bitem\b/i).slice(1)) {
-      const href = (art.match(/<a[^>]+href="([^"]+)"/) || [])[1];
-      const nombre = limpiarHtml((art.match(/class="in_title"[^>]*>([\s\S]*?)<\/div>/) || [])[1]);
-      if (!href) continue;
-      const esPeli = /\/ver-pelicula\//.test(href);
-      if ((tipo === 'movie') !== esPeli) continue;
-      const s = parecido(nombre, titulo);
+    const html = await texto(`${BASE}/search/${encodeURIComponent(titulo).replace(/%20/g, '+')}`, { headers: { Referer: `${BASE}/` } });
+    const patron = /<a class="Posters-link"[\s\S]*?href="([^"]+)"[\s\S]*?<img alt="([^"]+)"/g;
+    let m;
+    while ((m = patron.exec(html))) {
+      const href = absoluta(m[1], BASE);
+      const esSerie = /\/serie\//.test(href);
+      if ((tipo === 'tv') !== esSerie) continue;
+      const nombre = entidades(m[2]);
+      let s = parecido(nombre, titulo);
+      const suyo = (nombre.match(/\b(19|20)\d{2}\b/) || [])[0];
+      if (anio && suyo) s += suyo === anio ? 0.2 : -0.3;
       if (s > puntos) {
         puntos = s;
-        mejor = absoluta(href, base);
+        mejor = href;
       }
     }
-    if (mejor && puntos >= 0.8) return mejor;
+    if (puntos >= 1) break;
   }
-  return null;
+  return puntos >= 0.8 ? mejor : null;
 }
 
-function episodioEn(html, temporada, episodio) {
-  const items = html.split(/<li[^>]*>/i);
-  for (const li of items) {
-    const num = limpiarHtml((li.match(/class=["'][^"']*numerando[^"']*["'][^>]*>([\s\S]*?)<\//) || [])[1]).replace(/[SE]/gi, '');
-    const partes = num.split('-').map((x) => parseInt(x, 10)).filter((x) => !isNaN(x));
-    if (partes.length === 2 && partes[0] === temporada && partes[1] === episodio) {
-      const href = (li.match(/<a[^>]+href=["']([^"']+)["']/) || [])[1];
-      if (href) return href;
+async function paginaEpisodio(serie, temporada, episodio) {
+  const nombre = (serie.match(/\/serie\/([^/?#]+)/) || [])[1];
+  if (nombre) return `${BASE}/episodio/${nombre}-temporada-${temporada}-episodio-${episodio}`;
+  const html = await texto(serie, { headers: { Referer: `${BASE}/` } });
+  const m = html.match(new RegExp(`"slug":"([^"]*${temporada}-episodio-${episodio}(?!\\d)[^"]*)"`, 'i'));
+  return m ? `${BASE}/episodio/${m[1]}` : null;
+}
+
+async function enlaces(pagina) {
+  const html = await texto(pagina, { headers: { Referer: `${BASE}/` } });
+  const idiomas = [...html.matchAll(/<li class="pres"><a class="playr">([^<]+)<\/a><\/li>/g)].map((m) => audioDe(m[1]) || 'Latino');
+  const bloques = [...html.matchAll(/<ul class="TbVideoNv nav nav-tabs hide" role="tablist">([\s\S]*?)<\/ul>/g)];
+  const tareas = [];
+  bloques.forEach((bloque, i) => {
+    const audio = idiomas[i] || 'Latino';
+    for (const s of bloque[1].matchAll(/<li class="pres" data-tr="([^"]+)"[\s\S]*?a class="playr">([^<]+)<\/a>/g)) {
+      if (/youtube/i.test(s[2])) continue;
+      const reproductor = absoluta(entidades(s[1]), BASE);
+      tareas.push(texto(reproductor, { headers: { Referer: pagina } }).then(async (h) => {
+        const url = (h.match(/var\s+url\s*=\s*'([^']+)'/i) || h.match(/var\s+url\s*=\s*"([^"]+)"/i) || [])[1];
+        if (!url) return [];
+        if (/waaw|netu\.|hqq\./i.test(dominio(url))) {
+          const directo = await ligeroWaaw(url, `${BASE}/`);
+          return directo.map((d) => ({ url: d.url, audio, directo: true, servidor: 'Netu', headers: d.headers }));
+        }
+        return [{ url, audio, referer: `${BASE}/` }];
+      }).catch(() => []));
     }
-  }
-  return null;
-}
-
-async function porSlug(base, datos) {
-  for (const t of titulosPosibles(datos)) {
-    const s = slug(t);
-    if (!s) continue;
-    for (const variante of [s, `${s}-2`, `${s}-3`]) {
-      const url = `${base}/pelicula/${variante}/`;
-      const html = await texto(url, { headers: { Referer: `${base}/` } });
-      if (!html) continue;
-      const anio = (html.match(/<h1[^>]*>[^<]*\((\d{4})\)[^<]*<\/h1>/) || [])[1];
-      if (!anio || !datos.anio || anio === datos.anio) return { url, html };
-    }
-  }
-  return null;
-}
-
-async function seriePorSlug(base, datos) {
-  for (const t of titulosPosibles(datos)) {
-    const s = slug(t);
-    if (!s) continue;
-    for (const ruta of [`${base}/ver-serie/${s}/`, `${base}/serie/${s}/`]) {
-      const html = await texto(ruta, { headers: { Referer: `${base}/` } });
-      if (/class=["'][^"']*numerando/.test(html)) return { url: ruta, html };
-    }
-  }
-  return null;
-}
-
-async function intermedio(url, referer) {
-  if (!/cinecalidad\./i.test(dominio(url))) return url;
-  const html = await texto(url, { headers: { Referer: referer } });
-  const destino = (html.match(/id=["']btn_enlace["'][^>]*>[\s\S]*?href=["']([^"']+)["']/i) || html.match(/<iframe[^>]+src=["']([^"']+)["']/i) || [])[1];
-  return destino ? absoluta(destino, url) : '';
-}
-
-async function enlacesPagina(html, base, pagina) {
-  const crudos = [];
-  const po = /<li[^>]*data-option=["']([^"']+)["'][^>]*>([\s\S]*?)<\/li>/gi;
-  let m;
-  while ((m = po.exec(html))) {
-    const destino = /^https?:/.test(m[1]) ? m[1] : atobSeguro(m[1]);
-    if (/^https?:/.test(destino)) crudos.push({ url: destino, audio: audioDe(limpiarHtml(m[2])) || 'Latino' });
-  }
-  const pu = /<a\b[^>]*data-url=["']([A-Za-z0-9+/=]{20,})["'][^>]*>([\s\S]*?)<\/a>/gi;
-  while ((m = pu.exec(html))) {
-    const destino = atobSeguro(m[1]);
-    if (/^https?:/.test(destino) && !/mediafire/i.test(destino)) crudos.push({ url: destino, audio: audioDe(limpiarHtml(m[2])) || 'Latino' });
-  }
-  const ps = /data-src=["']([A-Za-z0-9+/=]{20,})["']/g;
-  while ((m = ps.exec(html))) {
-    const destino = atobSeguro(m[1]);
-    if (/^https?:/.test(destino)) crudos.push({ url: destino, audio: 'Latino' });
-  }
-  const vistos = new Set();
-  const unicos = crudos.filter((x) => !vistos.has(x.url) && vistos.add(x.url));
-  const lista = await Promise.all(unicos.map(async (x) => {
-    const url = await intermedio(x.url, pagina).catch(() => '');
-    return url ? { url, audio: x.audio, referer: `${base}/` } : null;
-  }));
-  return lista.filter(Boolean);
+  });
+  return [].concat(...(await Promise.all(tareas)));
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
@@ -1171,31 +1132,10 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     if (!datos) return [];
     const temporada = Number(season) || 1;
     const episodio = Number(episode) || 1;
-    const titulo = encabezado(datos, tipo, temporada, episodio);
-    const enBase = async (base) => {
-      let pagina = await buscar(base, titulosPosibles(datos), tipo);
-      let html = '';
-      if (tipo === 'tv') {
-        let serie = pagina ? await texto(pagina) : '';
-        if (!/class=["'][^"']*numerando/.test(serie)) {
-          const directa = await seriePorSlug(base, datos);
-          serie = directa ? directa.html : '';
-        }
-        pagina = serie ? episodioEn(serie, temporada, episodio) : null;
-      }
-      if (pagina) {
-        pagina = absoluta(pagina, base);
-        html = await texto(pagina);
-      } else if (tipo === 'movie') {
-        const directo = await porSlug(base, datos);
-        if (directo) {
-          pagina = directo.url;
-          html = directo.html;
-        }
-      }
-      return html ? enlacesPagina(html, base, pagina) : [];
-    };
-    return await enCadena(BASES.map((base) => () => enBase(base)), (lista) => armar(lista, titulo, FUENTE));
+    let pagina = await buscar(titulosPosibles(datos), tipo, datos.anio);
+    if (pagina && tipo === 'tv') pagina = await paginaEpisodio(pagina, temporada, episodio);
+    if (!pagina) return [];
+    return await armar(await enlaces(pagina), encabezado(datos, tipo, temporada, episodio), FUENTE, true);
   } catch (e) {
     console.log(`[${FUENTE}] ${e.message}`);
     return [];

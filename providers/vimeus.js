@@ -1065,137 +1065,43 @@ function limitar(buscador) {
   };
 }
 
-const FUENTE = 'CineCalidad';
-const BASES = ['https://www.cinecalidad.ec', 'https://www.cinecalidad.vg'];
+const FUENTE = 'Vimeus';
+const BASE = 'https://vimeus.com';
+const LLAVE = 'ttapaNFkp2YbIFMawxmnqCPcs0pRVzbjrI5r1-da5M4';
 
-async function buscar(base, titulos, tipo) {
-  for (const titulo of titulos) {
-    const html = await texto(`${base}/?s=${encodeURIComponent(titulo)}`);
-    let mejor = null;
-    let puntos = 0;
-    for (const art of html.split(/<article[^>]*class="[^"]*\bitem\b/i).slice(1)) {
-      const href = (art.match(/<a[^>]+href="([^"]+)"/) || [])[1];
-      const nombre = limpiarHtml((art.match(/class="in_title"[^>]*>([\s\S]*?)<\/div>/) || [])[1]);
-      if (!href) continue;
-      const esPeli = /\/ver-pelicula\//.test(href);
-      if ((tipo === 'movie') !== esPeli) continue;
-      const s = parecido(nombre, titulo);
-      if (s > puntos) {
-        puntos = s;
-        mejor = absoluta(href, base);
-      }
-    }
-    if (mejor && puntos >= 0.8) return mejor;
+function datosEmbed(html) {
+  const m = String(html || '').match(/<script\s+type=["']text\/json["']\s+id=["']data["']>\s*(\{[\s\S]*?\})\s*<\/script>/i);
+  if (!m) return null;
+  try {
+    return JSON.parse(m[1]);
+  } catch (e) {
+    return null;
   }
-  return null;
-}
-
-function episodioEn(html, temporada, episodio) {
-  const items = html.split(/<li[^>]*>/i);
-  for (const li of items) {
-    const num = limpiarHtml((li.match(/class=["'][^"']*numerando[^"']*["'][^>]*>([\s\S]*?)<\//) || [])[1]).replace(/[SE]/gi, '');
-    const partes = num.split('-').map((x) => parseInt(x, 10)).filter((x) => !isNaN(x));
-    if (partes.length === 2 && partes[0] === temporada && partes[1] === episodio) {
-      const href = (li.match(/<a[^>]+href=["']([^"']+)["']/) || [])[1];
-      if (href) return href;
-    }
-  }
-  return null;
-}
-
-async function porSlug(base, datos) {
-  for (const t of titulosPosibles(datos)) {
-    const s = slug(t);
-    if (!s) continue;
-    for (const variante of [s, `${s}-2`, `${s}-3`]) {
-      const url = `${base}/pelicula/${variante}/`;
-      const html = await texto(url, { headers: { Referer: `${base}/` } });
-      if (!html) continue;
-      const anio = (html.match(/<h1[^>]*>[^<]*\((\d{4})\)[^<]*<\/h1>/) || [])[1];
-      if (!anio || !datos.anio || anio === datos.anio) return { url, html };
-    }
-  }
-  return null;
-}
-
-async function seriePorSlug(base, datos) {
-  for (const t of titulosPosibles(datos)) {
-    const s = slug(t);
-    if (!s) continue;
-    for (const ruta of [`${base}/ver-serie/${s}/`, `${base}/serie/${s}/`]) {
-      const html = await texto(ruta, { headers: { Referer: `${base}/` } });
-      if (/class=["'][^"']*numerando/.test(html)) return { url: ruta, html };
-    }
-  }
-  return null;
-}
-
-async function intermedio(url, referer) {
-  if (!/cinecalidad\./i.test(dominio(url))) return url;
-  const html = await texto(url, { headers: { Referer: referer } });
-  const destino = (html.match(/id=["']btn_enlace["'][^>]*>[\s\S]*?href=["']([^"']+)["']/i) || html.match(/<iframe[^>]+src=["']([^"']+)["']/i) || [])[1];
-  return destino ? absoluta(destino, url) : '';
-}
-
-async function enlacesPagina(html, base, pagina) {
-  const crudos = [];
-  const po = /<li[^>]*data-option=["']([^"']+)["'][^>]*>([\s\S]*?)<\/li>/gi;
-  let m;
-  while ((m = po.exec(html))) {
-    const destino = /^https?:/.test(m[1]) ? m[1] : atobSeguro(m[1]);
-    if (/^https?:/.test(destino)) crudos.push({ url: destino, audio: audioDe(limpiarHtml(m[2])) || 'Latino' });
-  }
-  const pu = /<a\b[^>]*data-url=["']([A-Za-z0-9+/=]{20,})["'][^>]*>([\s\S]*?)<\/a>/gi;
-  while ((m = pu.exec(html))) {
-    const destino = atobSeguro(m[1]);
-    if (/^https?:/.test(destino) && !/mediafire/i.test(destino)) crudos.push({ url: destino, audio: audioDe(limpiarHtml(m[2])) || 'Latino' });
-  }
-  const ps = /data-src=["']([A-Za-z0-9+/=]{20,})["']/g;
-  while ((m = ps.exec(html))) {
-    const destino = atobSeguro(m[1]);
-    if (/^https?:/.test(destino)) crudos.push({ url: destino, audio: 'Latino' });
-  }
-  const vistos = new Set();
-  const unicos = crudos.filter((x) => !vistos.has(x.url) && vistos.add(x.url));
-  const lista = await Promise.all(unicos.map(async (x) => {
-    const url = await intermedio(x.url, pagina).catch(() => '');
-    return url ? { url, audio: x.audio, referer: `${base}/` } : null;
-  }));
-  return lista.filter(Boolean);
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
   try {
     const tipo = mediaType === 'movie' ? 'movie' : 'tv';
-    const datos = await datosTmdb(tmdbId, tipo);
-    if (!datos) return [];
     const temporada = Number(season) || 1;
     const episodio = Number(episode) || 1;
-    const titulo = encabezado(datos, tipo, temporada, episodio);
-    const enBase = async (base) => {
-      let pagina = await buscar(base, titulosPosibles(datos), tipo);
-      let html = '';
-      if (tipo === 'tv') {
-        let serie = pagina ? await texto(pagina) : '';
-        if (!/class=["'][^"']*numerando/.test(serie)) {
-          const directa = await seriePorSlug(base, datos);
-          serie = directa ? directa.html : '';
-        }
-        pagina = serie ? episodioEn(serie, temporada, episodio) : null;
-      }
-      if (pagina) {
-        pagina = absoluta(pagina, base);
-        html = await texto(pagina);
-      } else if (tipo === 'movie') {
-        const directo = await porSlug(base, datos);
-        if (directo) {
-          pagina = directo.url;
-          html = directo.html;
-        }
-      }
-      return html ? enlacesPagina(html, base, pagina) : [];
-    };
-    return await enCadena(BASES.map((base) => () => enBase(base)), (lista) => armar(lista, titulo, FUENTE));
+    const info = await datosTmdb(tmdbId, tipo);
+    const id = info ? info.id : String(tmdbId);
+    const cabeceras = { Referer: `${BASE}/` };
+    const rutas = tipo === 'movie'
+      ? [`${BASE}/e/movie?tmdb=${id}&view_key=${LLAVE}`]
+      : [`${BASE}/e/serie?tmdb=${id}&se=${temporada}&ep=${episodio}&view_key=${LLAVE}`, `${BASE}/e/anime?tmdb=${id}&se=${temporada}&ep=${episodio}&view_key=${LLAVE}`];
+    let datos = null;
+    for (const ruta of rutas) {
+      datos = datosEmbed(await texto(ruta, { headers: cabeceras }));
+      if (datos) break;
+    }
+    if (!datos || !Array.isArray(datos.embeds)) return [];
+    const lista = datos.embeds.filter((e) => e && e.url).map((e) => {
+      const url = /^https?:/.test(e.url) ? e.url : e.url.startsWith('//') ? `https:${e.url}` : `https://${e.url}`;
+      return { url, audio: audioDe(e.lang) || 'Latino', calidad: calidadTexto(e.quality), referer: `${BASE}/` };
+    });
+    const titulo = info ? encabezado(info, tipo, temporada, episodio) : '';
+    return await armar(lista, titulo, FUENTE, true);
   } catch (e) {
     console.log(`[${FUENTE}] ${e.message}`);
     return [];

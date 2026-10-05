@@ -1065,103 +1065,35 @@ function limitar(buscador) {
   };
 }
 
-const FUENTE = 'CineCalidad';
-const BASES = ['https://www.cinecalidad.ec', 'https://www.cinecalidad.vg'];
+const FUENTE = 'AllpeliculasSE';
+const BASE = 'https://allpeliculas.la';
+const CABECERAS = { Accept: 'application/json, text/plain, */*', Referer: `${BASE}/` };
 
-async function buscar(base, titulos, tipo) {
-  for (const titulo of titulos) {
-    const html = await texto(`${base}/?s=${encodeURIComponent(titulo)}`);
-    let mejor = null;
-    let puntos = 0;
-    for (const art of html.split(/<article[^>]*class="[^"]*\bitem\b/i).slice(1)) {
-      const href = (art.match(/<a[^>]+href="([^"]+)"/) || [])[1];
-      const nombre = limpiarHtml((art.match(/class="in_title"[^>]*>([\s\S]*?)<\/div>/) || [])[1]);
-      if (!href) continue;
-      const esPeli = /\/ver-pelicula\//.test(href);
-      if ((tipo === 'movie') !== esPeli) continue;
-      const s = parecido(nombre, titulo);
+function consultaDe(titulo) {
+  return String(titulo || '').split(':')[0].replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+async function buscarPost(datos, tipo) {
+  const clase = tipo === 'movie' ? 'movies' : 'tvshows';
+  let mejor = null;
+  let puntos = 0;
+  for (const titulo of titulosPosibles(datos)) {
+    const consulta = consultaDe(titulo);
+    if (!consulta) continue;
+    const r = await json(`${BASE}/wp-api/v1/search?filter=[]&q=${encodeURIComponent(consulta)}&orderBy=latest&order=desc&postType=${clase}&postsPerPage=20&page=1`, { headers: CABECERAS });
+    for (const p of (r && r.data && r.data.posts) || []) {
+      if (p.type && p.type !== clase) continue;
+      let s = Math.max(parecido(p.title, titulo), parecido(p.original_title, datos.original));
+      const anio = String(p.release_date || '').slice(0, 4);
+      if (datos.anio && /^\d{4}$/.test(anio)) s += anio === datos.anio ? 0.2 : Math.abs(Number(anio) - Number(datos.anio)) > 1 ? -0.3 : 0;
       if (s > puntos) {
         puntos = s;
-        mejor = absoluta(href, base);
+        mejor = p;
       }
     }
-    if (mejor && puntos >= 0.8) return mejor;
+    if (puntos >= 1.1) break;
   }
-  return null;
-}
-
-function episodioEn(html, temporada, episodio) {
-  const items = html.split(/<li[^>]*>/i);
-  for (const li of items) {
-    const num = limpiarHtml((li.match(/class=["'][^"']*numerando[^"']*["'][^>]*>([\s\S]*?)<\//) || [])[1]).replace(/[SE]/gi, '');
-    const partes = num.split('-').map((x) => parseInt(x, 10)).filter((x) => !isNaN(x));
-    if (partes.length === 2 && partes[0] === temporada && partes[1] === episodio) {
-      const href = (li.match(/<a[^>]+href=["']([^"']+)["']/) || [])[1];
-      if (href) return href;
-    }
-  }
-  return null;
-}
-
-async function porSlug(base, datos) {
-  for (const t of titulosPosibles(datos)) {
-    const s = slug(t);
-    if (!s) continue;
-    for (const variante of [s, `${s}-2`, `${s}-3`]) {
-      const url = `${base}/pelicula/${variante}/`;
-      const html = await texto(url, { headers: { Referer: `${base}/` } });
-      if (!html) continue;
-      const anio = (html.match(/<h1[^>]*>[^<]*\((\d{4})\)[^<]*<\/h1>/) || [])[1];
-      if (!anio || !datos.anio || anio === datos.anio) return { url, html };
-    }
-  }
-  return null;
-}
-
-async function seriePorSlug(base, datos) {
-  for (const t of titulosPosibles(datos)) {
-    const s = slug(t);
-    if (!s) continue;
-    for (const ruta of [`${base}/ver-serie/${s}/`, `${base}/serie/${s}/`]) {
-      const html = await texto(ruta, { headers: { Referer: `${base}/` } });
-      if (/class=["'][^"']*numerando/.test(html)) return { url: ruta, html };
-    }
-  }
-  return null;
-}
-
-async function intermedio(url, referer) {
-  if (!/cinecalidad\./i.test(dominio(url))) return url;
-  const html = await texto(url, { headers: { Referer: referer } });
-  const destino = (html.match(/id=["']btn_enlace["'][^>]*>[\s\S]*?href=["']([^"']+)["']/i) || html.match(/<iframe[^>]+src=["']([^"']+)["']/i) || [])[1];
-  return destino ? absoluta(destino, url) : '';
-}
-
-async function enlacesPagina(html, base, pagina) {
-  const crudos = [];
-  const po = /<li[^>]*data-option=["']([^"']+)["'][^>]*>([\s\S]*?)<\/li>/gi;
-  let m;
-  while ((m = po.exec(html))) {
-    const destino = /^https?:/.test(m[1]) ? m[1] : atobSeguro(m[1]);
-    if (/^https?:/.test(destino)) crudos.push({ url: destino, audio: audioDe(limpiarHtml(m[2])) || 'Latino' });
-  }
-  const pu = /<a\b[^>]*data-url=["']([A-Za-z0-9+/=]{20,})["'][^>]*>([\s\S]*?)<\/a>/gi;
-  while ((m = pu.exec(html))) {
-    const destino = atobSeguro(m[1]);
-    if (/^https?:/.test(destino) && !/mediafire/i.test(destino)) crudos.push({ url: destino, audio: audioDe(limpiarHtml(m[2])) || 'Latino' });
-  }
-  const ps = /data-src=["']([A-Za-z0-9+/=]{20,})["']/g;
-  while ((m = ps.exec(html))) {
-    const destino = atobSeguro(m[1]);
-    if (/^https?:/.test(destino)) crudos.push({ url: destino, audio: 'Latino' });
-  }
-  const vistos = new Set();
-  const unicos = crudos.filter((x) => !vistos.has(x.url) && vistos.add(x.url));
-  const lista = await Promise.all(unicos.map(async (x) => {
-    const url = await intermedio(x.url, pagina).catch(() => '');
-    return url ? { url, audio: x.audio, referer: `${base}/` } : null;
-  }));
-  return lista.filter(Boolean);
+  return puntos >= 0.8 ? mejor : null;
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
@@ -1171,31 +1103,20 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     if (!datos) return [];
     const temporada = Number(season) || 1;
     const episodio = Number(episode) || 1;
-    const titulo = encabezado(datos, tipo, temporada, episodio);
-    const enBase = async (base) => {
-      let pagina = await buscar(base, titulosPosibles(datos), tipo);
-      let html = '';
-      if (tipo === 'tv') {
-        let serie = pagina ? await texto(pagina) : '';
-        if (!/class=["'][^"']*numerando/.test(serie)) {
-          const directa = await seriePorSlug(base, datos);
-          serie = directa ? directa.html : '';
-        }
-        pagina = serie ? episodioEn(serie, temporada, episodio) : null;
-      }
-      if (pagina) {
-        pagina = absoluta(pagina, base);
-        html = await texto(pagina);
-      } else if (tipo === 'movie') {
-        const directo = await porSlug(base, datos);
-        if (directo) {
-          pagina = directo.url;
-          html = directo.html;
-        }
-      }
-      return html ? enlacesPagina(html, base, pagina) : [];
-    };
-    return await enCadena(BASES.map((base) => () => enBase(base)), (lista) => armar(lista, titulo, FUENTE));
+    const post = await buscarPost(datos, tipo);
+    if (!post) return [];
+    let id = post._id;
+    if (tipo === 'tv') {
+      const r = await json(`${BASE}/wp-api/v1/single/episodes/list?_id=${post._id}&season=${temporada}&postsPerPage=100&page=1`, { headers: CABECERAS });
+      const ep = ((r && r.data && r.data.posts) || []).find((e) => Number(e.season_number) === temporada && Number(e.episode_number) === episodio);
+      if (!ep) return [];
+      id = ep._id;
+    }
+    const r = await json(`${BASE}/wp-api/v1/player?postId=${id}&demo=0`, { headers: CABECERAS });
+    const lista = ((r && r.data && r.data.embeds) || [])
+      .filter((e) => e.url && /^https?:/.test(e.url) && e.server !== 'Torrent' && !/\.torrent|^magnet:/i.test(e.url))
+      .map((e) => ({ url: e.url, audio: audioDe(e.lang) || 'Latino', calidad: calidadTexto(e.quality), referer: `${BASE}/` }));
+    return await armar(lista, encabezado(datos, tipo, temporada, episodio), FUENTE, true);
   } catch (e) {
     console.log(`[${FUENTE}] ${e.message}`);
     return [];

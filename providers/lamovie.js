@@ -760,6 +760,104 @@ const SERVIDORES = [
   [/streamsilk|savefiles|vembed|vidguard|listeamed|bembed|embedseek|tplayer|turbovid|vidsonic|vidnest|dropcdn|barmonrey/i, '', (u, r) => resolverGenerico(u, nombreServidor(u), r, 1)]
 ];
 
+const CALIDADES_URLSET = {
+  vimeos: { h: '720p', n: '480p' },
+  goodstream: { x: '1080p', h: '720p', n: '480p', l: '360p' },
+  vidhide: { n: '720p', l: '480p' },
+  wish: { x: '1080p', h: '1080p', n: '720p', l: '480p' },
+  voe: { n: '720p', l: '360p' }
+};
+
+function calidadUrlset(url) {
+  const familia = /vimeos/.test(url) ? 'vimeos' : /goodstream/.test(url) ? 'goodstream' : /cloudwindow-route/.test(url) ? 'voe' : /minochinos|vidhide|dintezuvio|dramiyos/.test(url) ? 'vidhide' : /premilkyway|hlswish|vibuxer|streamwish/.test(url) ? 'wish' : '';
+  const m = String(url || '').match(/_,([a-z,]+),\.urlset/);
+  if (familia && m) {
+    const partes = m[1].split(',');
+    for (const letra of ['x', 'o', 'h', 'n', 'l']) if (partes.includes(letra) && CALIDADES_URLSET[familia][letra]) return CALIDADES_URLSET[familia][letra];
+  }
+  return calidadTexto((String(url || '').match(/[_\-/](\d{3,4})p/) || [])[0] || '');
+}
+
+async function ligeroWish(url, referer) {
+  const destino = url.replace('hglink.to', 'vibuxer.com');
+  const casa = origen(destino);
+  for (const ref of [...new Set([referer || 'https://embed69.org/', 'https://embed69.org/'])]) {
+    const html = await texto(destino, { headers: { Referer: ref, Origin: origen(ref), 'Accept-Language': 'es-MX,es;q=0.9' } });
+    if (!html) continue;
+    const codigo = `${desempacar(html)}\n${html}`;
+    let video = (html.match(/file\s*:\s*["']([^"']+)["']/i) || [])[1] || '';
+    if (!video) {
+      const bloque = codigo.match(/\{[^{}]*["']?hls[234]["']?\s*:\s*["']([^"']+)["'][^{}]*\}/);
+      if (bloque) {
+        const opciones = {};
+        const par = /["']?(hls[234])["']?\s*:\s*["']([^"']+)["']/g;
+        let m;
+        while ((m = par.exec(bloque[0]))) opciones[m[1]] = m[2];
+        video = opciones.hls4 || opciones.hls3 || opciones.hls2 || '';
+      }
+    }
+    if (!video) video = (codigo.match(/["']([^"']{30,}\.m3u8[^"']*)["']/i) || [])[1] || '';
+    if (video) return enlace(absoluta(video, destino), 'StreamWish', { 'User-Agent': UA, Referer: `${casa}/` });
+  }
+  return [];
+}
+
+async function ligeroGoodstream(url) {
+  const html = await texto(url, { headers: { Referer: 'https://goodstream.one' } });
+  const video = (html.match(/file:\s*"([^"]+)"/) || [])[1];
+  return enlace(video, 'GoodStream', { Referer: url, Origin: 'https://goodstream.one', 'User-Agent': UA });
+}
+
+async function ligeroLacloud(url, referer) {
+  const html = await texto(url, { headers: { Referer: referer || `${origen(url)}/` } });
+  const video = (html.match(/const src\s*=\s*["']([^"']+)["']/) || [])[1];
+  return enlace(video, 'LaCloud', { Referer: url, 'User-Agent': UA });
+}
+
+async function ligeroWaaw(url, referer) {
+  const e = url.replace('/f/', '/e/');
+  const html = await texto(e, { headers: { Referer: referer || `${origen(e)}/` } });
+  const video = (html.match(/https?:\/\/[^\s"'<>\\]+\.m3u8[^\s"'<>\\]*/i) || [])[0] || (html.match(/file\s*:\s*["']([^"']+)["']/i) || [])[1];
+  return enlace(video, 'Netu', { 'User-Agent': UA, Referer: e });
+}
+
+const LIGEROS = [
+  [/goodstream/i, 'GoodStream', (u) => ligeroGoodstream(u)],
+  [/hlswish|streamwish|strwish|vibuxer|hglink|swdyu|cybervynx|dumbalag|premilkyway/i, 'StreamWish', (u, r) => ligeroWish(u, r)],
+  [/voe\.sx|voe-unblock|voeunbl/i, 'Voe', (u, r) => resolverVoe(u, r)],
+  [/vimeos/i, 'Vimeos', (u, r) => resolverVimeos(u, r)],
+  [/lacloud/i, 'LaCloud', (u, r) => ligeroLacloud(u, r)],
+  [/earnvids|earnl\.|vidnova|streamfort/i, 'EarnVids', (u, r) => resolverEmpaquetado(u, 'EarnVids', r, true)],
+  [/vidhide|filelions|minochinos|dintezuvio|dramiyos|dhtpre|mivalyo|dingtezuni|ryderjet|peytonepre|smoothpre/i, 'VidHide', (u, r) => resolverEmpaquetado(u, 'VidHide', r, true)],
+  [/dood|d0000d|ds2play|ds2video|dsvplay|myvidplay|do7go/i, 'Doodstream', (u, r) => resolverDood(u.replace('dsvplay.com', 'd0000d.com'), r)],
+  [/uqload/i, 'Uqload', (u, r) => resolverUqload(u, r)],
+  [/filemoon|bysezejataos|bysezoxexe|bysebuho|byse\./i, 'Filemoon', (u) => resolverByse(u)],
+  [/streamtape|strtape|stape/i, 'Streamtape', (u) => resolverStreamtape(u)],
+  [/mixdrop|mxdrop|m1xdrop/i, 'Mixdrop', (u, r) => resolverMixdrop(u, r)],
+  [/ok\.ru/i, 'OK.ru', (u) => resolverOkru(u)],
+  [/fastream/i, 'Fastream', (u, r) => resolverEmpaquetado(u, 'Fastream', r, true)]
+];
+
+async function resolverLigero(url, referer) {
+  const u = absoluta(url, referer || '');
+  if (/\.(m3u8|mp4)(\?|#|$)/i.test(u)) return enlace(u, nombreServidor(u), referer ? { Referer: referer, 'User-Agent': UA } : { 'User-Agent': UA });
+  const h = dominio(u);
+  const servidor = LIGEROS.find(([patron]) => patron.test(h));
+  if (!servidor) return [];
+  let salida = [];
+  try {
+    salida = await servidor[2](u, referer);
+  } catch (e) {
+    salida = [];
+  }
+  for (const s of salida) {
+    s.servidor = servidor[1];
+    if (!s.calidad) s.calidad = calidadUrlset(s.url);
+    if (!s.calidad && restante() > 15000) s.calidad = await calidadHls(s.url, s.headers);
+  }
+  return salida;
+}
+
 function nombreServidor(url) {
   const h = dominio(url).replace(/^www\./, '');
   for (const [patron, nombre] of SERVIDORES) if (nombre && patron.test(h)) return nombre;
@@ -917,14 +1015,15 @@ async function directo(item) {
   return salida;
 }
 
-async function armar(lista, titulo, fuente) {
+async function armar(lista, titulo, fuente, ligero) {
   const vistos = new Set();
-  const resultados = await Promise.all(lista.map((item) => conLimite((item.directo ? directo(item) : resolver(item.url, item.referer)).then((salida) => salida.map((s) => Object.assign({}, s, {
+  const resolverItem = (item) => (item.directo ? directo(item) : ligero ? resolverLigero(item.url, item.referer) : resolver(item.url, item.referer));
+  const resultados = await Promise.all(lista.map((item) => conLimite(resolverItem(item).then((salida) => salida.map((s) => Object.assign({}, s, {
     audio: s.audio || item.audio || '',
     calidad: s.calidad || item.calidad || '',
     tamano: s.tamano || item.tamano || '',
     servidorSitio: item.servidor || ''
-  }))), Math.max(1000, CIERRE - transcurrido()), [])));
+  }))), Math.max(1000, CIERRE - 6000 - transcurrido()), [])));
   const tarjetas = [];
   for (const s of [].concat(...resultados)) {
     if (!s.url || vistos.has(s.url)) continue;
@@ -1003,7 +1102,7 @@ async function metodoApi(base, datos, tipo, temporada, episodio) {
     if (!id) return [];
   }
   const r = await json(`${base}/wp-api/v1/player?postId=${id}&demo=0`, { headers: cabeceras });
-  return ((r && r.data && r.data.embeds) || []).filter((e) => e.url).map((e) => ({ url: absoluta(e.url, base), audio: audioDe(e.lang), referer: `${base}/` }));
+  return ((r && r.data && r.data.embeds) || []).filter((e) => e.url && !/html\?v=1/.test(e.url)).map((e) => ({ url: absoluta(e.url, base), audio: audioDe(e.lang), calidad: calidadTexto(e.quality), referer: `${base}/` }));
 }
 
 async function metodoPagina(base, datos, tipo, temporada, episodio) {
@@ -1073,8 +1172,8 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     const temporada = Number(season) || 1;
     const episodio = Number(episode) || 1;
     const titulo = encabezado(datos, tipo, temporada, episodio);
-    const orden = [[SITIOS[1], metodoPagina], [SITIOS[1], metodoApi], [SITIOS[0], metodoApi], [SITIOS[0], metodoPagina]];
-    return await enCadena(orden.map(([base, metodo]) => () => metodo(base, datos, tipo, temporada, episodio)), (lista) => armar(lista, titulo, FUENTE));
+    const orden = [[SITIOS[1], metodoPagina], [SITIOS[0], metodoApi], [SITIOS[1], metodoApi], [SITIOS[0], metodoPagina]];
+    return await enOrden(orden.map(([base, metodo]) => () => metodo(base, datos, tipo, temporada, episodio)), (lista) => armar(lista, titulo, FUENTE, true));
   } catch (e) {
     console.log(`[${FUENTE}] ${e.message}`);
     return [];

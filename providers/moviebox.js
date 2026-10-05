@@ -341,7 +341,7 @@ function idioma(texto) {
   const t = String(texto || '');
   if (/latin|latino|419|m[eé]xic/i.test(t)) return 'Latino';
   if (/castellano|castilian|espa[nñ]a|spain/i.test(t)) return 'Castellano';
-  return 'Español';
+  return 'Latino';
 }
 
 function esEspanol(texto) {
