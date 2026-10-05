@@ -28,14 +28,34 @@ function esperar(ms) {
 }
 
 function reloj(ms, estado) {
+  const fin = Date.now() + ms;
   return (async () => {
-    let resta = ms;
-    while (!estado.listo && resta > 0) {
-      const paso = Math.min(200, resta);
-      await esperar(paso);
-      resta -= paso;
-    }
+    while (!estado.listo && Date.now() < fin) await esperar(Math.max(1, Math.min(250, fin - Date.now())));
   })();
+}
+
+async function traer(url, opciones) {
+  const o = opciones || {};
+  if (typeof __native_fetch !== 'function') return fetch(url, o);
+  const cabeceras = {};
+  for (const k of Object.keys(o.headers || {})) cabeceras[k] = String(o.headers[k]);
+  const cuerpo = o.body === undefined || o.body === null ? null : String(o.body);
+  const d = JSON.parse(await __native_fetch(url, String(o.method || 'GET').toUpperCase(), JSON.stringify(cabeceras), cuerpo === null ? 'none' : 'text', cuerpo || '', o.redirect !== 'manual'));
+  const h = d.headers || {};
+  return {
+    ok: !!d.ok,
+    status: d.status,
+    url: d.url || url,
+    headers: { get: (n) => h[String(n).toLowerCase()] || null },
+    text: () => Promise.resolve(d.body || ''),
+    json: () => {
+      try {
+        return Promise.resolve(d.body ? JSON.parse(d.body) : null);
+      } catch (e) {
+        return Promise.resolve(null);
+      }
+    }
+  };
 }
 
 function conLimite(promesa, ms) {
@@ -157,7 +177,7 @@ async function pedir(metodo, url, cuerpo, extras, sinToken) {
   const hosts = HOSTS.includes(host) ? [host].concat(HOSTS.filter((h) => h !== host)).slice(0, 3) : [host];
   for (let i = 0; i < hosts.length; i++) {
     try {
-      const respuesta = await conLimite(fetch(url.replace(host, hosts[i]), opciones), 10000);
+      const respuesta = await conLimite(traer(url.replace(host, hosts[i]), opciones), 10000);
       if (!respuesta.ok) {
         if ((respuesta.status === 403 || respuesta.status === 429 || respuesta.status >= 500) && i + 1 < hosts.length) continue;
         return null;
@@ -185,8 +205,8 @@ async function obtenerToken() {
 async function datosTmdb(tmdbId, tipo) {
   const base = `https://api.themoviedb.org/3/${tipo}/${tmdbId}?api_key=${TMDB_KEY}`;
   const [ingles, espanol] = await Promise.all([
-    conLimite(fetch(base), 10000).then((r) => r.json()).catch(() => null),
-    conLimite(fetch(`${base}&language=es-MX`), 10000).then((r) => r.json()).catch(() => null)
+    conLimite(traer(base), 10000).then((r) => r.json()).catch(() => null),
+    conLimite(traer(`${base}&language=es-MX`), 10000).then((r) => r.json()).catch(() => null)
   ]);
   if (!ingles && !espanol) return null;
   const en = ingles || {};

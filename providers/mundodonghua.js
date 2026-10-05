@@ -1,19 +1,25 @@
 const CryptoJS = require('crypto-js');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
-const PRESUPUESTO = 40000;
+const PRESUPUESTO = 42000;
+const CIERRE = 50000;
 let inicio = Date.now();
 
 function esperar(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function transcurrido() {
+  return Date.now() - inicio;
+}
+
 function restante() {
-  return PRESUPUESTO - (Date.now() - inicio);
+  return PRESUPUESTO - transcurrido();
 }
 
 function conLimite(promesa, ms, valor) {
   let listo = false;
+  const fin = Date.now() + ms;
   const trabajo = Promise.resolve(promesa).then((v) => {
     listo = true;
     return v;
@@ -22,39 +28,55 @@ function conLimite(promesa, ms, valor) {
     return valor;
   });
   const reloj = (async () => {
-    let resta = ms;
-    while (!listo && resta > 0) {
-      const paso = Math.min(200, resta);
-      await esperar(paso);
-      resta -= paso;
-    }
+    while (!listo && Date.now() < fin) await esperar(Math.max(1, Math.min(250, fin - Date.now())));
     return valor;
   })();
   return Promise.race([trabajo, reloj]);
+}
+
+async function traer(url, opciones) {
+  if (typeof __native_fetch !== 'function') return fetch(url, opciones);
+  const cabeceras = {};
+  for (const k of Object.keys(opciones.headers || {})) cabeceras[k] = String(opciones.headers[k]);
+  const cuerpo = opciones.body === undefined || opciones.body === null ? null : String(opciones.body);
+  const crudo = await __native_fetch(url, String(opciones.method || 'GET').toUpperCase(), JSON.stringify(cabeceras), cuerpo === null ? 'none' : 'text', cuerpo || '', opciones.redirect !== 'manual');
+  const d = JSON.parse(crudo);
+  const h = d.headers || {};
+  return {
+    ok: !!d.ok,
+    status: d.status,
+    statusText: d.statusText,
+    url: d.url || url,
+    headers: { get: (n) => h[String(n).toLowerCase()] || null },
+    text: () => Promise.resolve(d.body || ''),
+    json: () => {
+      try {
+        return Promise.resolve(d.body ? JSON.parse(d.body) : null);
+      } catch (e) {
+        return Promise.resolve(null);
+      }
+    }
+  };
 }
 
 const caidos = new Set();
 
 async function pedir(url, opciones) {
   const host = String(url || '').replace(/^https?:\/\//i, '').split(/[/?#]/)[0].toLowerCase();
-  if (caidos.has(host)) return null;
-  const queda = restante();
-  if (queda < 2000) return null;
+  if (caidos.has(host) || restante() <= 0) return null;
   const o = Object.assign({}, opciones || {});
-  const limite = Math.min(o.limite || 10000, queda);
+  const limite = Math.min(o.limite || CIERRE, CIERRE - transcurrido());
   delete o.limite;
   o.headers = Object.assign({
     'User-Agent': UA,
     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'es-MX,es;q=0.9,en;q=0.8'
   }, o.headers || {});
-  let r = null;
-  try {
-    r = await conLimite(fetch(url, o), limite, null);
-  } catch (e) {
-    r = null;
+  const r = await conLimite(traer(url, o).catch(() => ({ status: 0 })), limite, null);
+  if (r && !r.status) {
+    caidos.add(host);
+    return null;
   }
-  if (!r) caidos.add(host);
   return r;
 }
 
@@ -178,7 +200,7 @@ function calidadTexto(t) {
 }
 
 async function calidadHls(url, headers) {
-  if (!/m3u8|\/hls|master|playlist|\.txt/i.test(url)) return '';
+  if (!/m3u8|\/hls|master|playlist|\.txt/i.test(url) || restante() < 8000) return '';
   const t = await texto(url, { headers, limite: 5000 });
   let alto = 0;
   const patron = /RESOLUTION=\d+x(\d+)/gi;
@@ -902,7 +924,7 @@ async function armar(lista, titulo, fuente) {
     calidad: s.calidad || item.calidad || '',
     tamano: s.tamano || item.tamano || '',
     servidorSitio: item.servidor || ''
-  }))), Math.max(1000, Math.min(25000, restante() + 3000)), [])));
+  }))), Math.max(1000, CIERRE - transcurrido()), [])));
   const tarjetas = [];
   for (const s of [].concat(...resultados)) {
     if (!s.url || vistos.has(s.url)) continue;
@@ -940,7 +962,7 @@ function limitar(buscador) {
   return (...argumentos) => {
     inicio = Date.now();
     caidos.clear();
-    return conLimite(Promise.resolve().then(() => buscador(...argumentos)), PRESUPUESTO + 5000, []);
+    return conLimite(Promise.resolve().then(() => buscador(...argumentos)), CIERRE, []);
   };
 }
 
@@ -1062,8 +1084,8 @@ const BASE = 'https://www.mundodonghua.com';
 
 async function buscar(consulta) {
   const [a, b] = await Promise.all([
-    texto(`${BASE}/busquedas?donghua=${encodeURIComponent(consulta)}`, { limite: 20000 }),
-    texto(`${BASE}/busquedas/${consulta.replace(/ /g, '+')}`, { limite: 20000 })
+    texto(`${BASE}/busquedas?donghua=${encodeURIComponent(consulta)}`),
+    texto(`${BASE}/busquedas/${consulta.replace(/ /g, '+')}`)
   ]);
   const lista = conClases(a, ['md-card']).map((card) => ({
     nombre: limpiarHtml((card.match(/class=["'][^"']*md-card-title[^"']*["'][^>]*>([\s\S]*?)<\//i) || [])[1]),
@@ -1076,7 +1098,7 @@ async function buscar(consulta) {
 }
 
 async function episodio(url, numero) {
-  const html = await texto(url, { limite: 20000 });
+  const html = await texto(url);
   const nombre = url.replace(/\/+$/, '').split('/').pop();
   const directo = new RegExp(`href=["']((?:https?:\\/\\/[^/"']+)?\\/ver\\/${nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\/(\\d+))\\/?["']`, 'gi');
   let d;
@@ -1098,7 +1120,7 @@ async function episodio(url, numero) {
 
 async function enlaces(pagina) {
   const referer = pagina.replace(/ñ/g, '%C3%B1');
-  const html = await texto(referer, { limite: 20000 });
+  const html = await texto(referer);
   const codigo = desempacar(html).replace(/diasfem/g, 'embedsito');
   const lista = [...new Set(codigo.match(/https?:\/\/[^'"\s<>\\]+/g) || [])]
     .filter((u) => !/\.(?:js|css|png|jpe?g|gif|svg)(?:\?|$)/i.test(u) && !/mundodonghua\.com|mdnemonicplayer/i.test(u))
