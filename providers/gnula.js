@@ -1067,144 +1067,83 @@ function limitar(buscador) {
   };
 }
 
-const FUENTE = 'PelisGo';
-const BASE = 'https://pelisgo.online';
-const NAVEGADOR = {
-  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-  'Accept-Language': 'es-US,es;q=0.9,en-US;q=0.8,en;q=0.7,es-419;q=0.6',
-  'sec-ch-ua': '"Chromium";v="137", "Not-A.Brand";v="24", "Google Chrome";v="137"',
-  'sec-ch-ua-mobile': '?0',
-  'sec-ch-ua-platform': '"Windows"',
-  'Sec-Fetch-Dest': 'document',
-  'Sec-Fetch-Mode': 'navigate',
-  'Sec-Fetch-Site': 'none',
-  'Sec-Fetch-User': '?1',
-  'Upgrade-Insecure-Requests': '1'
-};
+const FUENTE = 'Gnula';
+const BASE = 'https://gnulahd.nu';
+const CX = '014793692610101313036:vwtjajbclpq';
 
-function campo(obj, nombre) {
-  return ((obj.match(new RegExp(`${nombre}[\\\\"' ]+:[\\\\"' ]+([^\\\\"',}]+)`, 'i')) || [])[1] || '').trim();
-}
-
-function slugSitio(t) {
-  return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/gi, '').toLowerCase().trim().replace(/\s+/g, '-');
-}
-
-function ruta(tipo, s, temporada, episodio) {
-  return tipo === 'movie' ? `${BASE}/movies/${s}` : `${BASE}/series/${s}/temporada/${temporada}/episodio/${episodio}`;
-}
-
-function conServidores(html) {
-  return html && /server[\\"' ]+:/.test(html) ? html : '';
-}
-
-async function tplayer(url) {
-  const id = (url.match(/\/embed\/([\w-]+)/) || [])[1];
-  if (!id) return null;
-  const base = origen(url);
-  const cabeceras = Object.assign({}, NAVEGADOR, { Referer: url, Origin: base, 'X-Requested-With': 'XMLHttpRequest' });
-  const r = await pedir(url, { headers: cabeceras });
-  const galletas = r ? cookies(r) : '';
-  if (galletas) cabeceras.Cookie = galletas;
-  const d = await json(`${base}/api/resolve/${id}`, { headers: cabeceras });
-  if (!d || !d.success || !d.streamUrl) return null;
-  const video = absoluta(d.streamUrl, base);
-  const headers = { 'User-Agent': UA, Referer: url, Origin: base };
-  if (galletas) headers.Cookie = galletas;
-  return { url: /\.(m3u8|mp4)/i.test(video) ? video : `${video}#.mp4`, directo: true, headers };
-}
-
-function pixeldrain(url) {
-  const id = (url.match(/\/(?:u|l|api\/file)\/([a-zA-Z0-9]+)/i) || [])[1];
-  return id ? { url: `https://pixeldrain.com/api/file/${id}?download=1#.mp4`, directo: true, servidor: 'Pixeldrain', headers: { 'User-Agent': UA, Referer: 'https://pixeldrain.com/' } } : null;
-}
-
-async function servidores(html) {
-  const objetos = html.match(/\{[^{}]*?server[\\"' ]+:[^{}]*?\}/gi) || [];
-  const vistos = new Set();
-  const tareas = objetos.map(async (obj) => {
-    const servidor = campo(obj, 'server');
-    let url = campo(obj, '(?:url|download)').replace(/\\/g, '');
-    if (!servidor || !url) return null;
-    if (/\/download\//.test(url)) {
-      const r = await json(`${BASE}/api/download/${url.split('/').pop()}`, { headers: Object.assign({}, NAVEGADOR, { Referer: `${BASE}/`, Origin: BASE, 'X-Requested-With': 'XMLHttpRequest' }) });
-      url = (r && r.url) || '';
-    }
-    if (!/^https?:/.test(url) || vistos.has(url)) return null;
-    vistos.add(url);
-    const audio = audioDe(campo(obj, 'language')) || 'Latino';
-    const calidad = calidadTexto(campo(obj, 'quality'));
-    if (/tplayer\./i.test(url)) {
-      const d = await tplayer(url).catch(() => null);
-      return d ? Object.assign(d, { audio, calidad, servidor: servidor || 'Magi' }) : null;
-    }
-    if (/pixeldrain/i.test(url)) {
-      const d = pixeldrain(url);
-      return d ? Object.assign(d, { audio, calidad }) : null;
-    }
-    return { url, audio, calidad, referer: `${BASE}/` };
-  });
-  return (await Promise.all(tareas)).filter(Boolean);
-}
-
-async function paginaDirecta(datos, tipo, temporada, episodio) {
-  const titulos = [...new Set([datos.titulo, datos.ingles, datos.original].concat((datos.alternos || []).map((x) => x.titulo)).filter(Boolean))];
-  const candidatos = [];
-  for (const t of titulos) {
-    const s = slugSitio(t);
-    if (s) candidatos.push(s, s.replace(/-\d{4}$/, ''));
+function decodificar(t) {
+  try {
+    return decodeURIComponent(t);
+  } catch (e) {
+    return t;
   }
-  for (const s of [...new Set(candidatos)].filter(Boolean).slice(0, 10)) {
-    const html = conServidores(await texto(ruta(tipo, s, temporada, episodio), { sinCabeceras: true }));
-    if (html) return html;
+}
+
+async function resultadosGoogle(consulta) {
+  const portada = await texto(`${BASE}/`);
+  const cx = (portada.match(/cx" value="([^"]+)"/) || [])[1] || CX;
+  const motor = await texto(`https://cse.google.es/cse.js?hpg=1&cx=${encodeURIComponent(cx)}`);
+  const token = (motor.match(/cse_token"\s*:\s*"([^"]+)"/) || [])[1];
+  if (!token) return [];
+  const url = `https://cse.google.com/cse/element/v1?rsz=filtered_cse&num=20&hl=es&source=gcsc&gss=.es&sig=c891f6315aacc94dc79953d1f142739e&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(consulta).replace(/%20/g, '+')}&safe=off&cse_tok=${encodeURIComponent(token)}&googlehost=www.google.com&callback=google.search.Search.csqr6098&nocache=${Date.now()}&start=0`;
+  const datos = await texto(url, { headers: { Referer: `${BASE}/` } });
+  const lista = [];
+  const patron = /clicktrackUrl"\s*:\s*"[^"]*?[?&]q=([^"]*?)"[\s\S]*?titleNoFormatting"\s*:\s*"([^"]+)"/g;
+  let m;
+  while ((m = patron.exec(datos))) {
+    const destino = (decodificar(m[1].replace(/\\u0026/g, '&').replace(/&.*$/, '')).match(/^.*?online\//) || [])[0];
+    if (!destino || !/ver-/.test(destino)) continue;
+    const titulo = entidades(m[2].replace(/\\u003c\/?b\\u003e|<\/?b>/g, '')).replace(/\s+online\b/i, '').replace(/^\s*Ver\s+/i, '');
+    lista.push({ url: destino, nombre: titulo });
   }
-  for (const t of titulosPosibles(datos)) {
-    const html = await texto(`${BASE}/search?q=${encodeURIComponent(t)}`, { sinCabeceras: true });
-    const patron = /href=[\\"']+([^"'\\]*\/(movies|series)\/([\w-]+))[\\"']+/gi;
-    let mejor = '';
-    let puntos = 0;
-    let m;
-    while ((m = patron.exec(html))) {
-      if ((tipo === 'movie') !== (m[2] === 'movies')) continue;
-      const s = parecido(m[3].replace(/-/g, ' '), t);
+  return lista;
+}
+
+async function buscar(datos) {
+  let mejor = null;
+  let puntos = 0;
+  for (const titulo of titulosPosibles(datos)) {
+    for (const r of await resultadosGoogle(titulo)) {
+      const anio = (r.nombre.match(/\b(19|20)\d{2}\b/) || [])[0];
+      let s = parecido(r.nombre.replace(/\(\d{4}\)/, ''), titulo);
+      if (datos.anio && anio) s += anio === datos.anio ? 0.2 : -0.3;
       if (s > puntos) {
         puntos = s;
-        mejor = m[3];
+        mejor = r.url;
       }
     }
-    if (mejor && puntos > 0.7) {
-      const pagina = conServidores(await texto(ruta(tipo, mejor, temporada, episodio), { sinCabeceras: true }));
-      if (pagina) return pagina;
-    }
+    if (puntos >= 1) break;
   }
-  return '';
+  return puntos >= 0.8 ? mejor : null;
 }
 
-async function paginaNavegador(datos, tipo, temporada, episodio) {
-  const candidatos = [];
-  for (const t of titulosPosibles(datos)) {
-    const s = slug(t);
-    if (s) candidatos.push(s, `${s}-${datos.anio}`);
-  }
-  for (const s of [...new Set(candidatos)]) {
-    const html = conServidores(await texto(ruta(tipo, s, temporada, episodio), { headers: NAVEGADOR }));
-    if (html) return html;
-  }
-  return '';
+function enlacesPagina(html, pagina) {
+  const general = (html.match(/<strong>Ver pel[^<]*cula online[\s\S]*?>[\s\S]*?>([^<]+)/i) || [])[1] || '';
+  const bloques = html.match(/contenedor_tab[\s\S]*?\/table/g) || [];
+  const lista = [];
+  bloques.forEach((bloque, i) => {
+    const opcion = (html.match(new RegExp(`<em>(opci\\S{1,2}n ${i + 1}[\\s\\S]*?)<\\/em>`, 'i')) || [])[1] || '';
+    const audio = audioDe(opcion) || audioDe(general) || 'Latino';
+    const patron = /(?:src|href)="([^"]+)"/g;
+    let m;
+    while ((m = patron.exec(bloque))) {
+      const url = absoluta(entidades(m[1]), pagina);
+      if (/soon/i.test(url) || !/^https?:/.test(url) || /\.(?:png|jpe?g|gif|css|js)(?:\?|$)/i.test(url)) continue;
+      lista.push({ url, audio, referer: `${BASE}/` });
+    }
+  });
+  return lista;
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
   try {
-    const tipo = mediaType === 'movie' ? 'movie' : 'tv';
-    const datos = await datosTmdb(tmdbId, tipo);
+    if (mediaType !== 'movie') return [];
+    const datos = await datosTmdb(tmdbId, 'movie');
     if (!datos) return [];
-    const temporada = Number(season) || 1;
-    const episodio = Number(episode) || 1;
-    const titulo = encabezado(datos, tipo, temporada, episodio);
-    return await enOrden([
-      () => paginaDirecta(datos, tipo, temporada, episodio).then((html) => (html ? servidores(html) : [])),
-      () => paginaNavegador(datos, tipo, temporada, episodio).then((html) => (html ? servidores(html) : []))
-    ], (lista) => armar(lista, titulo, FUENTE, true));
+    const pagina = await buscar(datos);
+    if (!pagina) return [];
+    const html = await texto(pagina, { headers: { Referer: `${BASE}/` } });
+    return await armar(enlacesPagina(html, pagina), encabezado(datos, 'movie'), FUENTE, true);
   } catch (e) {
     console.log(`[${FUENTE}] ${e.message}`);
     return [];

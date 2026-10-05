@@ -1067,144 +1067,308 @@ function limitar(buscador) {
   };
 }
 
-const FUENTE = 'PelisGo';
-const BASE = 'https://pelisgo.online';
-const NAVEGADOR = {
-  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-  'Accept-Language': 'es-US,es;q=0.9,en-US;q=0.8,en;q=0.7,es-419;q=0.6',
-  'sec-ch-ua': '"Chromium";v="137", "Not-A.Brand";v="24", "Google Chrome";v="137"',
-  'sec-ch-ua-mobile': '?0',
-  'sec-ch-ua-platform': '"Windows"',
-  'Sec-Fetch-Dest': 'document',
-  'Sec-Fetch-Mode': 'navigate',
-  'Sec-Fetch-Site': 'none',
-  'Sec-Fetch-User': '?1',
-  'Upgrade-Insecure-Requests': '1'
-};
-
-function campo(obj, nombre) {
-  return ((obj.match(new RegExp(`${nombre}[\\\\"' ]+:[\\\\"' ]+([^\\\\"',}]+)`, 'i')) || [])[1] || '').trim();
+function etiquetasOpciones(html) {
+  const etiquetas = {};
+  const patron = /href=["']#options-(\d+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = patron.exec(html))) {
+    const servidor = (m[2].match(/class=["'][^"']*server[^"']*["'][^>]*>([\s\S]*?)<\/span>/i) || [])[1];
+    etiquetas[m[1]] = limpiarHtml(servidor || m[2]);
+  }
+  return etiquetas;
 }
 
-function slugSitio(t) {
-  return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/gi, '').toLowerCase().trim().replace(/\s+/g, '-');
+async function marcoReal(url, referer) {
+  const html = await texto(url, { headers: { Referer: referer } });
+  const dentro = html.match(/class=["'][^"']*Video[^"']*["'][\s\S]{0,300}?<iframe[^>]+src=["']([^"']+)["']/i);
+  const cualquiera = html.match(/<iframe[^>]+src=["'](https?:\/\/[^"']+)["']/i);
+  const destino = (dentro || cualquiera || [])[1];
+  return destino ? absoluta(destino, url) : '';
 }
 
-function ruta(tipo, s, temporada, episodio) {
-  return tipo === 'movie' ? `${BASE}/movies/${s}` : `${BASE}/series/${s}/temporada/${temporada}/episodio/${episodio}`;
-}
-
-function conServidores(html) {
-  return html && /server[\\"' ]+:/.test(html) ? html : '';
-}
-
-async function tplayer(url) {
-  const id = (url.match(/\/embed\/([\w-]+)/) || [])[1];
-  if (!id) return null;
-  const base = origen(url);
-  const cabeceras = Object.assign({}, NAVEGADOR, { Referer: url, Origin: base, 'X-Requested-With': 'XMLHttpRequest' });
-  const r = await pedir(url, { headers: cabeceras });
-  const galletas = r ? cookies(r) : '';
-  if (galletas) cabeceras.Cookie = galletas;
-  const d = await json(`${base}/api/resolve/${id}`, { headers: cabeceras });
-  if (!d || !d.success || !d.streamUrl) return null;
-  const video = absoluta(d.streamUrl, base);
-  const headers = { 'User-Agent': UA, Referer: url, Origin: base };
-  if (galletas) headers.Cookie = galletas;
-  return { url: /\.(m3u8|mp4)/i.test(video) ? video : `${video}#.mp4`, directo: true, headers };
-}
-
-function pixeldrain(url) {
-  const id = (url.match(/\/(?:u|l|api\/file)\/([a-zA-Z0-9]+)/i) || [])[1];
-  return id ? { url: `https://pixeldrain.com/api/file/${id}?download=1#.mp4`, directo: true, servidor: 'Pixeldrain', headers: { 'User-Agent': UA, Referer: 'https://pixeldrain.com/' } } : null;
-}
-
-async function servidores(html) {
-  const objetos = html.match(/\{[^{}]*?server[\\"' ]+:[^{}]*?\}/gi) || [];
+async function opcionesToro(html, pagina) {
+  const etiquetas = etiquetasOpciones(html);
   const vistos = new Set();
-  const tareas = objetos.map(async (obj) => {
-    const servidor = campo(obj, 'server');
-    let url = campo(obj, '(?:url|download)').replace(/\\/g, '');
-    if (!servidor || !url) return null;
-    if (/\/download\//.test(url)) {
-      const r = await json(`${BASE}/api/download/${url.split('/').pop()}`, { headers: Object.assign({}, NAVEGADOR, { Referer: `${BASE}/`, Origin: BASE, 'X-Requested-With': 'XMLHttpRequest' }) });
-      url = (r && r.url) || '';
+  const marcos = [];
+  const patron = /id=["']options-(\d+)["'][\s\S]{0,400}?<iframe[^>]+?(?:data-src|src)=["']([^"']+)["']/gi;
+  let m;
+  while ((m = patron.exec(html))) {
+    const url = absoluta(m[2], pagina);
+    if (!vistos.has(url)) {
+      vistos.add(url);
+      marcos.push({ url, etiqueta: etiquetas[m[1]] || '' });
     }
-    if (!/^https?:/.test(url) || vistos.has(url)) return null;
-    vistos.add(url);
-    const audio = audioDe(campo(obj, 'language')) || 'Latino';
-    const calidad = calidadTexto(campo(obj, 'quality'));
-    if (/tplayer\./i.test(url)) {
-      const d = await tplayer(url).catch(() => null);
-      return d ? Object.assign(d, { audio, calidad, servidor: servidor || 'Magi' }) : null;
+  }
+  if (!marcos.length) {
+    const suelto = /<iframe[^>]+?(?:data-src|src)=["']([^"']*trembed=[^"']+)["']/gi;
+    while ((m = suelto.exec(html))) {
+      const url = absoluta(m[1], pagina);
+      if (!vistos.has(url)) {
+        vistos.add(url);
+        marcos.push({ url, etiqueta: '' });
+      }
     }
-    if (/pixeldrain/i.test(url)) {
-      const d = pixeldrain(url);
-      return d ? Object.assign(d, { audio, calidad }) : null;
-    }
-    return { url, audio, calidad, referer: `${BASE}/` };
+  }
+  const lista = await Promise.all(marcos.map(async (x) => {
+    const destino = /trembed=/.test(x.url) ? await marcoReal(x.url, pagina) : x.url;
+    if (!destino) return null;
+    const partes = x.etiqueta.split(/\s*[-|·]\s*/);
+    const audio = partes.map(audioDe).find(Boolean) || '';
+    const servidor = partes.find((p) => p && !audioDe(p) && !/^\d+\.?$/.test(p) && !/opci[oó]n/i.test(p)) || '';
+    return { url: destino, audio, servidor, referer: pagina };
+  }));
+  return lista.filter(Boolean);
+}
+
+async function episodioAjax(base, pagina, html, temporada, episodio) {
+  const post = (html.match(/data-post=["'](\d+)["']/) || [])[1];
+  if (!post) return null;
+  const cuerpo = `action=action_select_season&season=${temporada}&post=${post}`;
+  const respuesta = await texto(`${base}/wp-admin/admin-ajax.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest', Origin: base, Referer: pagina },
+    body: cuerpo
   });
+  const patron = /href=["']([^"']+)["']/gi;
+  let m;
+  while ((m = patron.exec(respuesta))) {
+    const href = m[1];
+    const n = href.match(/temporada-(\d+)-capitulo-(\d+)/i) || href.match(/temporada\/(\d+)\/capitulo\/(\d+)/i) || href.replace(/-capitulo-/i, 'x').match(/(\d+)x(\d+)/);
+    if (n && Number(n[1]) === temporada && Number(n[2]) === episodio) return absoluta(href, base);
+  }
+  return null;
+}
+
+const ROMANOS = { ii: 2, iii: 3, iv: 4, v: 5, vi: 6 };
+
+function esLatino(t) {
+  const s = String(t || '').trim();
+  if (!s) return false;
+  return s.replace(/[^\u0000-\u024f]/g, '').length >= s.length * 0.8;
+}
+
+function titulosAnime(datos) {
+  const alternos = datos.alternos || [];
+  const orden = [
+    ...alternos.filter((x) => ['JP', 'CN', 'KR'].includes(x.pais)).map((x) => x.titulo),
+    datos.original,
+    datos.ingles,
+    datos.titulo,
+    ...alternos.filter((x) => ['US', 'GB', 'MX', 'ES'].includes(x.pais)).map((x) => x.titulo)
+  ];
+  const vistos = new Set();
+  return orden.filter((t) => {
+    const n = normalizar(t);
+    if (!n || !esLatino(t) || vistos.has(n)) return false;
+    vistos.add(n);
+    return true;
+  }).slice(0, 4);
+}
+
+function doblajeDe(nombre) {
+  const s = normalizar(nombre);
+  if (/\blatino\b/.test(s)) return 'Latino';
+  if (/\bcastellano\b/.test(s)) return 'Castellano';
+  return 'Subtitulado';
+}
+
+function temporadaDe(nombre) {
+  const s = normalizar(nombre);
+  const m = s.match(/(?:season|temporada|part|parte|cour)\s*(\d+)/) || s.match(/\b(\d+)(?:st|nd|rd|th)\s+season/) || s.match(/\s(\d{1,2})$/);
+  if (m) return Number(m[1]);
+  const r = s.match(/\b(ii|iii|iv|v|vi)$/);
+  return r ? ROMANOS[r[1]] : 1;
+}
+
+function nombreBase(nombre) {
+  return normalizar(nombre)
+    .replace(/\b(?:audio\s+)?(?:latino|castellano|doblaje|sub\s+espanol|espanol)\b/g, ' ')
+    .replace(/(?:season|temporada|part|parte|cour)\s*\d+/g, ' ')
+    .replace(/\b\d+(?:st|nd|rd|th)\s+season/g, ' ')
+    .replace(/\s\d{1,2}$/, ' ')
+    .replace(/\b(?:ii|iii|iv|v|vi)$/, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function episodioAbsoluto(datos, temporada, episodio) {
+  if (temporada <= 1) return episodio;
+  const previas = (datos.temporadas || []).filter((t) => t.numero >= 1 && t.numero < temporada);
+  if (previas.length < temporada - 1) return 0;
+  return previas.reduce((n, t) => n + t.episodios, 0) + episodio;
+}
+
+async function elegirAnime(buscar, datos, tipo, temporada, episodio) {
+  const absoluto = tipo === 'tv' ? episodioAbsoluto(datos, temporada, episodio) : 1;
+  const mejores = {};
+  for (const consulta of titulosAnime(datos)) {
+    const resultados = await buscar(consulta).catch(() => []);
+    for (const r of resultados) {
+      if (!r || !r.url || !r.nombre) continue;
+      const audio = r.audio || doblajeDe(r.nombre);
+      const sinDoblaje = normalizar(r.nombre).replace(/\b(?:audio\s+)?(?:latino|castellano|doblaje|sub\s+espanol|espanol)\b/g, ' ').replace(/\s+/g, ' ').trim();
+      const exacto = [consulta, datos.titulo, datos.ingles].some((t) => normalizar(t) === sinDoblaje);
+      const puntos = exacto ? 1 : Math.max(parecido(nombreBase(r.nombre), consulta), parecido(nombreBase(r.nombre), datos.titulo), parecido(nombreBase(r.nombre), datos.ingles));
+      if (puntos < 0.8) continue;
+      const suya = exacto ? 1 : temporadaDe(r.nombre);
+      let numero = 0;
+      let extra = 0;
+      if (tipo === 'movie') {
+        numero = 1;
+        extra = /pelicula|movie|film/.test(normalizar(r.nombre)) ? 0.1 : 0;
+      } else if (suya === temporada) {
+        numero = episodio;
+        extra = 0.2;
+      } else if (suya === 1 && temporada > 1 && absoluto) {
+        numero = absoluto;
+      }
+      if (!numero) continue;
+      const total = puntos + extra;
+      const grupo = mejores[audio] || (mejores[audio] = []);
+      if (!grupo.some((x) => x.url === r.url)) grupo.push({ url: r.url, audio, numero, total });
+    }
+    const sub = mejores.Subtitulado;
+    if (sub && sub.some((x) => x.total >= 1.2)) break;
+  }
+  return Object.values(mejores).map((grupo) => grupo.sort((a, b) => b.total - a.total).slice(0, 3));
+}
+
+async function flujoAnime(sitio, tmdbId, mediaType, season, episode) {
+  const tipo = mediaType === 'movie' ? 'movie' : 'tv';
+  const datos = await datosTmdb(tmdbId, tipo);
+  if (!datos) return [];
+  const temporada = tipo === 'tv' ? Number(season) || 1 : 1;
+  const episodio = tipo === 'tv' ? Number(episode) || 1 : 1;
+  const elegidos = await elegirAnime(sitio.buscar, datos, tipo, temporada, episodio);
+  const listas = await Promise.all(elegidos.map(async (grupo) => {
+    for (const c of grupo) {
+      const pagina = await sitio.episodio(c.url, c.numero).catch(() => null);
+      if (!pagina) continue;
+      const enlaces = await sitio.enlaces(pagina).catch(() => []);
+      if (enlaces.length) return enlaces.map((e) => Object.assign({ referer: pagina }, e, { audio: e.audio || c.audio }));
+    }
+    return [];
+  }));
+  return armar([].concat(...listas), encabezado(datos, tipo, temporada, episodio), sitio.fuente);
+}
+
+const FUENTE = 'Henaojara';
+const NUEVO = 'https://ww1.henaojara.net';
+const CLASICO = 'https://henaojara.com';
+const EVITAR = /mega\.nz|mega\.co|hqq|netuplayer|krakenfiles|hj\.henaojara\.com|streamhj\.top/i;
+
+async function buscarNuevo(consulta) {
+  const html = await texto(`${NUEVO}/animes?buscar=${encodeURIComponent(consulta).replace(/%20/g, '+')}`, { headers: { Referer: `${NUEVO}/` } });
+  const lista = [];
+  for (const art of html.split(/<article\b/i).slice(1)) {
+    const href = ((art.match(/<a[^>]+href=["']([^"']+)["']/i) || [])[1] || '').replace(/^\.\//, '/');
+    if (!/^\/anime\//.test(href)) continue;
+    const nombre = limpiarHtml((art.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i) || [])[1]) || entidades((art.match(/<img[^>]+alt=["']([^"']+)["']/i) || [])[1] || '');
+    const clase = limpiarHtml((art.match(/<figure[\s\S]*?<a[^>]*>[\s\S]*?<b[^>]*>([\s\S]*?)<\/b>/i) || [])[1]);
+    lista.push({ nombre: /pel.cula/i.test(clase) && !/pel.cula|movie/i.test(nombre) ? `${nombre} Pelicula` : nombre, url: `${NUEVO}${href}` });
+  }
+  return lista;
+}
+
+async function buscarClasico(consulta) {
+  const html = await texto(`${CLASICO}/?s=${encodeURIComponent(consulta).replace(/%20/g, '+')}`, { headers: { Referer: `${CLASICO}/` } });
+  const zona = (html.match(/class=["'][^"']*MovieList[\s\S]*?<\/ul>/i) || [''])[0];
+  const lista = [];
+  for (const li of zona.split(/<li\b/i).slice(1)) {
+    const href = (li.match(/<a[^>]+href=["']([^"']+)["']/i) || [])[1];
+    const nombre = limpiarHtml((li.match(/class=["'][^"']*Title[^"']*["'][^>]*>([\s\S]*?)<\//i) || li.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i) || [])[1]);
+    if (href && nombre) lista.push({ nombre, url: absoluta(href, CLASICO) });
+  }
+  return lista;
+}
+
+async function buscar(consulta) {
+  const [a, b] = await Promise.all([buscarNuevo(consulta).catch(() => []), buscarClasico(consulta).catch(() => [])]);
+  return a.concat(b);
+}
+
+async function episodio(url, numero) {
+  if (url.startsWith(NUEVO)) {
+    const nombre = url.replace(/\/+$/, '').split('/').pop();
+    return `${NUEVO}/ver/${nombre}-${numero}`;
+  }
+  const html = await texto(url, { headers: { Referer: `${CLASICO}/` } });
+  let otro = null;
+  const patron = /href=["']([^"']*?-(\d+)x(\d+)\/?)["']/gi;
+  let m;
+  while ((m = patron.exec(html))) {
+    if (Number(m[3]) !== numero) continue;
+    if (Number(m[2]) === 1) return absoluta(m[1], CLASICO);
+    if (!otro) otro = absoluta(m[1], CLASICO);
+  }
+  return otro || (numero === 1 ? url : null);
+}
+
+function hexATexto(hex) {
+  let salida = '';
+  for (let i = 0; i + 1 < hex.length; i += 2) salida += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+  return salida;
+}
+
+async function enlacesNuevo(pagina) {
+  let actual = pagina;
+  let html = await texto(actual, { headers: { Referer: `${NUEVO}/` } });
+  if (!/data-encrypt|data-dwn/.test(html)) {
+    const sinNumero = pagina.replace(/-\d+$/, '');
+    if (sinNumero !== pagina) {
+      const otra = await texto(sinNumero, { headers: { Referer: `${NUEVO}/` } });
+      if (/data-encrypt|data-dwn/.test(otra)) {
+        html = otra;
+        actual = sinNumero;
+      }
+    }
+  }
+  const urls = [];
+  const cifrado = (html.match(/class=["'][^"']*\bopt\b[^"']*["'][^>]*data-encrypt=["']([^"']+)["']/i) || html.match(/data-encrypt=["']([^"']+)["']/i) || [])[1];
+  if (cifrado) {
+    const servidores = await texto(`${NUEVO}/hj`, {
+      method: 'POST',
+      headers: { Accept: '*/*', 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest', Referer: actual },
+      body: `acc=opt&i=${encodeURIComponent(cifrado)}`
+    });
+    const patron = /encrypt=["']([0-9a-fA-F]+)["']/g;
+    let m;
+    while ((m = patron.exec(servidores))) urls.push(hexATexto(m[1]));
+  }
+  const descargas = (html.match(/data-dwn=["']([^"']+)["']/i) || [])[1];
+  if (descargas) {
+    try {
+      for (const u of JSON.parse(entidades(descargas))) urls.push(u);
+    } catch (e) {}
+  }
+  return urls.filter((u) => /^https?:/.test(u) && !EVITAR.test(u)).map((url) => ({ url, referer: `${NUEVO}/` }));
+}
+
+async function enlacesClasico(pagina) {
+  const html = await texto(pagina, { headers: { Referer: `${CLASICO}/` } });
+  const tareas = [];
+  const patron = /class=["'][^"']*TPlayerTb[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi;
+  let m;
+  while ((m = patron.exec(html))) {
+    const contenido = entidades(m[1]);
+    const marco = (contenido.match(/<iframe[^>]+src=["']([^"']+)["']/i) || [])[1];
+    if (!marco) continue;
+    const url = absoluta(marco, pagina);
+    tareas.push((async () => {
+      const real = /henaojara\./i.test(dominio(url)) ? await marcoReal(url, pagina) : url;
+      return real && !EVITAR.test(real) && !/multiplayer/i.test(real) ? { url: real, referer: `${CLASICO}/` } : null;
+    })().catch(() => null));
+  }
   return (await Promise.all(tareas)).filter(Boolean);
 }
 
-async function paginaDirecta(datos, tipo, temporada, episodio) {
-  const titulos = [...new Set([datos.titulo, datos.ingles, datos.original].concat((datos.alternos || []).map((x) => x.titulo)).filter(Boolean))];
-  const candidatos = [];
-  for (const t of titulos) {
-    const s = slugSitio(t);
-    if (s) candidatos.push(s, s.replace(/-\d{4}$/, ''));
-  }
-  for (const s of [...new Set(candidatos)].filter(Boolean).slice(0, 10)) {
-    const html = conServidores(await texto(ruta(tipo, s, temporada, episodio), { sinCabeceras: true }));
-    if (html) return html;
-  }
-  for (const t of titulosPosibles(datos)) {
-    const html = await texto(`${BASE}/search?q=${encodeURIComponent(t)}`, { sinCabeceras: true });
-    const patron = /href=[\\"']+([^"'\\]*\/(movies|series)\/([\w-]+))[\\"']+/gi;
-    let mejor = '';
-    let puntos = 0;
-    let m;
-    while ((m = patron.exec(html))) {
-      if ((tipo === 'movie') !== (m[2] === 'movies')) continue;
-      const s = parecido(m[3].replace(/-/g, ' '), t);
-      if (s > puntos) {
-        puntos = s;
-        mejor = m[3];
-      }
-    }
-    if (mejor && puntos > 0.7) {
-      const pagina = conServidores(await texto(ruta(tipo, mejor, temporada, episodio), { sinCabeceras: true }));
-      if (pagina) return pagina;
-    }
-  }
-  return '';
-}
-
-async function paginaNavegador(datos, tipo, temporada, episodio) {
-  const candidatos = [];
-  for (const t of titulosPosibles(datos)) {
-    const s = slug(t);
-    if (s) candidatos.push(s, `${s}-${datos.anio}`);
-  }
-  for (const s of [...new Set(candidatos)]) {
-    const html = conServidores(await texto(ruta(tipo, s, temporada, episodio), { headers: NAVEGADOR }));
-    if (html) return html;
-  }
-  return '';
+async function enlaces(pagina) {
+  return pagina.startsWith(NUEVO) ? enlacesNuevo(pagina) : enlacesClasico(pagina);
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
   try {
-    const tipo = mediaType === 'movie' ? 'movie' : 'tv';
-    const datos = await datosTmdb(tmdbId, tipo);
-    if (!datos) return [];
-    const temporada = Number(season) || 1;
-    const episodio = Number(episode) || 1;
-    const titulo = encabezado(datos, tipo, temporada, episodio);
-    return await enOrden([
-      () => paginaDirecta(datos, tipo, temporada, episodio).then((html) => (html ? servidores(html) : [])),
-      () => paginaNavegador(datos, tipo, temporada, episodio).then((html) => (html ? servidores(html) : []))
-    ], (lista) => armar(lista, titulo, FUENTE, true));
+    return await flujoAnime({ fuente: FUENTE, buscar, episodio, enlaces }, tmdbId, mediaType, season, episode);
   } catch (e) {
     console.log(`[${FUENTE}] ${e.message}`);
     return [];
