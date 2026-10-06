@@ -1,12 +1,13 @@
 const CryptoJS = require('crypto-js');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
-const PRESUPUESTO = 42000;
-const CIERRE = 50000;
+const RELOJ = typeof setTimeout === 'function';
+const PRESUPUESTO = RELOJ ? 42000 : 25000;
+const CIERRE = RELOJ ? 50000 : 40000;
 let inicio = Date.now();
 
 function esperar(ms) {
-  return new Promise((r) => setTimeout(r, ms));
+  return RELOJ ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
 }
 
 function transcurrido() {
@@ -27,6 +28,7 @@ function conLimite(promesa, ms, valor) {
     listo = true;
     return valor;
   });
+  if (!RELOJ) return trabajo;
   const reloj = (async () => {
     while (!listo && Date.now() < fin) await esperar(Math.max(1, Math.min(250, fin - Date.now())));
     return valor;
@@ -47,6 +49,8 @@ async function traer(url, opciones) {
     status: d.status,
     statusText: d.statusText,
     url: d.url || url,
+    tam: (d.body || '').length,
+    escudo: d.status >= 400 && /just a moment|cf-chl|challenge-platform|cf_chl|attention required/i.test(String(d.body || '').slice(0, 6000)),
     headers: { get: (n) => h[String(n).toLowerCase()] || null },
     text: () => Promise.resolve(d.body || ''),
     json: () => {
@@ -60,10 +64,40 @@ async function traer(url, opciones) {
 }
 
 const caidos = new Set();
+let registro = [];
+
+function anotar(t) {
+  if (registro.length < 80) registro.push(String(t).replace(/\s+/g, ' ').trim());
+}
+
+function rutaCorta(url) {
+  return String(url || '').replace(/^https?:\/\/(?:www\.)?/i, '').replace(/[?&]api_key=[^&]+/, '').slice(0, 75);
+}
+
+function peso(n) {
+  return n < 1024 ? `${n}B` : `${Math.round(n / 1024)}KB`;
+}
 
 async function pedir(url, opciones) {
   const host = String(url || '').replace(/^https?:\/\//i, '').split(/[/?#]/)[0].toLowerCase();
-  if (caidos.has(host) || restante() <= 0) return null;
+  const metodo = String((opciones && opciones.method) || 'GET').toUpperCase();
+  if (caidos.has(host) || restante() <= 0) {
+    anotar(`${metodo} ${rutaCorta(url)} → omitido`);
+    return null;
+  }
+  const comienzo = Date.now();
+  const r = await pedirCrudo(url, opciones);
+  const estado = !r ? 'tiempo agotado' : !r.status ? `error de red${r.statusText ? ` (${String(r.statusText).slice(0, 40)})` : ''}` : r.status;
+  const marca = opciones && opciones.headers && opciones.headers.RSC ? ' (RSC)' : '';
+  if (!(r && r.ok && /themoviedb/.test(host))) anotar(`${metodo}${marca} ${rutaCorta(url)} → ${estado}${r && r.status && r.tam !== undefined ? ` · ${peso(r.tam)}` : ''}${r && r.escudo ? ' · Cloudflare' : ''} · ${((Date.now() - comienzo) / 1000).toFixed(1)}s${r && r.status && r.url && rutaCorta(r.url) !== rutaCorta(url) ? ` → ${rutaCorta(r.url).slice(0, 45)}` : ''}`);
+  if (r && !r.status) {
+    caidos.add(host);
+    return null;
+  }
+  return r;
+}
+
+async function pedirCrudo(url, opciones) {
   const o = Object.assign({}, opciones || {});
   const limite = Math.min(o.limite || CIERRE, CIERRE - transcurrido());
   const sinCabeceras = o.sinCabeceras;
@@ -74,12 +108,7 @@ async function pedir(url, opciones) {
     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'es-MX,es;q=0.9,en;q=0.8'
   }, o.headers || {});
-  const r = await conLimite(traer(url, o).catch(() => ({ status: 0 })), limite, null);
-  if (r && !r.status) {
-    caidos.add(host);
-    return null;
-  }
-  return r;
+  return conLimite(traer(url, o).catch((e) => ({ status: 0, statusText: e && e.message })), limite, null);
 }
 
 async function texto(url, opciones) {
@@ -1059,11 +1088,13 @@ async function enOrden(tareas, procesar) {
   return [];
 }
 
-function limitar(buscador) {
+function limitar(buscador, respaldo) {
   return (...argumentos) => {
     inicio = Date.now();
     caidos.clear();
-    return conLimite(Promise.resolve().then(() => buscador(...argumentos)), CIERRE, []);
+    registro = [];
+    const trabajo = conLimite(Promise.resolve().then(() => buscador(...argumentos)), CIERRE, null);
+    return respaldo ? trabajo.then((salida) => (salida && salida.length ? salida : respaldo(salida === null))) : trabajo.then((salida) => salida || []);
   };
 }
 

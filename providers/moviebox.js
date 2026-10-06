@@ -24,10 +24,11 @@ let modelo = '';
 let token = '';
 
 function esperar(ms) {
-  return new Promise((r) => setTimeout(r, ms));
+  return typeof setTimeout === 'function' ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
 }
 
 function reloj(ms, estado) {
+  if (typeof setTimeout !== 'function') return new Promise(() => {});
   const fin = Date.now() + ms;
   return (async () => {
     while (!estado.listo && Date.now() < fin) await esperar(Math.max(1, Math.min(250, fin - Date.now())));
