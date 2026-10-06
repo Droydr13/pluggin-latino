@@ -47,6 +47,8 @@ async function traer(url, opciones) {
     status: d.status,
     statusText: d.statusText,
     url: d.url || url,
+    tam: (d.body || '').length,
+    escudo: d.status >= 400 && /just a moment|cf-chl|challenge-platform|cf_chl|attention required/i.test(String(d.body || '').slice(0, 6000)),
     headers: { get: (n) => h[String(n).toLowerCase()] || null },
     text: () => Promise.resolve(d.body || ''),
     json: () => {
@@ -60,10 +62,40 @@ async function traer(url, opciones) {
 }
 
 const caidos = new Set();
+let registro = [];
+
+function anotar(t) {
+  if (registro.length < 80) registro.push(String(t).replace(/\s+/g, ' ').trim());
+}
+
+function rutaCorta(url) {
+  return String(url || '').replace(/^https?:\/\/(?:www\.)?/i, '').replace(/[?&]api_key=[^&]+/, '').slice(0, 75);
+}
+
+function peso(n) {
+  return n < 1024 ? `${n}B` : `${Math.round(n / 1024)}KB`;
+}
 
 async function pedir(url, opciones) {
   const host = String(url || '').replace(/^https?:\/\//i, '').split(/[/?#]/)[0].toLowerCase();
-  if (caidos.has(host) || restante() <= 0) return null;
+  const metodo = String((opciones && opciones.method) || 'GET').toUpperCase();
+  if (caidos.has(host) || restante() <= 0) {
+    anotar(`${metodo} ${rutaCorta(url)} → omitido`);
+    return null;
+  }
+  const comienzo = Date.now();
+  const r = await pedirCrudo(url, opciones);
+  const estado = !r ? 'tiempo agotado' : !r.status ? `error de red${r.statusText ? ` (${String(r.statusText).slice(0, 40)})` : ''}` : r.status;
+  const marca = opciones && opciones.headers && opciones.headers.RSC ? ' (RSC)' : '';
+  if (!(r && r.ok && /themoviedb/.test(host))) anotar(`${metodo}${marca} ${rutaCorta(url)} → ${estado}${r && r.status && r.tam !== undefined ? ` · ${peso(r.tam)}` : ''}${r && r.escudo ? ' · Cloudflare' : ''} · ${((Date.now() - comienzo) / 1000).toFixed(1)}s${r && r.status && r.url && rutaCorta(r.url) !== rutaCorta(url) ? ` → ${rutaCorta(r.url).slice(0, 45)}` : ''}`);
+  if (r && !r.status) {
+    caidos.add(host);
+    return null;
+  }
+  return r;
+}
+
+async function pedirCrudo(url, opciones) {
   const o = Object.assign({}, opciones || {});
   const limite = Math.min(o.limite || CIERRE, CIERRE - transcurrido());
   const sinCabeceras = o.sinCabeceras;
@@ -74,12 +106,7 @@ async function pedir(url, opciones) {
     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'es-MX,es;q=0.9,en;q=0.8'
   }, o.headers || {});
-  const r = await conLimite(traer(url, o).catch(() => ({ status: 0 })), limite, null);
-  if (r && !r.status) {
-    caidos.add(host);
-    return null;
-  }
-  return r;
+  return conLimite(traer(url, o).catch((e) => ({ status: 0, statusText: e && e.message })), limite, null);
 }
 
 async function texto(url, opciones) {
@@ -1059,17 +1086,53 @@ async function enOrden(tareas, procesar) {
   return [];
 }
 
-function limitar(buscador) {
+function limitar(buscador, respaldo) {
   return (...argumentos) => {
     inicio = Date.now();
     caidos.clear();
-    return conLimite(Promise.resolve().then(() => buscador(...argumentos)), CIERRE, []);
+    registro = [];
+    const trabajo = conLimite(Promise.resolve().then(() => buscador(...argumentos)), CIERRE, null);
+    return respaldo ? trabajo.then((salida) => (salida && salida.length ? salida : respaldo(salida === null))) : trabajo.then((salida) => salida || []);
   };
 }
 
+function muestra(html, patron, ancho) {
+  const t = String(html || '');
+  const m = patron.exec(t);
+  if (!m) return '';
+  const desde = Math.max(0, m.index - Math.floor((ancho || 160) / 3));
+  return t.slice(desde, desde + (ancho || 160)).replace(/\s+/g, ' ').trim();
+}
+
+function contar(html, patron) {
+  return (String(html || '').match(patron) || []).length;
+}
+
+function tarjetaRastro(fuente, agotado) {
+  let lineas = registro.slice();
+  if (lineas.length > 22) lineas = lineas.slice(0, 10).concat(['…'], lineas.slice(-11));
+  if (agotado) lineas.push('se acabó el tiempo antes de terminar');
+  return [{
+    name: `${fuente} (Diagnóstico)`,
+    title: lineas.length ? lineas.join('\n') : 'no se hizo ninguna petición',
+    url: 'https://example.com/diagnostico',
+    quality: 'Diagnóstico',
+    provider: fuente
+  }];
+}
+
 const FUENTE = 'Gnula';
-const BASE = 'https://gnulahd.nu';
+const RAIZ = 'https://gnulahd.nu';
+const RESPALDO = 'https://ww3.gnulahd.nu';
 const CX = '014793692610101313036:vwtjajbclpq';
+const RUIDO = /youtube|youtu\.be|facebook|twitter|instagram|google|gstatic|cloudflare|gravatar|wp-content|wp-includes|wp-json|xmlrpc|\/feed\/?$|\/genres?\/|\/generos?\/|\/category\/|\/tag\//i;
+const INTERNO = /embed|player|reproductor|trembed|iframe|\/e\/|\/v\/|video/i;
+let casa = '';
+
+function conocido(url) {
+  const h = dominio(url);
+  return /\.(m3u8|mp4)(\?|#|$)/i.test(url) || LIGEROS.some(([patron]) => patron.test(h));
+}
 
 function decodificar(t) {
   try {
@@ -1079,34 +1142,251 @@ function decodificar(t) {
   }
 }
 
+async function sitio() {
+  if (casa) return casa;
+  const r = await pedir(`${RAIZ}/`, { limite: 15000 });
+  const html = r && r.ok ? await r.text() : '';
+  const final = r && r.ok ? origen(r.url || '') : '';
+  const enlazado = (html.match(/https?:\/\/(ww\d*\.gnulahd\.[a-z]+)/i) || [])[1];
+  casa = final && final !== RAIZ ? final : enlazado ? `https://${enlazado}` : RESPALDO;
+  anotar(`sitio actual: ${casa}`);
+  return casa;
+}
+
+function tituloPagina(html) {
+  return limpiarHtml((String(html || '').match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '');
+}
+
+function nombreLimpio(t) {
+  return String(t || '').replace(/\(\d{4}\)/g, ' ').replace(/pel[ií]cula completa|espa[ñn]ol latino|ver online|online|en gnulahd|gnulahd|gnula|\bhd\b|\s[-|–]\s.*$/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function coincide(nombre, datos, tipo) {
+  const anio = (String(nombre).match(/\((\d{4})\)/) || String(nombre).match(/\b((?:19|20)\d{2})\b/) || [])[1];
+  let p = Math.max(...titulosPosibles(datos).map((t) => parecido(nombreLimpio(nombre), t)));
+  if (tipo === 'movie' && datos.anio && anio) p += Math.abs(Number(anio) - Number(datos.anio)) <= 1 ? 0.2 : -0.4;
+  return p;
+}
+
+function mismaRuta(a, b) {
+  const limpia = (u) => String(u || '').replace(/^https?:\/\/[^/]+/i, '').replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase();
+  return limpia(a) === limpia(b);
+}
+
+async function exacta(url, referer) {
+  const r = await pedir(url, { headers: { Referer: referer } });
+  if (!r || !r.ok) return '';
+  if (r.url && !mismaRuta(r.url, url)) {
+    anotar(`redirigió a otra página: ${rutaCorta(r.url).slice(0, 60)}`);
+    return '';
+  }
+  return (await conLimite(r.text(), 10000, '')) || '';
+}
+
+async function porSlug(datos, tipo, base) {
+  for (const t of titulosPosibles(datos)) {
+    const s = slug(t);
+    if (!s) continue;
+    for (const c of tipo === 'movie' ? [s, `${s}-${datos.anio}`] : [s]) {
+      const url = `${base}/ver/${c}/`;
+      const html = await exacta(url, `${base}/`);
+      if (!html) continue;
+      const nombre = tituloPagina(html);
+      const p = coincide(nombre, datos, tipo);
+      anotar(`página /ver/${c}/: "${nombre.slice(0, 50)}" · coincidencia ${p.toFixed(2)}`);
+      if (p >= 0.8) return { url, html, slug: c };
+    }
+  }
+  return null;
+}
+
+function resultados(html, base) {
+  const lista = [];
+  const vistos = new Set();
+  const patron = /<a\b[^>]*href=["']([^"']*\/ver\/(?!peliculas\/|series\/|anime\/|page\/)[\w-]+\/?)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = patron.exec(html))) {
+    const url = absoluta(m[1], base);
+    if (vistos.has(url)) continue;
+    const nombre = entidades((m[0].match(/\btitle=["']([^"']+)["']/i) || [])[1] || '') || entidades((m[2].match(/\balt=["']([^"']+)["']/i) || [])[1] || '') || limpiarHtml(m[2]);
+    if (!nombre) continue;
+    vistos.add(url);
+    lista.push({ url, nombre });
+  }
+  return lista;
+}
+
+async function porBusqueda(datos, tipo, base) {
+  for (const t of titulosPosibles(datos)) {
+    const html = await texto(`${base}/?s=${encodeURIComponent(t).replace(/%20/g, '+')}`, { headers: { Referer: `${base}/` } });
+    const lista = resultados(html, base);
+    anotar(`búsqueda "${t}": ${lista.length} resultados${lista.length ? ` (${lista.slice(0, 3).map((x) => x.nombre.slice(0, 26)).join(' | ')})` : ''}`);
+    let mejor = null;
+    let puntos = 0;
+    for (const r of lista) {
+      const p = coincide(r.nombre, datos, tipo);
+      if (p > puntos) {
+        puntos = p;
+        mejor = r;
+      }
+    }
+    if (mejor && puntos >= 0.8) {
+      const html2 = await texto(mejor.url, { headers: { Referer: `${base}/` } });
+      if (html2) return { url: mejor.url, html: html2, slug: (mejor.url.match(/\/ver\/([\w-]+)/) || [])[1] || '' };
+    }
+  }
+  return null;
+}
+
+async function paginaEpisodio(serie, temporada, episodio, base) {
+  const patron = /href=["']([^"']*?-(\d+)x(\d+)\/?)["']/gi;
+  let m;
+  while ((m = patron.exec(serie.html))) {
+    if (Number(m[2]) === temporada && Number(m[3]) === episodio) {
+      const url = absoluta(m[1], serie.url);
+      const html = await texto(url, { headers: { Referer: serie.url } });
+      if (html) return { url, html };
+    }
+  }
+  const e2 = String(episodio).padStart(2, '0');
+  for (const c of [...new Set([`${serie.slug}-${temporada}x${e2}`, `${serie.slug}-${temporada}x${episodio}`])]) {
+    const url = `${base}/${c}/`;
+    const html = await exacta(url, serie.url);
+    if (html) return { url, html };
+  }
+  return null;
+}
+
+async function paginaNueva(datos, tipo, temporada, episodio, base) {
+  const ficha = (await porSlug(datos, tipo, base)) || (await porBusqueda(datos, tipo, base));
+  if (!ficha) return null;
+  if (tipo === 'movie') return ficha;
+  return paginaEpisodio(ficha, temporada, episodio, base);
+}
+
+function decodificarOpcion(valor) {
+  const v = entidades(String(valor || '').trim());
+  if (/^(?:https?:)?\/\//i.test(v)) return v;
+  if (/^[A-Za-z0-9+/=_-]{16,}$/.test(v)) {
+    const d = atobSeguro(v.replace(/-/g, '+').replace(/_/g, '/'));
+    const marco = d.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+    if (marco) return marco[1];
+    if (/^(?:https?:)?\/\//i.test(d)) return d;
+  }
+  return '';
+}
+
+function extraer(html, pagina, base) {
+  const salida = [];
+  const vistos = new Set();
+  const general = (html.match(/<strong>Ver pel[^<]*cula online[\s\S]*?>[\s\S]*?>([^<]+)/i) || [])[1] || '';
+  const agregar = (crudo, contexto) => {
+    let url = entidades(String(crudo || '').trim()).replace(/\\\//g, '/');
+    if (!url) return;
+    if (url.startsWith('//')) url = `https:${url}`;
+    url = absoluta(url, pagina);
+    if (!/^https?:/.test(url) || vistos.has(url) || url.replace(/\/+$/, '') === pagina.replace(/\/+$/, '')) return;
+    if (/\.(?:png|jpe?g|gif|webp|svg|css|js|ico|woff2?)(?:\?|$)/i.test(url) || RUIDO.test(url)) return;
+    vistos.add(url);
+    salida.push({ url, audio: audioDe(contexto) || audioDe(general) || 'Latino', referer: `${base}/` });
+  };
+  const bloques = html.match(/contenedor_tab[\s\S]*?\/table/g) || [];
+  bloques.forEach((bloque, i) => {
+    const opcion = (html.match(new RegExp(`<em>(opci\\S{1,2}n ${i + 1}[\\s\\S]*?)<\\/em>`, 'i')) || [])[1] || '';
+    const p = /(?:src|href)="([^"]+)"/g;
+    let b;
+    while ((b = p.exec(bloque))) if (!/soon/i.test(b[1])) agregar(b[1], opcion);
+  });
+  const contexto = (i) => html.slice(Math.max(0, i - 300), i + 200);
+  const patrones = [
+    /<iframe\b[^>]*?\b(?:data-src|data-lazy-src|src)=["']([^"']+)["']/gi,
+    /\bdata-(?:src|url|video|embed|link|player|iframe|server|source)=["']([^"']+)["']/gi,
+    /<option\b[^>]*\bvalue=["']([^"']{16,})["']/gi
+  ];
+  for (const patron of patrones) {
+    let m;
+    while ((m = patron.exec(html))) {
+      const u = decodificarOpcion(m[1]);
+      if (u) agregar(u, contexto(m.index));
+    }
+  }
+  const sueltos = /https?:\\?\/\\?\/[^"'\s<>]+/g;
+  let m;
+  while ((m = sueltos.exec(html))) {
+    const u = m[0].replace(/\\\//g, '/').replace(/[\\),;]+$/, '');
+    if (conocido(u)) agregar(u, contexto(m.index));
+  }
+  return salida;
+}
+
+async function dooplay(html, pagina, base) {
+  const salida = [];
+  const patron = /<li\b[^>]*data-post=["']([^"']+)["'][^>]*>/gi;
+  let m;
+  while ((m = patron.exec(html))) {
+    const nume = (m[0].match(/data-nume=["']([^"']+)["']/) || [])[1];
+    const clase = (m[0].match(/data-type=["']([^"']+)["']/) || [])[1] || 'movie';
+    if (!nume || nume === 'trailer') continue;
+    const r = await json(`${origen(pagina) || base}/wp-admin/admin-ajax.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest', Referer: pagina },
+      body: `action=doo_player_ajax&post=${encodeURIComponent(m[1])}&nume=${encodeURIComponent(nume)}&type=${encodeURIComponent(clase)}`
+    });
+    const crudo = String((r && r.embed_url) || '');
+    const u = decodificarOpcion((crudo.match(/<iframe[^>]+src=["']([^"']+)["']/i) || [])[1] || crudo);
+    if (u) salida.push({ url: absoluta(u, pagina), audio: audioDe(html.slice(m.index, m.index + 400)) || 'Latino', referer: `${base}/` });
+  }
+  return salida;
+}
+
+async function enlacesPagina(pagina, base) {
+  let lista = extraer(pagina.html, pagina.url, base).concat(await dooplay(pagina.html, pagina.url, base));
+  const internos = lista.filter((x) => !conocido(x.url) && (dominio(x.url) === dominio(pagina.url) || INTERNO.test(x.url))).slice(0, 5);
+  const segundos = await Promise.all(internos.map(async (x) => {
+    const html = await texto(x.url, { headers: { Referer: pagina.url }, limite: 12000 });
+    return html ? extraer(html, x.url, base).map((y) => Object.assign(y, { audio: audioDe(y.audio) ? y.audio : x.audio })) : [];
+  }));
+  lista = lista.concat(...segundos);
+  const vistos = new Set();
+  const finales = lista.filter((x) => conocido(x.url) && !vistos.has(x.url) && vistos.add(x.url));
+  anotar(`enlaces en la página: ${lista.length} · servidores conocidos: ${finales.length}${finales.length ? ` (${[...new Set(finales.map((x) => dominio(x.url)))].join(', ').slice(0, 80)})` : ''}`);
+  if (!finales.length) {
+    if (lista.length) anotar(`otros enlaces: ${[...new Set(lista.map((x) => dominio(x.url)))].join(', ').slice(0, 120)}`);
+    const atributos = [...new Set((pagina.html.match(/\bdata-[a-z-]+(?==)/gi) || []).map((x) => x.toLowerCase()))].slice(0, 14);
+    anotar(`atributos data: ${atributos.join(' ') || 'ninguno'}`);
+    anotar(`muestra: ${muestra(pagina.html, /<iframe|player|reproductor|opci[oó]n|servidor/i, 240) || muestra(pagina.html, /<body|<main|<article/i, 240) || 'página vacía'}`);
+  }
+  return finales;
+}
+
 async function resultadosGoogle(consulta) {
-  const portada = await texto(`${BASE}/`);
+  const portada = await texto(`${RAIZ}/`);
   const cx = (portada.match(/cx" value="([^"]+)"/) || [])[1] || CX;
   const motor = await texto(`https://cse.google.es/cse.js?hpg=1&cx=${encodeURIComponent(cx)}`);
   const token = (motor.match(/cse_token"\s*:\s*"([^"]+)"/) || [])[1];
   if (!token) return [];
   const url = `https://cse.google.com/cse/element/v1?rsz=filtered_cse&num=20&hl=es&source=gcsc&gss=.es&sig=c891f6315aacc94dc79953d1f142739e&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(consulta).replace(/%20/g, '+')}&safe=off&cse_tok=${encodeURIComponent(token)}&googlehost=www.google.com&callback=google.search.Search.csqr6098&nocache=${Date.now()}&start=0`;
-  const datos = await texto(url, { headers: { Referer: `${BASE}/` } });
+  const datos = await texto(url, { headers: { Referer: `${RAIZ}/` } });
   const lista = [];
   const patron = /clicktrackUrl"\s*:\s*"[^"]*?[?&]q=([^"]*?)"[\s\S]*?titleNoFormatting"\s*:\s*"([^"]+)"/g;
   let m;
   while ((m = patron.exec(datos))) {
-    const destino = (decodificar(m[1].replace(/\\u0026/g, '&').replace(/&.*$/, '')).match(/^.*?online\//) || [])[0];
-    if (!destino || !/ver-/.test(destino)) continue;
+    const crudo = decodificar(m[1].replace(/\\u0026/g, '&').replace(/&.*$/, ''));
+    const destino = (crudo.match(/^.*?online\//) || [])[0] || crudo;
+    if (!/gnula/i.test(destino) || !/ver[-/]/.test(destino)) continue;
     const titulo = entidades(m[2].replace(/\\u003c\/?b\\u003e|<\/?b>/g, '')).replace(/\s+online\b/i, '').replace(/^\s*Ver\s+/i, '');
     lista.push({ url: destino, nombre: titulo });
   }
+  anotar(`google: ${lista.length} resultados`);
   return lista;
 }
 
-async function buscar(datos) {
+async function paginaGoogle(datos) {
   let mejor = null;
   let puntos = 0;
   for (const titulo of titulosPosibles(datos)) {
     for (const r of await resultadosGoogle(titulo)) {
-      const anio = (r.nombre.match(/\b(19|20)\d{2}\b/) || [])[0];
-      let s = parecido(r.nombre.replace(/\(\d{4}\)/, ''), titulo);
-      if (datos.anio && anio) s += anio === datos.anio ? 0.2 : -0.3;
+      const s = coincide(r.nombre, datos, 'movie');
       if (s > puntos) {
         puntos = s;
         mejor = r.url;
@@ -1114,40 +1394,29 @@ async function buscar(datos) {
     }
     if (puntos >= 1) break;
   }
-  return puntos >= 0.8 ? mejor : null;
-}
-
-function enlacesPagina(html, pagina) {
-  const general = (html.match(/<strong>Ver pel[^<]*cula online[\s\S]*?>[\s\S]*?>([^<]+)/i) || [])[1] || '';
-  const bloques = html.match(/contenedor_tab[\s\S]*?\/table/g) || [];
-  const lista = [];
-  bloques.forEach((bloque, i) => {
-    const opcion = (html.match(new RegExp(`<em>(opci\\S{1,2}n ${i + 1}[\\s\\S]*?)<\\/em>`, 'i')) || [])[1] || '';
-    const audio = audioDe(opcion) || audioDe(general) || 'Latino';
-    const patron = /(?:src|href)="([^"]+)"/g;
-    let m;
-    while ((m = patron.exec(bloque))) {
-      const url = absoluta(entidades(m[1]), pagina);
-      if (/soon/i.test(url) || !/^https?:/.test(url) || /\.(?:png|jpe?g|gif|css|js)(?:\?|$)/i.test(url)) continue;
-      lista.push({ url, audio, referer: `${BASE}/` });
-    }
-  });
-  return lista;
+  if (!mejor || puntos < 0.8) return null;
+  const html = await texto(mejor, { headers: { Referer: `${RAIZ}/` } });
+  return html ? { url: mejor, html } : null;
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
   try {
-    if (mediaType !== 'movie') return [];
-    const datos = await datosTmdb(tmdbId, 'movie');
+    casa = '';
+    const tipo = mediaType === 'movie' ? 'movie' : 'tv';
+    const datos = await datosTmdb(tmdbId, tipo);
     if (!datos) return [];
-    const pagina = await buscar(datos);
-    if (!pagina) return [];
-    const html = await texto(pagina, { headers: { Referer: `${BASE}/` } });
-    return await armar(enlacesPagina(html, pagina), encabezado(datos, 'movie'), FUENTE, true);
+    const temporada = Number(season) || 1;
+    const episodio = Number(episode) || 1;
+    const titulo = encabezado(datos, tipo, temporada, episodio);
+    const base = await sitio();
+    return await enOrden([
+      () => paginaNueva(datos, tipo, temporada, episodio, base).then((p) => (p ? enlacesPagina(p, base) : [])),
+      () => (tipo === 'movie' ? paginaGoogle(datos).then((p) => (p ? enlacesPagina(p, base) : [])) : [])
+    ], (lista) => armar(lista, titulo, FUENTE, true));
   } catch (e) {
-    console.log(`[${FUENTE}] ${e.message}`);
+    anotar(`error: ${e.message}`);
     return [];
   }
 }
 
-module.exports = { getStreams: limitar(getStreams) };
+module.exports = { getStreams: limitar(getStreams, (agotado) => tarjetaRastro(FUENTE, agotado)) };

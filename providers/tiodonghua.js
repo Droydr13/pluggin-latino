@@ -47,6 +47,8 @@ async function traer(url, opciones) {
     status: d.status,
     statusText: d.statusText,
     url: d.url || url,
+    tam: (d.body || '').length,
+    escudo: d.status >= 400 && /just a moment|cf-chl|challenge-platform|cf_chl|attention required/i.test(String(d.body || '').slice(0, 6000)),
     headers: { get: (n) => h[String(n).toLowerCase()] || null },
     text: () => Promise.resolve(d.body || ''),
     json: () => {
@@ -60,10 +62,40 @@ async function traer(url, opciones) {
 }
 
 const caidos = new Set();
+let registro = [];
+
+function anotar(t) {
+  if (registro.length < 80) registro.push(String(t).replace(/\s+/g, ' ').trim());
+}
+
+function rutaCorta(url) {
+  return String(url || '').replace(/^https?:\/\/(?:www\.)?/i, '').replace(/[?&]api_key=[^&]+/, '').slice(0, 75);
+}
+
+function peso(n) {
+  return n < 1024 ? `${n}B` : `${Math.round(n / 1024)}KB`;
+}
 
 async function pedir(url, opciones) {
   const host = String(url || '').replace(/^https?:\/\//i, '').split(/[/?#]/)[0].toLowerCase();
-  if (caidos.has(host) || restante() <= 0) return null;
+  const metodo = String((opciones && opciones.method) || 'GET').toUpperCase();
+  if (caidos.has(host) || restante() <= 0) {
+    anotar(`${metodo} ${rutaCorta(url)} → omitido`);
+    return null;
+  }
+  const comienzo = Date.now();
+  const r = await pedirCrudo(url, opciones);
+  const estado = !r ? 'tiempo agotado' : !r.status ? `error de red${r.statusText ? ` (${String(r.statusText).slice(0, 40)})` : ''}` : r.status;
+  const marca = opciones && opciones.headers && opciones.headers.RSC ? ' (RSC)' : '';
+  if (!(r && r.ok && /themoviedb/.test(host))) anotar(`${metodo}${marca} ${rutaCorta(url)} → ${estado}${r && r.status && r.tam !== undefined ? ` · ${peso(r.tam)}` : ''}${r && r.escudo ? ' · Cloudflare' : ''} · ${((Date.now() - comienzo) / 1000).toFixed(1)}s${r && r.status && r.url && rutaCorta(r.url) !== rutaCorta(url) ? ` → ${rutaCorta(r.url).slice(0, 45)}` : ''}`);
+  if (r && !r.status) {
+    caidos.add(host);
+    return null;
+  }
+  return r;
+}
+
+async function pedirCrudo(url, opciones) {
   const o = Object.assign({}, opciones || {});
   const limite = Math.min(o.limite || CIERRE, CIERRE - transcurrido());
   const sinCabeceras = o.sinCabeceras;
@@ -74,12 +106,7 @@ async function pedir(url, opciones) {
     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'es-MX,es;q=0.9,en;q=0.8'
   }, o.headers || {});
-  const r = await conLimite(traer(url, o).catch(() => ({ status: 0 })), limite, null);
-  if (r && !r.status) {
-    caidos.add(host);
-    return null;
-  }
-  return r;
+  return conLimite(traer(url, o).catch((e) => ({ status: 0, statusText: e && e.message })), limite, null);
 }
 
 async function texto(url, opciones) {
@@ -1059,11 +1086,13 @@ async function enOrden(tareas, procesar) {
   return [];
 }
 
-function limitar(buscador) {
+function limitar(buscador, respaldo) {
   return (...argumentos) => {
     inicio = Date.now();
     caidos.clear();
-    return conLimite(Promise.resolve().then(() => buscador(...argumentos)), CIERRE, []);
+    registro = [];
+    const trabajo = conLimite(Promise.resolve().then(() => buscador(...argumentos)), CIERRE, null);
+    return respaldo ? trabajo.then((salida) => (salida && salida.length ? salida : respaldo(salida === null))) : trabajo.then((salida) => salida || []);
   };
 }
 
@@ -1180,76 +1209,171 @@ async function flujoAnime(sitio, tmdbId, mediaType, season, episode) {
   return armar([].concat(...listas), encabezado(datos, tipo, temporada, episodio), sitio.fuente);
 }
 
-const FUENTE = 'TioDonghua';
-const BASE = 'https://tiodonghua.com';
-const EVITAR = /vidguard|hqq\.|modagamers|cuyplay|vgembed|ahvsh|videopress|tioplayer|videa\.hu|embedgram/i;
+function muestra(html, patron, ancho) {
+  const t = String(html || '');
+  const m = patron.exec(t);
+  if (!m) return '';
+  const desde = Math.max(0, m.index - Math.floor((ancho || 160) / 3));
+  return t.slice(desde, desde + (ancho || 160)).replace(/\s+/g, ' ').trim();
+}
 
-async function buscar(consulta) {
-  const html = await texto(`${BASE}/?s=${encodeURIComponent(consulta).replace(/%20/g, '+')}`, { headers: { Referer: `${BASE}/` } });
+function contar(html, patron) {
+  return (String(html || '').match(patron) || []).length;
+}
+
+function tarjetaRastro(fuente, agotado) {
+  let lineas = registro.slice();
+  if (lineas.length > 22) lineas = lineas.slice(0, 10).concat(['…'], lineas.slice(-11));
+  if (agotado) lineas.push('se acabó el tiempo antes de terminar');
+  return [{
+    name: `${fuente} (Diagnóstico)`,
+    title: lineas.length ? lineas.join('\n') : 'no se hizo ninguna petición',
+    url: 'https://example.com/diagnostico',
+    quality: 'Diagnóstico',
+    provider: fuente
+  }];
+}
+
+const FUENTE = 'TioDonghua';
+const BASES = ['https://tiodonghua.lat', 'https://tiodonghua.com'];
+const EVITAR = /vidguard|hqq\.|modagamers|cuyplay|vgembed|ahvsh|videopress|tioplayer|videa\.hu|embedgram|vgfplay|mixdroop\.bz|tioanime|mega\.nz|mega\.co|terabox|sharezweb|digitalxona|sbface|guccihide|youtube\.com|youtu\.be/i;
+let base = BASES[0];
+let pedido = { temporada: 1, episodio: 1 };
+let interesante = false;
+
+function nombresDe(t) {
+  const limpio = limpiarHtml(t).replace(/\s*(?:Sub(?:titulado)?\s+Espa\S*ol|Legendado\s+Portugu\S*s)\s*/gi, ' ').replace(/\s+/g, ' ').trim();
+  const partes = [limpio];
+  const m = limpio.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  if (m) partes.push(m[1].trim(), m[2].trim());
+  return [...new Set(partes.filter(Boolean))];
+}
+
+function resultados(html) {
   const zona = (html.match(/class=["'][^"']*search-page[\s\S]*$/i) || [html])[0];
   const lista = [];
   for (const art of zona.split(/<article\b/i).slice(1)) {
     const enlace = art.match(/class=["'][^"']*\btitle\b[^"']*["'][^>]*>\s*<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i);
-    if (enlace) lista.push({ nombre: limpiarHtml(enlace[2]).replace(/\s*(Sub Espa\S*ol|Legendado Portugu\S*s)\s*$/i, ''), url: absoluta(enlace[1], BASE) });
+    if (!enlace) continue;
+    const url = absoluta(enlace[1], base);
+    if (/\/episodios\//i.test(url)) continue;
+    for (const nombre of nombresDe(enlace[2])) lista.push({ nombre, url });
   }
   return lista;
 }
 
+async function buscar(consulta) {
+  for (const b of BASES) {
+    const r = await pedir(`${b}/?s=${encodeURIComponent(consulta).replace(/%20/g, '+')}`, { headers: { Referer: `${b}/` } });
+    if (!r || !r.ok) {
+      if (!r || r.status !== 404) interesante = true;
+      continue;
+    }
+    base = origen(r.url || b) || b;
+    const lista = resultados(await r.text());
+    anotar(`búsqueda "${consulta}": ${lista.length} resultados${lista.length ? ` (${lista.slice(0, 3).map((x) => x.nombre.slice(0, 28)).join(' | ')})` : ''}`);
+    if (lista.length) return lista;
+    const s = slug(consulta);
+    for (const ruta of [`${base}/donghua/${s}-sub-espanol/`, `${base}/donghua/${s}/`]) {
+      const html = await texto(ruta, { headers: { Referer: `${base}/` } });
+      if (/numerando|episodios/i.test(html)) return [{ nombre: consulta, url: ruta }];
+    }
+    return [];
+  }
+  return [];
+}
+
 async function episodio(url, numero) {
+  interesante = true;
   if (/\/peliculas?\//.test(url)) return url;
-  const html = await texto(url, { headers: { Referer: `${BASE}/` } });
-  let primero = null;
+  const html = await texto(url, { headers: { Referer: `${base}/` } });
+  const lista = [];
   for (const li of html.split(/<li\b/i).slice(1)) {
     const num = limpiarHtml((li.match(/class=["'][^"']*numerando[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) || [])[1]);
-    const partes = num.split('-').map((x) => parseInt(x, 10));
-    if (partes.length !== 2 || partes[1] !== numero) continue;
+    const partes = num.split(/\s*-\s*/).map((x) => parseInt(x, 10));
+    if (partes.length !== 2 || partes.some((x) => isNaN(x))) continue;
     const href = (li.match(/class=["'][^"']*episodiotitle[^"']*["'][\s\S]*?<a[^>]+href=["']([^"']+)["']/i) || li.match(/<a[^>]+href=["']([^"']+)["']/i) || [])[1];
-    if (!href) continue;
-    if (partes[0] === 1) return absoluta(href, BASE);
-    if (!primero) primero = absoluta(href, BASE);
+    if (href) lista.push({ t: partes[0], e: partes[1], url: absoluta(href, base) });
   }
-  return primero;
+  const temporadas = [...new Set(lista.map((x) => x.t))];
+  anotar(`episodios en la página: ${lista.length}${lista.length ? ` (temporadas ${temporadas.join(',')})` : ''} · buscando T${pedido.temporada} E${pedido.episodio} / número ${numero}`);
+  const exacto = lista.find((x) => x.t === pedido.temporada && x.e === pedido.episodio);
+  if (exacto) return exacto.url;
+  const porNumero = lista.filter((x) => x.e === numero);
+  if (porNumero.length) return (porNumero.find((x) => x.t === 1) || porNumero[0]).url;
+  if (temporadas.length === 1) {
+    const solo = lista.find((x) => x.e === pedido.episodio);
+    if (solo) return solo.url;
+  }
+  const enlace = html.match(new RegExp(`href=["']([^"']*/episodios/[^"']*-episodio-0*${numero}-[^"']*)["']`, 'i'));
+  return enlace ? absoluta(enlace[1], base) : null;
 }
 
 function limpiarEmbed(valor) {
-  let u = String(valor || '').trim();
+  let u = entidades(String(valor || '').trim());
   const marco = u.match(/<iframe[^>]+src=["']([^"']+)["']/i);
-  if (marco) u = marco[1];
+  if (marco) u = entidades(marco[1]);
   if (u.startsWith('//')) u = `https:${u}`;
   return /^https?:/.test(u) ? u : '';
 }
 
+async function embedDe(casa, pagina, op, metodo) {
+  const porAjax = async () => {
+    const r = await json(`${casa}/wp-admin/admin-ajax.php`, {
+      method: 'POST',
+      headers: { Accept: '*/*', 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest', Origin: casa, Referer: pagina },
+      body: `action=doo_player_ajax&post=${encodeURIComponent(op.post)}&nume=${encodeURIComponent(op.nume)}&type=${encodeURIComponent(op.clase)}`
+    });
+    return limpiarEmbed(r && r.embed_url);
+  };
+  const porJson = async () => {
+    const r = await json(`${casa}/wp-json/dooplayer/v2/${op.post}/${op.clase}/${op.nume}`, { headers: { Accept: 'application/json, text/javascript, */*; q=0.01', 'X-Requested-With': 'XMLHttpRequest', Referer: pagina } });
+    return limpiarEmbed(r && r.embed_url);
+  };
+  for (const paso of /json/i.test(metodo) ? [porJson, porAjax] : [porAjax, porJson]) {
+    const url = await paso().catch(() => '');
+    if (url) return url;
+  }
+  return '';
+}
+
 async function enlaces(pagina) {
-  const html = await texto(pagina, { headers: { Referer: `${BASE}/` } });
+  const casa = origen(pagina) || base;
+  const html = await texto(pagina, { headers: { Referer: `${casa}/` } });
   const zona = (html.match(/id=["']playeroptions["'][\s\S]*?<\/ul>/i) || [html])[0];
-  const tareas = [];
+  const opciones = [];
   const patron = /<li\b[^>]*>/gi;
   let m;
   while ((m = patron.exec(zona))) {
     const etiqueta = m[0];
     const post = (etiqueta.match(/data-post=["']([^"']+)["']/) || [])[1];
     const nume = (etiqueta.match(/data-nume=["']([^"']+)["']/) || [])[1];
-    const clase = (etiqueta.match(/data-type=["']([^"']+)["']/) || [])[1];
-    if (!post || !nume || nume === 'trailer') continue;
-    tareas.push(json(`${BASE}/wp-admin/admin-ajax.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest', Origin: BASE, Referer: pagina },
-      body: `action=doo_player_ajax&post=${encodeURIComponent(post)}&nume=${encodeURIComponent(nume)}&type=${encodeURIComponent(clase || 'tv')}`
-    }).then((r) => {
-      const url = limpiarEmbed(r && r.embed_url);
-      return url && !EVITAR.test(url) ? { url, audio: 'Subtitulado', referer: `${BASE}/` } : null;
-    }).catch(() => null));
+    const clase = (etiqueta.match(/data-type=["']([^"']+)["']/) || [])[1] || 'tv';
+    if (post && nume && nume !== 'trailer') opciones.push({ post, nume, clase });
   }
-  return (await Promise.all(tareas)).filter(Boolean);
+  const metodo = (html.match(/["']play_method["']\s*:\s*["']([^"']+)["']/) || [])[1] || '';
+  anotar(`opciones de reproductor: ${opciones.length}${metodo ? ` · método ${metodo}` : ''}`);
+  if (!opciones.length && html) anotar(`muestra: ${muestra(html, /playeroptions|dooplay_player|<iframe|data-post|reproductor|player/i, 220) || muestra(html, /<body|<main|<article/i, 220) || 'página vacía'}`);
+  const urls = (await Promise.all(opciones.map((op) => embedDe(casa, pagina, op, metodo)))).filter(Boolean);
+  const marcos = /<iframe[^>]+(?:data-src|src)=["']([^"']+)["']/gi;
+  while ((m = marcos.exec(html))) {
+    const u = limpiarEmbed(m[1]);
+    if (u) urls.push(u);
+  }
+  const todas = [...new Set(urls)].filter((u) => !EVITAR.test(u));
+  anotar(`enlaces: ${todas.length}${todas.length ? ` (${[...new Set(todas.map((u) => dominio(u)))].join(', ').slice(0, 90)})` : ''}`);
+  return todas.map((url) => ({ url, audio: 'Subtitulado', referer: `${casa}/` }));
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
+  pedido = { temporada: Number(season) || 1, episodio: Number(episode) || 1 };
+  interesante = false;
   try {
     return await flujoAnime({ fuente: FUENTE, buscar, episodio, enlaces }, tmdbId, mediaType, season, episode);
   } catch (e) {
-    console.log(`[${FUENTE}] ${e.message}`);
+    anotar(`error: ${e.message}`);
     return [];
   }
 }
 
-module.exports = { getStreams: limitar(getStreams) };
+module.exports = { getStreams: limitar(getStreams, (agotado) => (interesante || agotado ? tarjetaRastro(FUENTE, agotado) : [])) };
