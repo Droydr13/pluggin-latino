@@ -1,12 +1,12 @@
 {
   "name": "Addon Latam Plugin",
-  "version": "1.9.1",
+  "version": "2.0.0",
   "scrapers": [
     {
       "id": "lamovie",
       "name": "LaMovie",
       "description": "Proveedor premium con enlaces directos en 1080p y enfoque Latino.",
-      "version": "3.6.0",
+      "version": "3.7.0",
       "author": "AdrianJael",
       "supportedTypes": [
         "movie",
@@ -29,7 +29,7 @@
       "id": "moviebox",
       "name": "MovieBox",
       "description": "Peliculas y series de MovieBox, solo con audio en Español y Latino.",
-      "version": "1.6.0",
+      "version": "1.7.0",
       "author": "AdrianJael",
       "supportedTypes": [
         "movie",
@@ -45,7 +45,7 @@
       "id": "embed69",
       "name": "Embed69",
       "description": "Movies & Series in English & Spanish (~5s).",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "KennethJYS",
       "supportedTypes": [
         "movie",
@@ -69,7 +69,7 @@
       "id": "cinecalidad",
       "name": "CineCalidad",
       "description": "Películas en Latino desde CineCalidad. Vimeos, VOE, StreamWish.",
-      "version": "3.7.0",
+      "version": "3.8.0",
       "author": "KennethJYS",
       "supportedTypes": [
         "movie",
@@ -85,7 +85,7 @@
       "id": "peliserieshoy",
       "name": "PelisSeriesHoy",
       "description": "Streams en Latino desde PelisSeriesHoy.",
-      "version": "3.6.0",
+      "version": "3.7.0",
       "author": "KennethJYS",
       "supportedTypes": [
         "movie",
@@ -101,7 +101,7 @@
       "id": "seriesmetro",
       "name": "SeriesMetro",
       "description": "Streams en Latino desde SeriesMetro. Fastream.",
-      "version": "3.5.0",
+      "version": "3.6.0",
       "author": "KennethJYS",
       "supportedTypes": [
         "movie",
@@ -117,7 +117,7 @@
       "id": "hackstore",
       "name": "HackStore",
       "description": "Streams en Latino desde HackStore.",
-      "version": "3.6.0",
+      "version": "3.7.0",
       "author": "KennethJYS",
       "supportedTypes": [
         "movie",
@@ -133,7 +133,7 @@
       "id": "lacartoons",
       "name": "LACartoons",
       "description": "Caricaturas y series animadas clasicas en Español Latino, via lacartoons.com.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "tv"
@@ -148,7 +148,7 @@
       "id": "brazucaplay",
       "name": "BrazucaPlay",
       "description": "Streams de peliculas y series via BrazucaPlay/cineby.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -164,7 +164,7 @@
       "id": "cuevana",
       "name": "Cuevana",
       "description": "Peliculas y series en Latino desde Cuevana.",
-      "version": "2.6.0",
+      "version": "2.7.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -180,7 +180,7 @@
       "id": "pelisgo",
       "name": "PelisGo",
       "description": "Peliculas y series en Latino desde PelisGo.",
-      "version": "2.7.0",
+      "version": "3.0.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -196,7 +196,7 @@
       "id": "pelispedia",
       "name": "PelisPedia",
       "description": "Peliculas y series en Latino desde PelisPedia.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -212,7 +212,7 @@
       "id": "pelisplus",
       "name": "PelisPlus",
       "description": "Peliculas y series en Latino desde PelisPlus (pelisplushd.la).",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -228,7 +228,7 @@
       "id": "sololatino",
       "name": "SoloLatino",
       "description": "Peliculas y series en Latino desde SoloLatino.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -244,7 +244,7 @@
       "id": "tioplus",
       "name": "TioPlus",
       "description": "Peliculas y series en Latino desde TioPlus.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -260,7 +260,7 @@
       "id": "videasy",
       "name": "VidEasy",
       "description": "Peliculas y series en Español desde VidEasy.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -276,7 +276,7 @@
       "id": "allcalidad",
       "name": "AllCalidad",
       "description": "Peliculas, series y animes en Latino desde AllCalidad (API JSON propia).",
-      "version": "2.6.0",
+      "version": "2.7.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -292,7 +292,7 @@
       "id": "animeav1",
       "name": "AnimeAV1",
       "description": "Anime subtitulado y doblado desde AnimeAV1.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -308,7 +308,7 @@
       "id": "animejl",
       "name": "AnimeJL",
       "description": "Anime en Latino desde AnimeJL (anime-jl.net). Aviso: el sitio original usa Cloudflare, puede fallar si el bloqueo esta activo.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -324,7 +324,7 @@
       "id": "areadocumental",
       "name": "Area Documental",
       "description": "Documentales en Español desde Area Documental (video directo, sin embeds de terceros).",
-      "version": "2.6.0",
+      "version": "2.7.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -340,7 +340,7 @@
       "id": "doramasflix",
       "name": "Doramasflix",
       "description": "Doramas y peliculas asiaticas en Latino desde Doramasflix API GraphQL directa, con respaldo de scraping HTML propio (Uqload, OkRu, Doodstream, Streamtape, VOE, Primeload).",
-      "version": "3.5.0",
+      "version": "3.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -356,7 +356,7 @@
       "id": "documaniatv",
       "name": "DocumaniaTV",
       "description": "Documentales y series documentales en Español desde DocumaniaTV (video directo, sin embeds de terceros).",
-      "version": "2.6.0",
+      "version": "2.7.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie"
@@ -371,7 +371,7 @@
       "id": "doramasyt",
       "name": "DoramasYT",
       "description": "Doramas asiaticos en Latino desde DoramasYT.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "tv"
@@ -386,7 +386,7 @@
       "id": "latanime",
       "name": "LatAnime",
       "description": "Anime en Latino desde LatAnime.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -402,7 +402,7 @@
       "id": "entrepeliculasyseries",
       "name": "EntrePeliculasYSeries",
       "description": "Peliculas y series en Latino desde EntrePeliculasYSeries.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -418,7 +418,7 @@
       "id": "cinehdplus",
       "name": "CineHdPlus",
       "description": "Peliculas y series en Latino desde CineHdPlus.",
-      "version": "1.6.0",
+      "version": "1.7.0",
       "author": "AdrianJael",
       "supportedTypes": [
         "movie",
@@ -434,7 +434,7 @@
       "id": "seriesflix",
       "name": "SeriesFlix",
       "description": "Series y peliculas en Latino desde SeriesFlix.",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "author": "AdrianJael",
       "supportedTypes": [
         "movie",
@@ -450,7 +450,7 @@
       "id": "hdfull",
       "name": "HDFull",
       "description": "Peliculas y series en Español desde HDFull. Usa una cuenta compartida propia del sitio original; si vence, puede fallar hasta que se actualice.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -466,7 +466,7 @@
       "id": "jkanime",
       "name": "JKAnime",
       "description": "Anime subtitulado desde JKAnime. Version simplificada: cubre el camino principal de extraccion, no las cadenas de respaldo mas complejas del sitio (GSPlay/Nozomi).",
-      "version": "2.6.0",
+      "version": "2.7.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -482,7 +482,7 @@
       "id": "monoschinos",
       "name": "Monoschinos",
       "description": "Anime subtitulado desde Monoschinos.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -498,7 +498,7 @@
       "id": "tioanime",
       "name": "TioAnime",
       "description": "Anime subtitulado desde TioAnime.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -514,7 +514,7 @@
       "id": "mundodonghua",
       "name": "MundoDonghua",
       "description": "Donghuas (animacion china) en Español desde MundoDonghua.",
-      "version": "2.6.0",
+      "version": "2.7.0",
       "author": "Doyrd",
       "supportedTypes": [
         "tv"
@@ -529,7 +529,7 @@
       "id": "reydonghua",
       "name": "ReyDonghua",
       "description": "Donghuas (animacion china) en Latino desde ReyDonghua.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "tv"
@@ -544,7 +544,7 @@
       "id": "peliculasflix",
       "name": "PeliculasFlix",
       "description": "Peliculas en Español desde PeliculasFlix -- misma API GraphQL que Doramasflix, con respaldo de scraping HTML propio.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie"
@@ -559,7 +559,7 @@
       "id": "rcn",
       "name": "RCN",
       "description": "Novelas, series y peliculas gratis de RCN Total (Colombia) via su propia API (Cloud Unity). Solo contenido sin DRM.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd (+ ayuda de un colaborador)",
       "supportedTypes": [
         "movie",
@@ -575,7 +575,7 @@
       "id": "vitaminagg",
       "name": "VitaminaGG",
       "description": "Peliculas, series y anime en Latino desde VitaminaGG.",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -591,7 +591,7 @@
       "id": "vimeus",
       "name": "Vimeus",
       "description": "Peliculas, series y animes desde Vimeus usando el ID de TMDB.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -607,7 +607,7 @@
       "id": "homecine",
       "name": "HomeCine",
       "description": "Peliculas y series en Latino y Castellano desde HomeCine.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -623,7 +623,7 @@
       "id": "areshd",
       "name": "AresHD",
       "description": "Peliculas y series en Latino, Castellano y Subtitulado desde AresHD.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -639,7 +639,7 @@
       "id": "allpeliculasse",
       "name": "AllpeliculasSE",
       "description": "Peliculas y series en Latino desde AllPeliculas.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -652,42 +652,10 @@
       ]
     },
     {
-      "id": "gnula",
-      "name": "Gnula",
-      "description": "Peliculas y series en Latino desde GnulaHD.",
-      "version": "1.1.0",
-      "author": "Doyrd",
-      "supportedTypes": [
-        "movie",
-        "tv"
-      ],
-      "filename": "providers/gnula.js",
-      "enabled": true,
-      "contentLanguage": [
-        "es"
-      ]
-    },
-    {
-      "id": "tiodonghua",
-      "name": "TioDonghua",
-      "description": "Donghuas (animacion china) subtitulados desde TioDonghua.",
-      "version": "1.1.0",
-      "author": "Doyrd",
-      "supportedTypes": [
-        "movie",
-        "tv"
-      ],
-      "filename": "providers/tiodonghua.js",
-      "enabled": true,
-      "contentLanguage": [
-        "es"
-      ]
-    },
-    {
       "id": "henaojara",
       "name": "Henaojara",
       "description": "Anime en Latino, Castellano y Subtitulado desde Henaojara.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
