@@ -1,6 +1,6 @@
 {
   "name": "Addon Latam Plugin",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "scrapers": [
     {
       "id": "lamovie",
@@ -180,7 +180,7 @@
       "id": "pelisgo",
       "name": "PelisGo",
       "description": "Peliculas y series en Latino desde PelisGo.",
-      "version": "2.6.0",
+      "version": "2.7.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -654,11 +654,12 @@
     {
       "id": "gnula",
       "name": "Gnula",
-      "description": "Peliculas en Latino y Castellano desde Gnula.",
-      "version": "1.0.0",
+      "description": "Peliculas y series en Latino desde GnulaHD.",
+      "version": "1.1.0",
       "author": "Doyrd",
       "supportedTypes": [
-        "movie"
+        "movie",
+        "tv"
       ],
       "filename": "providers/gnula.js",
       "enabled": true,
@@ -670,7 +671,7 @@
       "id": "tiodonghua",
       "name": "TioDonghua",
       "description": "Donghuas (animacion china) subtitulados desde TioDonghua.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
