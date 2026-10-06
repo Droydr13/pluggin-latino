@@ -364,6 +364,10 @@ function calidad(valor) {
 function tarjeta(titulo, cal, audio, peso, url, cabeceras) {
   const s = { name: FUENTE, title: titulo, url, quality: `Calidad: ${cal}`, language: `Audio: ${audio}`, headers: cabeceras, provider: FUENTE };
   if (peso) s.size = `Tamaño: ${peso}`;
+  if (typeof __plugin_sleep !== 'function' && typeof __cheerio_load === 'function') {
+    s.size = [s.quality, s.size].filter(Boolean).join(' • ');
+    s.quality = s.name;
+  }
   return s;
 }
 

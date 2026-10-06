@@ -1017,6 +1017,8 @@ function audioDe(t) {
   return '';
 }
 
+const TELE = typeof __plugin_sleep !== 'function' && typeof __cheerio_load === 'function';
+
 function tarjeta(info) {
   const s = {
     name: info.servidor ? `${info.fuente} (${info.servidor})` : info.fuente,
@@ -1027,6 +1029,10 @@ function tarjeta(info) {
   };
   if (info.tamano) s.size = `Tamaño: ${info.tamano}`;
   if (info.audio) s.language = `Audio: ${info.audio}`;
+  if (TELE) {
+    s.size = [s.quality, s.size].filter(Boolean).join(' • ');
+    s.quality = s.name;
+  }
   if (info.headers && Object.keys(info.headers).length) s.headers = info.headers;
   return s;
 }
