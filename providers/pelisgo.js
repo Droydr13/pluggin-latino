@@ -1,3 +1,10 @@
+if (typeof setTimeout === "undefined") {
+  globalThis.setTimeout = function (fn, ms) {
+    if (typeof fn === "function" && (Number(ms) || 0) < 5000) Promise.resolve().then(fn);
+    return 0;
+  };
+  globalThis.clearTimeout = function () {};
+}
 /* __AXIOS_SHIM__ */
 var __axios = (function () {
   function encodeQuery(params) {
@@ -3255,6 +3262,28 @@ function getOnlineStreams(rawHtml) {
     return results.filter((r) => r.status === "fulfilled" && r.value !== null).map((r) => r.value);
   });
 }
+function formatoDoyrd(lista, mediaTitle) {
+  const tele = typeof __plugin_sleep !== "function" && typeof __cheerio_load === "function";
+  return (lista || []).map((s) => {
+    const partes = String(s.title || "").split(" - ");
+    const servidor = partes.length > 1 ? partes.slice(1).join(" - ").trim() : s.provider || "";
+    const nombre = servidor ? `PelisGo (${servidor})` : "PelisGo";
+    const salida = {
+      name: nombre,
+      title: mediaTitle || s.title,
+      url: s.url,
+      quality: `Calidad: ${s.quality || "Auto"}`,
+      language: `Audio: ${s.language || partes[0] || "Latino"}`,
+      provider: "PelisGo"
+    };
+    if (tele) {
+      salida.size = salida.quality;
+      salida.quality = nombre;
+    }
+    if (s.headers && Object.keys(s.headers).length) salida.headers = s.headers;
+    return salida;
+  });
+}
 function getStreams(tmdbId, mediaType, season, episode, title) {
   return __async(this, null, function* () {
     try {
@@ -3308,11 +3337,11 @@ function getStreams(tmdbId, mediaType, season, episode, title) {
           const resRetry = yield fetchWithTimeout(bestUrl);
           const htmlRetry = yield resRetry.text();
           const streams2 = yield getOnlineStreams(htmlRetry);
-          return yield finalizeStreams(streams2, "PelisGo", mediaTitle);
+          return formatoDoyrd(yield finalizeStreams(streams2, "PelisGo", mediaTitle), mediaTitle);
         }
       }
       const streams = yield getOnlineStreams(html);
-      return yield finalizeStreams(streams, "PelisGo", mediaTitle);
+      return formatoDoyrd(yield finalizeStreams(streams, "PelisGo", mediaTitle), mediaTitle);
     } catch (e) {
       return [];
     }
