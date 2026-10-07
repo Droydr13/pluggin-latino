@@ -1,6 +1,6 @@
 # Addon Latam plugin
  
-Ahora también tenemos este plugin para Nuvio. Contenido en Español/Latino: películas,
+Ahora también tenemos plugin para Nuvio. Contenido en Español/Latino: películas,
 series, anime y donghuas de distintos sitios.
  
 [![Donar](https://img.shields.io/badge/❤-Donar-e50914?style=for-the-badge)](https://addonlatampagina.duckdns.org/donar.html)
