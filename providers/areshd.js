@@ -325,7 +325,7 @@ function hexBytes(bytes) {
 
 function datoAltcha(textoReto, clave) {
   const m = textoReto.match(new RegExp(`"${clave}"\\s*:\\s*(?:"([^"]*)"|(\\d+))`));
-  return m ? (m[1] !== undefined ? m[1] : m[2]) : '';
+  return m ? (m[1] !== undefined ? m[1].replace(/\\\//g, '/') : m[2]) : '';
 }
 
 function resolverAltcha(textoReto) {
@@ -343,7 +343,7 @@ function resolverAltcha(textoReto) {
   const salBytes = bytesHex(sal);
   const nonceBytes = bytesHex(nonce);
   for (let contador = 0; contador < 50000; contador++) {
-    if (contador % 8 === 0 && Date.now() - comienzo > tope) break;
+    if (Date.now() - comienzo > tope) break;
     const cuenta = [(contador >>> 24) & 255, (contador >>> 16) & 255, (contador >>> 8) & 255, contador & 255];
     let clave = '';
     try {
@@ -355,6 +355,7 @@ function resolverAltcha(textoReto) {
       anotar(`Voe: desafío resuelto con ${contador + 1} intentos en ${((Date.now() - comienzo) / 1000).toFixed(1)}s`);
       return { contador, clave };
     }
+    if (!nativo && contador === 0 && (Date.now() - comienzo) * Math.min(Math.pow(16, prefijo.length), 1024) / 2 > tope * 4) break;
   }
   anotar(`Voe: desafío sin resolver en ${((Date.now() - comienzo) / 1000).toFixed(1)}s (costo ${costo})`);
   return null;
@@ -386,7 +387,7 @@ async function pasarAltchaVoe(pagina) {
   if (!parametros || !firma) return null;
   const carga = btoa(`{"challenge":{"parameters":${parametros},"signature":"${firma}"},"solution":{"counter":${solucion.contador},"derivedKey":"${solucion.clave}","time":1}}`);
   const casa = origen(pagina.url);
-  for (const valor of [encodeURIComponent(encodeURIComponent(carga)), encodeURIComponent(carga)]) {
+  for (const valor of [encodeURIComponent(carga), encodeURIComponent(encodeURIComponent(carga))]) {
     const r = await pedir(pagina.url, {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded', Origin: casa, Referer: pagina.url }, galletas ? { Cookie: galletas } : {}),

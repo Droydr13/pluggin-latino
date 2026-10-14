@@ -325,7 +325,7 @@ function hexBytes(bytes) {
 
 function datoAltcha(textoReto, clave) {
   const m = textoReto.match(new RegExp(`"${clave}"\\s*:\\s*(?:"([^"]*)"|(\\d+))`));
-  return m ? (m[1] !== undefined ? m[1] : m[2]) : '';
+  return m ? (m[1] !== undefined ? m[1].replace(/\\\//g, '/') : m[2]) : '';
 }
 
 function resolverAltcha(textoReto) {
@@ -343,7 +343,7 @@ function resolverAltcha(textoReto) {
   const salBytes = bytesHex(sal);
   const nonceBytes = bytesHex(nonce);
   for (let contador = 0; contador < 50000; contador++) {
-    if (contador % 8 === 0 && Date.now() - comienzo > tope) break;
+    if (Date.now() - comienzo > tope) break;
     const cuenta = [(contador >>> 24) & 255, (contador >>> 16) & 255, (contador >>> 8) & 255, contador & 255];
     let clave = '';
     try {
@@ -355,6 +355,7 @@ function resolverAltcha(textoReto) {
       anotar(`Voe: desafío resuelto con ${contador + 1} intentos en ${((Date.now() - comienzo) / 1000).toFixed(1)}s`);
       return { contador, clave };
     }
+    if (!nativo && contador === 0 && (Date.now() - comienzo) * Math.min(Math.pow(16, prefijo.length), 1024) / 2 > tope * 4) break;
   }
   anotar(`Voe: desafío sin resolver en ${((Date.now() - comienzo) / 1000).toFixed(1)}s (costo ${costo})`);
   return null;
@@ -386,7 +387,7 @@ async function pasarAltchaVoe(pagina) {
   if (!parametros || !firma) return null;
   const carga = btoa(`{"challenge":{"parameters":${parametros},"signature":"${firma}"},"solution":{"counter":${solucion.contador},"derivedKey":"${solucion.clave}","time":1}}`);
   const casa = origen(pagina.url);
-  for (const valor of [encodeURIComponent(encodeURIComponent(carga)), encodeURIComponent(carga)]) {
+  for (const valor of [encodeURIComponent(carga), encodeURIComponent(encodeURIComponent(carga))]) {
     const r = await pedir(pagina.url, {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded', Origin: casa, Referer: pagina.url }, galletas ? { Cookie: galletas } : {}),
@@ -1302,6 +1303,142 @@ function limitar(buscador, respaldo) {
   };
 }
 
+const DESCARTAR_JUGADORES = /fembed|streamsb|plustream|waaw|netu|hqq|jetload|1fichier|uptobox|powvideo|streamplay/i;
+
+function propsSiguiente(html) {
+  const m = String(html || '').match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!m) return null;
+  try {
+    const d = JSON.parse(m[1]);
+    return (d.props && d.props.pageProps) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function audioJugador(idioma) {
+  const c = normalizar(idioma);
+  if (/latino|lat\b|mx/.test(c)) return 'Latino';
+  if (/spanish|espanol|castellano|esp\b|cas\b/.test(c)) return 'Castellano';
+  if (/english|ingles|sub|vose|original/.test(c)) return 'Subtitulado';
+  return '';
+}
+
+function campoJugador(objeto, clave) {
+  const m = objeto.match(new RegExp(`"${clave}"\\s*:\\s*"([^"]*)"`));
+  return m ? m[1].replace(/\\\//g, '/') : '';
+}
+
+function jugadoresSiguiente(html) {
+  const props = propsSiguiente(html);
+  const fuente = props && ((props.episode && props.episode.players) || (props.post && props.post.players) || props.players);
+  const lista = [];
+  if (fuente && typeof fuente === 'object') {
+    for (const idioma of Object.keys(fuente)) {
+      if (!Array.isArray(fuente[idioma])) continue;
+      for (const e of fuente[idioma]) if (e && e.result) lista.push({ idioma, servidor: String(e.cyberlocker || ''), url: String(e.result), calidad: String(e.quality || '') });
+    }
+    if (lista.length) return lista;
+  }
+  let crudo = String(html || '');
+  if (crudo.includes('\\"players\\"')) crudo = crudo.replace(/\\"/g, '"');
+  const inicio = crudo.indexOf('"players"');
+  if (inicio < 0) return lista;
+  const zona = crudo.slice(inicio, inicio + 60000);
+  for (const idioma of ['latino', 'spanish', 'english']) {
+    const bloque = (zona.match(new RegExp(`"${idioma}"\\s*:\\s*\\[([\\s\\S]*?)\\]`)) || [])[1];
+    if (!bloque) continue;
+    for (const objeto of bloque.match(/\{[^{}]*\}/g) || []) {
+      const url = campoJugador(objeto, 'result');
+      if (url) lista.push({ idioma, servidor: campoJugador(objeto, 'cyberlocker'), url, calidad: campoJugador(objeto, 'quality') });
+    }
+  }
+  return lista;
+}
+
+async function destinoJugador(url, referer) {
+  const u = absoluta(url, referer);
+  if (!/^https?:\/\//.test(u)) return '';
+  if (dominio(u) !== dominio(referer) && SERVIDORES.some(([patron]) => patron.test(dominio(u)))) return u;
+  const html = await texto(u, { headers: { Referer: referer } });
+  const m = html.match(/(?:var|let|const)\s+url\s*=\s*['"]([^'"]+)['"]/) || html.match(/\burl\s*=\s*'([^']+)'/);
+  if (m) return absoluta(m[1], u);
+  const marco = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+  return marco ? absoluta(entidades(marco[1]), u) : '';
+}
+
+function resultadosSiguiente(html, sitio) {
+  const corte = String(html || '').search(/Top de la semana/i);
+  const zona = corte > 0 ? html.slice(0, corte) : String(html || '');
+  const lista = [];
+  for (const art of zona.split(/<article\b/i).slice(1)) {
+    const href = (art.match(/<a[^>]+href=["']([^"']+)["']/i) || [])[1];
+    if (!href) continue;
+    const nombre = entidades((art.match(/\balt=["']([^"']+)["']/i) || [])[1] || '') || limpiarHtml((art.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i) || [])[1]);
+    const anio = (art.match(/<span[^>]*>\s*((?:19|20)\d{2})\s*<\/span>/) || [])[1] || '';
+    const url = absoluta(entidades(href), sitio.base);
+    if (nombre) lista.push({ nombre, anio, url });
+  }
+  return lista;
+}
+
+async function buscarSiguiente(sitio, datos, tipo) {
+  const titulos = titulosPosibles(datos);
+  const ruta = tipo === 'movie' ? sitio.peli : sitio.serie;
+  for (const t of titulos) {
+    const html = await texto(`${sitio.base}/search?q=${encodeURIComponent(t)}`, { headers: { Referer: `${sitio.base}/` } });
+    if (!html) return null;
+    let mejor = null;
+    let puntos = 0;
+    for (const c of resultadosSiguiente(html, sitio)) {
+      if (!ruta.test(c.url)) continue;
+      let s = 0;
+      for (const x of titulos) for (const v of [c.nombre, c.nombre.split(/\s*[:|–—-]\s+/)[0]]) s = Math.max(s, parecido(v, x));
+      if (c.anio && datos.anio) s += Math.abs(Number(c.anio) - Number(datos.anio)) <= 1 ? 0.15 : -0.3;
+      if (s > puntos) {
+        puntos = s;
+        mejor = c.url;
+      }
+    }
+    anotar(`${dominio(sitio.base)} "${t}": ${mejor ? rutaCorta(mejor) : 'sin coincidencia'}`);
+    if (mejor && puntos >= 0.8) return mejor;
+  }
+  return null;
+}
+
+function episodioSiguiente(sitio, html, pagina, temporada, episodio) {
+  const props = propsSiguiente(html);
+  const serie = props && (props.post || props.serie || props.thisSerie);
+  const t = serie && (serie.seasons || []).find((s) => Number(s.number) === temporada);
+  const e = t && (t.episodes || []).find((x) => Number(x.number) === episodio);
+  const nombre = (e && e.slug && e.slug.name) || pagina.replace(/[?#].*$/, '').replace(/\/+$/, '').split('/').pop();
+  const numero = (e && e.slug && e.slug.episode) || episodio;
+  return sitio.episodio(sitio.base, nombre, (e && e.slug && e.slug.season) || temporada, numero);
+}
+
+async function metodoSiguiente(sitio, datos, tipo, temporada, episodio) {
+  let pagina = await buscarSiguiente(sitio, datos, tipo);
+  if (!pagina) return [];
+  if (tipo === 'tv') pagina = episodioSiguiente(sitio, await texto(pagina, { headers: { Referer: `${sitio.base}/` } }), pagina, temporada, episodio);
+  const html = await texto(pagina, { headers: { Referer: `${sitio.base}/` } });
+  const jugadores = jugadoresSiguiente(html).filter((j) => !DESCARTAR_JUGADORES.test(`${j.servidor} ${j.url}`));
+  anotar(`${rutaCorta(pagina)}: ${jugadores.length} reproductores`);
+  const lista = await Promise.all(jugadores.map(async (j) => {
+    const url = await destinoJugador(j.url, pagina).catch(() => '');
+    return url && !DESCARTAR_JUGADORES.test(url) ? { url, audio: audioJugador(j.idioma), calidad: calidadTexto(j.calidad), referer: `${sitio.base}/` } : null;
+  }));
+  const vistos = new Set();
+  return lista.filter((x) => x && !vistos.has(x.url) && vistos.add(x.url));
+}
+
+async function metodoEspejos(sitios, datos, tipo, temporada, episodio) {
+  for (const sitio of sitios) {
+    const lista = await metodoSiguiente(sitio, datos, tipo, temporada, episodio).catch(() => []);
+    if (lista.length) return lista;
+  }
+  return [];
+}
+
 const FUENTE = 'Cuevana';
 const BASE = 'https://wv3.cuevana3.eu';
 const EVITAR = /netu|waaw|hqq|jetload/i;
@@ -1397,6 +1534,56 @@ async function metodoApi(datos, tipo, temporada, episodio) {
   return lista;
 }
 
+const ESPEJO_MX = 'https://www.cuevana-3.mx';
+const CUEVANA2 = ['https://www.cuevana2.lat', 'https://www.cuevana2.run'].map((base) => ({
+  base,
+  peli: /\/pelicula\//,
+  serie: /\/serie\//,
+  episodio: (b, nombre, t, e) => `${b}/episodio/${nombre}-${t}x${e}`
+}));
+
+function audioRotulo(t) {
+  const s = normalizar(t);
+  if (/latino/.test(s)) return 'Latino';
+  if (/castellano|^espanol$|espana/.test(s)) return 'Castellano';
+  if (/subtitulado|ingles|vose/.test(s)) return 'Subtitulado';
+  return '';
+}
+
+function opcionesClili(html) {
+  const marcas = [];
+  const pm = />\s*((?:Espa\S*ol\s+)?Latino|Espa\S*ol|Castellano|Subtitulado|Ingl\S*s)\s*</gi;
+  let m;
+  while ((m = pm.exec(html))) marcas.push({ pos: m.index, audio: audioRotulo(m[1]) });
+  const salida = [];
+  const pl = /<li\b[^>]*\bdata-tr=["']([^"']+)["'][^>]*>([\s\S]*?)<\/li>/gi;
+  while ((m = pl.exec(html))) {
+    let audio = '';
+    for (const marca of marcas) {
+      if (marca.pos > m.index) break;
+      if (marca.audio) audio = marca.audio;
+    }
+    salida.push({ tr: entidades(m[1]), audio, servidor: limpiarHtml(m[2]) });
+  }
+  return salida;
+}
+
+async function metodoMx(datos, tipo, temporada, episodio) {
+  const nombre = slug(datos.ingles || datos.titulo) || 'ver';
+  const pagina = tipo === 'movie' ? `${ESPEJO_MX}/pelicula/${datos.id}/${nombre}` : `${ESPEJO_MX}/serie/${datos.id}/${nombre}/temporada/${temporada}/episodio/${episodio}`;
+  const html = await texto(pagina, { headers: { Referer: `${ESPEJO_MX}/` } });
+  if (!html) return [];
+  const opciones = opcionesClili(html).filter((o) => !EVITAR.test(`${o.servidor} ${o.tr}`));
+  anotar(`cuevana-3.mx: ${opciones.length} opciones`);
+  const lista = await Promise.all(opciones.map(async (o) => {
+    const marco = absoluta(o.tr, ESPEJO_MX);
+    const h = await texto(marco, { headers: { Referer: pagina } });
+    const u = (h.match(/(?:var|let)\s+url\s*=\s*['"]([^'"]+)['"]/) || [])[1];
+    return u && !EVITAR.test(u) ? { url: absoluta(u, marco), audio: o.audio || 'Latino', referer: `${ESPEJO_MX}/` } : null;
+  }));
+  return lista.filter(Boolean);
+}
+
 async function getStreams(tmdbId, mediaType, season, episode) {
   try {
     const tipo = mediaType === 'movie' ? 'movie' : 'tv';
@@ -1406,9 +1593,11 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     const episodio = Number(episode) || 1;
     const titulos = titulosPosibles(datos);
     const titulo = encabezado(datos, tipo, temporada, episodio);
-    return await enOrden([
+    return await enCadena([
       () => metodoSubmenu(titulos, tipo, temporada, episodio),
-      () => metodoApi(datos, tipo, temporada, episodio)
+      () => metodoApi(datos, tipo, temporada, episodio),
+      () => metodoMx(datos, tipo, temporada, episodio),
+      () => metodoEspejos(CUEVANA2, datos, tipo, temporada, episodio)
     ], (lista) => armar(lista, titulo, FUENTE));
   } catch (e) {
     console.log(`[${FUENTE}] ${e.message}`);
