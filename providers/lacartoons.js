@@ -290,16 +290,133 @@ function descifrarVoe(cifrado, ruidos) {
   }
 }
 
+async function paginaVoe(url, opciones) {
+  const r = await pedir(url, opciones);
+  if (!r || !r.ok) return { html: '', galletas: '', url };
+  let html = '';
+  try {
+    html = (await conLimite(r.text(), 10000, '')) || '';
+  } catch (e) {}
+  return { html, galletas: cookies(r), url: r.url || url };
+}
+
+function unirGalletas(...listas) {
+  const todas = new Map();
+  for (const lista of listas) {
+    for (const par of String(lista || '').split(/;\s*/)) {
+      const corte = par.indexOf('=');
+      if (corte > 0) todas.set(par.slice(0, corte).trim(), par.slice(corte + 1));
+    }
+  }
+  return [...todas].map(([k, v]) => `${k}=${v}`).join('; ');
+}
+
+function bytesHex(hex) {
+  const salida = [];
+  for (let i = 0; i + 1 < hex.length; i += 2) salida.push(parseInt(hex.slice(i, i + 2), 16));
+  return salida;
+}
+
+function hexBytes(bytes) {
+  let t = '';
+  for (const b of bytes) t += (b < 16 ? '0' : '') + b.toString(16);
+  return t;
+}
+
+function datoAltcha(textoReto, clave) {
+  const m = textoReto.match(new RegExp(`"${clave}"\\s*:\\s*(?:"([^"]*)"|(\\d+))`));
+  return m ? (m[1] !== undefined ? m[1] : m[2]) : '';
+}
+
+function resolverAltcha(textoReto) {
+  const algoritmo = datoAltcha(textoReto, 'algorithm');
+  if (algoritmo && !/pbkdf2\/sha-?256/i.test(algoritmo)) return null;
+  const nonce = datoAltcha(textoReto, 'nonce');
+  const sal = datoAltcha(textoReto, 'salt');
+  const prefijo = datoAltcha(textoReto, 'keyPrefix').toLowerCase();
+  const costo = parseInt(datoAltcha(textoReto, 'cost'), 10) || 0;
+  const largo = parseInt(datoAltcha(textoReto, 'keyLength'), 10) || 32;
+  if (!/^[0-9a-f]+$/i.test(nonce) || !/^[0-9a-f]+$/i.test(sal) || !/^[0-9a-f]+$/.test(prefijo) || costo <= 0) return null;
+  const nativo = typeof __crypto_pbkdf2_hex === 'function';
+  const comienzo = Date.now();
+  const tope = nativo ? Math.max(4000, restante() - 12000) : RELOJ ? 9000 : 6000;
+  const salBytes = bytesHex(sal);
+  const nonceBytes = bytesHex(nonce);
+  for (let contador = 0; contador < 50000; contador++) {
+    if (contador % 8 === 0 && Date.now() - comienzo > tope) break;
+    const cuenta = [(contador >>> 24) & 255, (contador >>> 16) & 255, (contador >>> 8) & 255, contador & 255];
+    let clave = '';
+    try {
+      clave = nativo ? String(__crypto_pbkdf2_hex(nonce + hexBytes(cuenta), sal, costo, largo * 8, 'SHA256') || '').toLowerCase() : hexBytes(pbkdf2Js(nonceBytes.concat(cuenta), salBytes, costo, largo));
+    } catch (e) {
+      return null;
+    }
+    if (clave.startsWith(prefijo)) {
+      anotar(`Voe: desafío resuelto con ${contador + 1} intentos en ${((Date.now() - comienzo) / 1000).toFixed(1)}s`);
+      return { contador, clave };
+    }
+  }
+  anotar(`Voe: desafío sin resolver en ${((Date.now() - comienzo) / 1000).toFixed(1)}s (costo ${costo})`);
+  return null;
+}
+
+async function pasarAltchaVoe(pagina) {
+  const ficha = (pagina.html.match(/<input[^>]+name=["']_token["'][^>]*>/i) || [''])[0];
+  const token = entidades((ficha.match(/value=["']([^"']*)["']/i) || [])[1] || '');
+  const widget = (pagina.html.match(/<altcha-widget\b[^>]*>/i) || [''])[0];
+  const reto = entidades((widget.match(/\bchallenge(?:-?url)?=["']([^"']+)["']/i) || [])[1] || '').trim();
+  if (!token || !reto) return null;
+  let galletas = pagina.galletas;
+  let textoReto = reto.startsWith('{') ? reto : '';
+  if (!textoReto) {
+    const r = await pedir(absoluta(reto, pagina.url), { headers: Object.assign({ Referer: pagina.url, Accept: 'application/json, text/plain, */*' }, galletas ? { Cookie: galletas } : {}) });
+    if (!r || !r.ok) return null;
+    galletas = unirGalletas(galletas, cookies(r));
+    textoReto = (await conLimite(r.text(), 10000, '')) || '';
+  }
+  const solucion = resolverAltcha(textoReto);
+  if (!solucion) return null;
+  let parametros = (textoReto.match(/"parameters"\s*:\s*(\{[^{}]*\})/) || [])[1];
+  if (!parametros) {
+    try {
+      parametros = JSON.stringify(JSON.parse(textoReto).parameters);
+    } catch (e) {}
+  }
+  const firma = (textoReto.match(/"signature"\s*:\s*"([^"]+)"/) || [])[1];
+  if (!parametros || !firma) return null;
+  const carga = btoa(`{"challenge":{"parameters":${parametros},"signature":"${firma}"},"solution":{"counter":${solucion.contador},"derivedKey":"${solucion.clave}","time":1}}`);
+  const casa = origen(pagina.url);
+  for (const valor of [encodeURIComponent(encodeURIComponent(carga)), encodeURIComponent(carga)]) {
+    const r = await pedir(pagina.url, {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded', Origin: casa, Referer: pagina.url }, galletas ? { Cookie: galletas } : {}),
+      body: `_token=${encodeURIComponent(token)}&access=0&altcha=${valor}`
+    });
+    if (!r || !r.ok) continue;
+    const html = (await conLimite(r.text(), 10000, '')) || '';
+    if (/<script type="application\/json">/i.test(html)) return { html, galletas: unirGalletas(galletas, cookies(r)), url: r.url || pagina.url };
+  }
+  return null;
+}
+
 async function resolverVoe(url, referer) {
   let actual = url;
   let html = '';
+  let pagina = null;
   for (let i = 0; i < 3; i++) {
-    html = await texto(actual, { headers: { Referer: i === 0 && referer ? referer : actual } });
+    pagina = await paginaVoe(actual, { headers: { Referer: i === 0 && referer ? referer : actual } });
+    html = pagina.html;
     const salto = html.length < 4000 && html.match(/window\.location\.href\s*=\s*['"]([^'"]+)['"]/i);
     if (!salto) break;
     actual = absoluta(salto[1], actual);
   }
   if (!html) return [];
+  if (/altcha-widget/i.test(html) && !/<script type="application\/json">/i.test(html)) {
+    const pasada = await pasarAltchaVoe(pagina);
+    if (!pasada) return [];
+    html = pasada.html;
+    actual = pasada.url;
+  }
   const bloque = html.match(/<script type="application\/json">([\s\S]*?)<\/script>(?:\s*<script[^>]*src=["']([^"']+)["'])?/i);
   if (bloque) {
     let cifrado = '';
@@ -388,6 +505,87 @@ function sha256Palabras(texto) {
     h0 = (h0 + a) | 0; h1 = (h1 + bb) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0; h4 = (h4 + e) | 0; h5 = (h5 + f) | 0; h6 = (h6 + g) | 0; h7 = (h7 + h) | 0;
   }
   return [h0, h1, h2, h3, h4, h5, h6, h7];
+}
+
+const SHA_INICIAL = Int32Array.from([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
+
+function comprimirSha(estado, bloque, salida) {
+  const m = SHA_M;
+  for (let i = 0; i < 16; i++) m[i] = bloque[i];
+  for (let i = 16; i < 64; i++) {
+    const x = m[i - 15];
+    const y = m[i - 2];
+    m[i] = (m[i - 16] + (((x >>> 7) | (x << 25)) ^ ((x >>> 18) | (x << 14)) ^ (x >>> 3)) + m[i - 7] + (((y >>> 17) | (y << 15)) ^ ((y >>> 19) | (y << 13)) ^ (y >>> 10))) | 0;
+  }
+  let a = estado[0], b = estado[1], c = estado[2], d = estado[3], e = estado[4], f = estado[5], g = estado[6], h = estado[7];
+  for (let i = 0; i < 64; i++) {
+    const t1 = (h + (((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7))) + ((e & f) ^ (~e & g)) + SHA_K[i] + m[i]) | 0;
+    const t2 = ((((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10))) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+    h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+  }
+  salida[0] = (estado[0] + a) | 0; salida[1] = (estado[1] + b) | 0; salida[2] = (estado[2] + c) | 0; salida[3] = (estado[3] + d) | 0;
+  salida[4] = (estado[4] + e) | 0; salida[5] = (estado[5] + f) | 0; salida[6] = (estado[6] + g) | 0; salida[7] = (estado[7] + h) | 0;
+}
+
+function palabrasDeBytes(bytes, total) {
+  const w = new Int32Array(total);
+  for (let i = 0; i < bytes.length; i++) w[i >> 2] |= bytes[i] << (24 - (i & 3) * 8);
+  return w;
+}
+
+function shaBytes(bytes) {
+  const largo = bytes.length;
+  const total = ((largo + 9 + 63) >> 6) << 4;
+  const w = palabrasDeBytes(bytes, total);
+  w[largo >> 2] |= 0x80 << (24 - (largo & 3) * 8);
+  w[total - 1] = largo * 8;
+  const estado = Int32Array.from(SHA_INICIAL);
+  for (let i = 0; i < total; i += 16) comprimirSha(estado, w.subarray(i, i + 16), estado);
+  const salida = [];
+  for (let i = 0; i < 32; i++) salida.push((estado[i >> 2] >>> (24 - (i & 3) * 8)) & 255);
+  return salida;
+}
+
+function pbkdf2Js(clave, sal, iteraciones, largo) {
+  const k = clave.length > 64 ? shaBytes(clave) : clave;
+  const interno = new Int32Array(16);
+  const externo = new Int32Array(16);
+  for (let i = 0; i < 64; i++) {
+    const v = i < k.length ? k[i] : 0;
+    interno[i >> 2] |= (v ^ 0x36) << (24 - (i & 3) * 8);
+    externo[i >> 2] |= (v ^ 0x5c) << (24 - (i & 3) * 8);
+  }
+  const estadoI = new Int32Array(8);
+  const estadoE = new Int32Array(8);
+  comprimirSha(SHA_INICIAL, interno, estadoI);
+  comprimirSha(SHA_INICIAL, externo, estadoE);
+  const bloque = new Int32Array(16);
+  bloque[8] = 0x80000000;
+  bloque[15] = 768;
+  const medio = new Int32Array(8);
+  const u = new Int32Array(8);
+  const salida = [];
+  for (let n = 1; salida.length < largo; n++) {
+    const primero = sal.concat([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+    const total = ((primero.length + 9 + 63) >> 6) << 4;
+    const w = palabrasDeBytes(primero, total);
+    w[primero.length >> 2] |= 0x80 << (24 - (primero.length & 3) * 8);
+    w[total - 1] = (primero.length + 64) * 8;
+    const estado = Int32Array.from(estadoI);
+    for (let i = 0; i < total; i += 16) comprimirSha(estado, w.subarray(i, i + 16), estado);
+    for (let i = 0; i < 8; i++) bloque[i] = estado[i];
+    comprimirSha(estadoE, bloque, u);
+    const t = Int32Array.from(u);
+    for (let it = 1; it < iteraciones; it++) {
+      for (let i = 0; i < 8; i++) bloque[i] = u[i];
+      comprimirSha(estadoI, bloque, medio);
+      for (let i = 0; i < 8; i++) bloque[i] = medio[i];
+      comprimirSha(estadoE, bloque, u);
+      for (let i = 0; i < 8; i++) t[i] ^= u[i];
+    }
+    for (let i = 0; i < 32 && salida.length < largo; i++) salida.push((t[i >> 2] >>> (24 - (i & 3) * 8)) & 255);
+  }
+  return salida;
 }
 
 function nonceTrabajo(reto, dificultad) {
@@ -1198,16 +1396,21 @@ async function seriesPorTitulo(titulos) {
   return [];
 }
 
-async function marco(pagina) {
+async function marcos(pagina) {
   const html = await texto(pagina, { headers: { Referer: `${BASE}/` } });
   const indice = html.indexOf('serie-video-informacion');
   const zona = indice >= 0 ? html.slice(indice) : html;
-  const patron = /<iframe[^>]+src=["']([^"']+)["']/gi;
-  let m;
-  while ((m = patron.exec(zona))) {
-    if (!/google|facebook/i.test(m[1])) return absoluta(entidades(m[1]), BASE).replace(/^https:\/\/short\.ink\//, 'https://abysscdn.com/?v=');
+  const lista = [];
+  for (const etiqueta of zona.match(/<iframe\b[^>]*>/gi) || []) {
+    for (const atributo of ['data-src', 'src']) {
+      const valor = (etiqueta.match(new RegExp(`\\s${atributo}=["']([^"']+)["']`, 'i')) || [])[1];
+      if (!valor || /google|facebook|youtube|youtu\.be|about:blank/i.test(valor)) continue;
+      const url = absoluta(entidades(valor), BASE).replace(/^https:\/\/short\.ink\//, 'https://abysscdn.com/?v=');
+      if (/^https?:\/\//.test(url) && !lista.includes(url)) lista.push(url);
+      break;
+    }
   }
-  return '';
+  return lista;
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
@@ -1222,9 +1425,9 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     for (const serie of candidatas) {
       const pagina = elegirEpisodio(episodios(await texto(serie)), temporada, episodio);
       if (!pagina) continue;
-      const fuente = await marco(pagina);
-      if (!fuente) continue;
-      const salida = await armar([{ url: fuente, audio: 'Latino', referer: `${BASE}/` }], encabezado(datos, 'tv', temporada, episodio), FUENTE);
+      const fuentes = await marcos(pagina);
+      if (!fuentes.length) continue;
+      const salida = await armar(fuentes.map((url) => ({ url, audio: 'Latino', referer: `${BASE}/` })), encabezado(datos, 'tv', temporada, episodio), FUENTE);
       if (salida.length) return salida;
     }
     return [];
