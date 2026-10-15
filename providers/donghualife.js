@@ -1393,10 +1393,10 @@ function episodioAbsoluto(datos, temporada, episodio) {
   return previas.reduce((n, t) => n + t.episodios, 0) + episodio;
 }
 
-async function elegirAnime(buscar, datos, tipo, temporada, episodio) {
+async function elegirAnime(buscar, datos, tipo, temporada, episodio, titulos) {
   const absoluto = tipo === 'tv' ? episodioAbsoluto(datos, temporada, episodio) : 1;
   const mejores = {};
-  for (const consulta of titulosAnime(datos)) {
+  for (const consulta of (titulos || titulosAnime)(datos)) {
     const resultados = await buscar(consulta).catch(() => []);
     for (const r of resultados) {
       if (!r || !r.url || !r.nombre) continue;
@@ -1435,7 +1435,7 @@ async function flujoAnime(sitio, tmdbId, mediaType, season, episode) {
   if (sitio.revisar) sitio.revisar(datos);
   const temporada = tipo === 'tv' ? Number(season) || 1 : 1;
   const episodio = tipo === 'tv' ? Number(episode) || 1 : 1;
-  const elegidos = await elegirAnime(sitio.buscar, datos, tipo, temporada, episodio);
+  const elegidos = await elegirAnime(sitio.buscar, datos, tipo, temporada, episodio, sitio.titulos);
   const listas = await Promise.all(elegidos.map(async (grupo) => {
     for (const c of grupo) {
       const pagina = await sitio.episodio(c.url, c.numero).catch(() => null);
@@ -1492,7 +1492,7 @@ function vuelo(html) {
 
 async function paginaVuelo(url, referer) {
   const html = await texto(url, { headers: { Referer: referer || `${BASE}/` } });
-  if (/self\.__next_f/.test(html)) return vuelo(html);
+  if (/self\.__next_f/.test(html)) return `${vuelo(html)}\n${html}`;
   if (/"(?:seasons|sources|episodes)"|poster-grid/.test(html)) return html;
   const rsc = await texto(url, { headers: { RSC: '1', Accept: '*/*', Referer: referer || `${BASE}/` } });
   return rsc || html;
@@ -1523,6 +1523,24 @@ function arreglo(texto, clave) {
     }
   }
   return null;
+}
+
+function titulos(datos) {
+  const alternos = datos.alternos || [];
+  const orden = [
+    datos.ingles,
+    datos.titulo,
+    ...alternos.filter((x) => ['CN', 'TW', 'HK'].includes(x.pais)).map((x) => x.titulo),
+    datos.original,
+    ...alternos.filter((x) => ['US', 'GB'].includes(x.pais)).map((x) => x.titulo)
+  ];
+  const vistos = new Set();
+  return orden.filter((t) => {
+    const n = normalizar(t).replace(/\s+/g, '');
+    if (!n || !esLatino(t) || vistos.has(n)) return false;
+    vistos.add(n);
+    return true;
+  }).slice(0, 5);
 }
 
 function variantes(consulta) {
@@ -1608,7 +1626,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
   pedido = { temporada: Number(season) || 1, episodio: Number(episode) || 1 };
   interesante = false;
   try {
-    return await flujoAnime({ fuente: FUENTE, buscar, episodio, enlaces, revisar }, tmdbId, mediaType, season, episode);
+    return await flujoAnime({ fuente: FUENTE, buscar, episodio, enlaces, revisar, titulos }, tmdbId, mediaType, season, episode);
   } catch (e) {
     console.log(`[${FUENTE}] ${e.message}`);
     return [];
