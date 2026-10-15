@@ -931,7 +931,9 @@ async function resolverPixeldrain(url) {
 
 async function resolverSendvid(url) {
   const html = await texto(url);
+  if (/temporarily unavailable|temporalmente no disponible|no longer available|has been removed|video not found|video_unavailable|was deleted/i.test(html)) return [];
   const m = html.match(/property=["']og:video(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i) || html.match(/<source[^>]+src=["']([^"']+)["']/i);
+  if (m && /unavailable|removed|placeholder|deleted/i.test(m[1])) return [];
   return enlace(m && m[1], 'Sendvid', { Referer: url, 'User-Agent': UA });
 }
 
@@ -1120,7 +1122,7 @@ async function resolver(url, referer, profundidad) {
       salida = enlace(u, nombreServidor(u), referer ? { Referer: referer, 'User-Agent': UA } : { 'User-Agent': UA });
     } else if (servidor) {
       salida = await servidor[2](u, referer);
-      if (!salida.length) salida = await resolverGenerico(u, servidor[1] || nombreServidor(u), referer, nivel);
+      if (!salida.length && servidor[1] !== 'Sendvid') salida = await resolverGenerico(u, servidor[1] || nombreServidor(u), referer, nivel);
     } else {
       salida = await resolverGenerico(u, nombreServidor(u), referer, nivel);
     }
@@ -1439,12 +1441,25 @@ function resultados(html) {
   return lista;
 }
 
+function variantes(consulta) {
+  const limpio = String(consulta || '').replace(/[:\-–—_.,;!?¡¿'"()[\]/\\]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const palabras = limpio.split(' ').filter(Boolean);
+  const lista = [limpio];
+  if (palabras.length > 3) lista.push(palabras.slice(0, 3).join(' '));
+  if (palabras.length > 2) lista.push(palabras.slice(0, 2).join(' '));
+  return [...new Set(lista.filter((x) => x.length >= 3))];
+}
+
 async function buscar(consulta) {
-  const html = await texto(`${BASE}/buscar?q=${encodeURIComponent(consulta).replace(/%20/g, '+')}`, { headers: { Referer: `${BASE}/` } });
-  const corte = html.search(/Resultados de la b[uú]squeda/i);
-  const lista = resultados(corte >= 0 ? html.slice(corte) : html);
-  anotar(`búsqueda "${consulta}": ${lista.length} resultados`);
-  return lista;
+  for (const q of variantes(consulta)) {
+    const html = await texto(`${BASE}/buscar?q=${encodeURIComponent(q).replace(/%20/g, '+')}`, { headers: { Referer: `${BASE}/` } });
+    if (!html) return [];
+    const corte = html.search(/Resultados de la b[uú]squeda/i);
+    const lista = resultados(corte >= 0 ? html.slice(corte) : html);
+    anotar(`búsqueda "${q}": ${lista.length} resultados`);
+    if (lista.length) return lista;
+  }
+  return [];
 }
 
 async function episodio(url, numero) {
