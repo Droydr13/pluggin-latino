@@ -1360,6 +1360,235 @@ function tarjetaRastro(fuente, agotado) {
   }];
 }
 
+const CURVA = {
+  p: BigInt('0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff'),
+  n: BigInt('0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551'),
+  x: BigInt('0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296'),
+  y: BigInt('0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5')
+};
+const CERO = BigInt(0);
+const UNO = BigInt(1);
+const DOS = BigInt(2);
+const TRES = BigInt(3);
+const CUATRO = BigInt(4);
+const OCHO = BigInt(8);
+let dispositivoLuna = '';
+
+function resto(a, m) {
+  const r = a % m;
+  return r < CERO ? r + m : r;
+}
+
+function potencia(base, exponente, m) {
+  let r = UNO;
+  let b = resto(base, m);
+  let e = exponente;
+  while (e > CERO) {
+    if (e & UNO) r = (r * b) % m;
+    b = (b * b) % m;
+    e >>= UNO;
+  }
+  return r;
+}
+
+function inversoMod(a, m) {
+  return potencia(a, m - DOS, m);
+}
+
+function doblar(q) {
+  const { p } = CURVA;
+  if (!q || q[1] === CERO) return null;
+  const [x, y, z] = q;
+  const delta = (z * z) % p;
+  const gamma = (y * y) % p;
+  const beta = (x * gamma) % p;
+  const alfa = resto(TRES * (x - delta) * (x + delta), p);
+  const x3 = resto(alfa * alfa - OCHO * beta, p);
+  const z3 = resto((y + z) * (y + z) - gamma - delta, p);
+  const y3 = resto(alfa * (CUATRO * beta - x3) - OCHO * gamma * gamma, p);
+  return [x3, y3, z3];
+}
+
+function sumar(a, b) {
+  const { p } = CURVA;
+  if (!a) return b;
+  if (!b) return a;
+  const z1 = (a[2] * a[2]) % p;
+  const z2 = (b[2] * b[2]) % p;
+  const u1 = (a[0] * z2) % p;
+  const u2 = (b[0] * z1) % p;
+  const s1 = (((a[1] * z2) % p) * b[2]) % p;
+  const s2 = (((b[1] * z1) % p) * a[2]) % p;
+  if (u1 === u2) return s1 === s2 ? doblar(a) : null;
+  const h = resto(u2 - u1, p);
+  const r = resto(s2 - s1, p);
+  const h2 = (h * h) % p;
+  const h3 = (h2 * h) % p;
+  const x3 = resto(r * r - h3 - DOS * u1 * h2, p);
+  const y3 = resto(r * (u1 * h2 - x3) - s1 * h3, p);
+  const z3 = (((h * a[2]) % p) * b[2]) % p;
+  return [x3, y3, z3];
+}
+
+function multiplicar(k) {
+  let r = null;
+  let q = [CURVA.x, CURVA.y, UNO];
+  let e = k;
+  while (e > CERO) {
+    if (e & UNO) r = sumar(r, q);
+    q = doblar(q);
+    e >>= UNO;
+  }
+  if (!r) return null;
+  const zi = inversoMod(r[2], CURVA.p);
+  const zi2 = (zi * zi) % CURVA.p;
+  return [(r[0] * zi2) % CURVA.p, (((r[1] * zi2) % CURVA.p) * zi) % CURVA.p];
+}
+
+function hexAzar(bytes) {
+  let t = '';
+  for (let i = 0; i < bytes; i++) t += Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
+  return t;
+}
+
+function escalarAzar() {
+  return resto(BigInt(`0x${hexAzar(40)}`), CURVA.n - UNO) + UNO;
+}
+
+function hex32(v) {
+  return v.toString(16).padStart(64, '0');
+}
+
+function base64Url(palabras) {
+  return palabras.toString(CryptoJS.enc.Base64).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function hexUrl(hex) {
+  return base64Url(CryptoJS.enc.Hex.parse(hex));
+}
+
+function idLuna() {
+  return hexUrl(hexAzar(16));
+}
+
+function firmarLuna(texto) {
+  const privada = escalarAzar();
+  const publica = multiplicar(privada);
+  const e = BigInt(`0x${CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(texto)).toString(CryptoJS.enc.Hex)}`);
+  for (let intento = 0; intento < 8; intento++) {
+    const k = escalarAzar();
+    const punto = multiplicar(k);
+    const r = resto(punto[0], CURVA.n);
+    if (r === CERO) continue;
+    const s = resto(inversoMod(k, CURVA.n) * (e + r * privada), CURVA.n);
+    if (s === CERO) continue;
+    return {
+      firma: hexUrl(hex32(r) + hex32(s)),
+      clave: { crv: 'P-256', ext: true, key_ops: ['verify'], kty: 'EC', x: hexUrl(hex32(publica[0])), y: hexUrl(hex32(publica[1])) }
+    };
+  }
+  return null;
+}
+
+function abrirLuna(datos) {
+  const partes = (datos.key_parts || []).map(bytesBase64Url);
+  const cortas = partes.filter((x) => x.sigBytes === 16);
+  if (cortas.length < 2 || !datos.iv || !datos.payload) return '';
+  const clave = cortas[0].clone().concat(cortas[1]);
+  const vector = bytesBase64Url(datos.iv);
+  if (vector.sigBytes !== 12) return '';
+  const todo = bytesBase64Url(datos.payload);
+  try {
+    if (CryptoJS.mode.CTR) {
+      const contador = vector.clone().concat(CryptoJS.lib.WordArray.create([2], 4));
+      const cifrado = CryptoJS.lib.WordArray.create(todo.words.slice(0, Math.ceil((todo.sigBytes - 16) / 4)), todo.sigBytes - 16);
+      return CryptoJS.AES.decrypt({ ciphertext: cifrado }, clave, { iv: contador, mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.NoPadding }).toString(CryptoJS.enc.Utf8);
+    }
+    if (CryptoJS.mode.GCM) return CryptoJS.AES.decrypt({ ciphertext: todo }, clave, { iv: vector, mode: CryptoJS.mode.GCM, padding: CryptoJS.pad.NoPadding }).toString(CryptoJS.enc.Utf8);
+  } catch (e) {
+    return '';
+  }
+  return '';
+}
+
+async function enviarLuna(url, cuerpo, cabeceras) {
+  return json(url, { method: 'POST', headers: Object.assign({ Accept: '*/*' }, cuerpo === '' ? {} : { 'Content-Type': 'application/json' }, cabeceras), body: cuerpo === '' ? '' : JSON.stringify(cuerpo) });
+}
+
+async function resolverLuna(url) {
+  const m = url.match(/\/(?:e|d|download)\/([a-zA-Z0-9]+)/);
+  if (!m) return [];
+  const base = origen(url);
+  const embed = `${base}/e/${m[1]}`;
+  const detalle = await json(`${base}/api/videos/${m[1]}/embed/details`, { headers: { Accept: '*/*', Referer: embed, 'X-Embed-Parent': embed } });
+  const marco = detalle && detalle.embed_frame_url;
+  if (!marco) {
+    anotar(`Filemoon ${m[1]}: sin marco`);
+    return [];
+  }
+  const baseMarco = origen(marco);
+  const cabeceras = { Referer: marco, Origin: baseMarco };
+  const reto = await enviarLuna(`${baseMarco}/api/videos/access/challenge`, '', cabeceras);
+  if (!reto || !reto.nonce || !reto.challenge_id) {
+    anotar(`Filemoon ${m[1]}: sin reto`);
+    return [];
+  }
+  const prueba = firmarLuna(reto.nonce);
+  if (!prueba) return [];
+  const visor = idLuna();
+  const equipo = dispositivoLuna || idLuna();
+  const acceso = await enviarLuna(`${baseMarco}/api/videos/access/attest`, {
+    viewer_id: visor,
+    device_id: equipo,
+    challenge_id: reto.challenge_id,
+    nonce: reto.nonce,
+    signature: prueba.firma,
+    public_key: prueba.clave,
+    client: {
+      user_agent: UA,
+      architecture: 'x86',
+      bitness: '64',
+      platform: 'Windows',
+      platform_version: '10.0.0',
+      pixel_ratio: 1,
+      screen_width: 1920,
+      screen_height: 1080,
+      color_depth: 24,
+      languages: ['es-MX', 'es'],
+      timezone: 'America/Mexico_City',
+      hardware_concurrency: 8,
+      device_memory: 8,
+      touch_points: 0
+    },
+    storage: { cookie: visor, local_storage: visor, indexed_db: `${visor}:${equipo}`, cache_storage: `${visor}:${equipo}` },
+    attributes: { entropy: 'high' }
+  }, cabeceras);
+  if (!acceso || !acceso.token) {
+    anotar(`Filemoon ${m[1]}: sin permiso`);
+    return [];
+  }
+  if (acceso.device_id) dispositivoLuna = acceso.device_id;
+  const play = await enviarLuna(`${baseMarco}/api/videos/${m[1]}/embed/playback`, {
+    fingerprint: { token: acceso.token, viewer_id: acceso.viewer_id || visor, device_id: acceso.device_id || equipo, confidence: acceso.confidence }
+  }, Object.assign({ 'X-Embed-Parent': embed }, cabeceras));
+  if (!play || !play.playback) {
+    anotar(`Filemoon ${m[1]}: ${play ? `sin video (${Object.keys(play).join(',').slice(0, 40)})` : 'sin respuesta'} · confianza ${acceso.confidence}`);
+    return [];
+  }
+  const claro = abrirLuna(play.playback);
+  let fuentes = [];
+  try {
+    const datos = JSON.parse(claro.replace(/^﻿/, ''));
+    fuentes = [].concat(datos.sources || datos.source || []);
+  } catch (e) {
+    anotar(`Filemoon ${m[1]}: no se pudo descifrar`);
+    return [];
+  }
+  const fuente = fuentes.find((f) => f && /m3u8/.test(f.url || '')) || fuentes[0];
+  const destino = typeof fuente === 'string' ? fuente : fuente && fuente.url;
+  return enlace(destino, 'Filemoon', { Referer: `${baseMarco}/`, Origin: baseMarco, 'User-Agent': UA }, calidadTexto(fuente && fuente.label));
+}
+
 const FUENTE = 'PelisGo';
 const BASE = 'https://pelisgo.online';
 const EVITAR = /youtube|youtu\.be/i;
@@ -1709,6 +1938,13 @@ async function lista(enlaces, pagina) {
       for (const m of maestro.matchAll(/RESOLUTION=\d+x(\d+)/gi)) alto = Math.max(alto, parseInt(m[1], 10));
       salida.push({ url, audio, directo: true, servidor: e.server || 'Directo', headers: cabeceras, calidad: etiquetaAltura(alto) || calidadTexto(e.quality) });
       continue;
+    }
+    if (/filemoon|byse/i.test(`${url} ${e.server || ''}`)) {
+      const lunas = await resolverLuna(url).catch(() => []);
+      if (lunas.length) {
+        for (const l of lunas) salida.push({ url: l.url, audio, directo: true, servidor: 'Filemoon', headers: l.headers, calidad: l.calidad || calidadTexto(e.quality) });
+        continue;
+      }
     }
     if (/tplayer\./i.test(url)) {
       const d = await tplayer(url).catch(() => null);
