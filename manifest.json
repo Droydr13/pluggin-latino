@@ -1,6 +1,6 @@
 {
   "name": "Addon Latam Plugin",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "scrapers": [
     {
       "id": "lamovie",
@@ -29,7 +29,7 @@
       "id": "moviebox",
       "name": "MovieBox",
       "description": "Peliculas y series de MovieBox, solo con audio en Español y Latino.",
-      "version": "1.7.1",
+      "version": "1.7.2",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -179,8 +179,8 @@
     {
       "id": "pelisgo",
       "name": "PelisGo",
-      "description": "Peliculas y series de PelisGo (pelisgo.online) con su propia API y sesion: Latino y Castellano por separado, sin Netu, con Pixeldrain cuando esta disponible.",
-      "version": "3.1.9",
+      "description": "Peliculas y series de PelisGo (pelisgo.online) con su propia API y sesion: Latino y Castellano por separado, con Pixeldrain cuando esta disponible.",
+      "version": "3.1.12",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -719,7 +719,7 @@
       "id": "donghualife",
       "name": "DonghuaLife",
       "description": "Donghuas subtitulados al espanol desde DonghuaLife (solo capitulos gratuitos, sin VIP).",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
