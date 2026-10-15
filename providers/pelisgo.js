@@ -1362,8 +1362,7 @@ function tarjetaRastro(fuente, agotado) {
 
 const FUENTE = 'PelisGo';
 const BASE = 'https://pelisgo.online';
-const EVITAR = /hqq\.|netu|waaw|youtube|youtu\.be/i;
-let interesante = false;
+const EVITAR = /youtube|youtu\.be/i;
 let paginaVacia = false;
 const NAVEGADOR = {
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -1405,14 +1404,12 @@ async function crudo(url, opciones) {
 async function revisar(url) {
   const a = await crudo(url, { sinCabeceras: true });
   if (conServidores(a.html)) {
-    interesante = true;
     anotar(`servidores en la página: ${contar(a.html, /\{[^{}]*?server[\\"' ]+:/gi)}`);
     return a.html;
   }
   if (a.status !== 200) return '';
   const b = await crudo(url, { sinCabeceras: true, headers: { RSC: '1' } });
   if (conServidores(b.html)) return b.html;
-  interesante = true;
   if (!mostrado) {
     mostrado = true;
     anotar(`página sin servidores · contiene "404": ${/404/.test(a.html) ? 'sí' : 'no'} · tplayer ${contar(a.html, /tplayer/gi)} · pixeldrain ${contar(a.html, /pixeldrain/gi)} · filemoon ${contar(a.html, /filemoon/gi)}`);
@@ -1747,7 +1744,6 @@ async function pedirApi(url, pagina, clave, intento) {
 async function metodoApi(datos, tipo, temporada, episodio) {
   const elegido = await buscar(datos, tipo);
   if (!elegido) return [];
-  interesante = true;
   let pagina = '';
   let api = '';
   let descargas = [];
@@ -1789,7 +1785,6 @@ async function metodoApi(datos, tipo, temporada, episodio) {
 }
 
 async function getStreams(tmdbId, mediaType, season, episode) {
-  interesante = false;
   paginaVacia = false;
   mostrado = false;
   try {
@@ -1818,4 +1813,4 @@ async function getStreams(tmdbId, mediaType, season, episode) {
   }
 }
 
-module.exports = { getStreams: limitar(getStreams, (agotado) => (interesante || agotado ? tarjetaRastro(FUENTE, agotado) : [])) };
+module.exports = { getStreams: limitar(getStreams) };

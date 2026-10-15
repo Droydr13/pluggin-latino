@@ -259,7 +259,7 @@ function elegir(candidatos, titulo, anio, tipo) {
   return puntos >= 40 ? mejor : null;
 }
 
-function paginaWeb(sujeto) {
+function paginaWeb(sujeto, subjectId) {
   let ruta = [sujeto.detailPath, sujeto.detail_path, sujeto.path, sujeto.slug].find((v) => typeof v === 'string' && v.trim());
   let web = WEB;
   for (const valor of [sujeto.detailDomain, sujeto.webDomain, sujeto.webUrl, sujeto.detailUrl, sujeto.shareUrl]) {
@@ -272,7 +272,8 @@ function paginaWeb(sujeto) {
   }
   if (!ruta) return { web, ruta: '', referer: `${web}/` };
   ruta = ruta.replace(/^\/+/, '').replace(/^movies\//, '');
-  return { web, ruta, referer: `${web}/movies/${ruta}` };
+  const consulta = `id=${encodeURIComponent(subjectId)}&type=${encodeURIComponent('/movie/detail')}&detailSe=&detailEp=&lang=en`;
+  return { web, ruta, referer: `${web}/movies/${ruta}?${consulta}` };
 }
 
 function recolectar(play) {
@@ -361,14 +362,34 @@ function calidad(valor) {
   return m ? `${m[1]}p` : 'Auto';
 }
 
-function tarjeta(titulo, cal, audio, peso, url, cabeceras) {
+function tarjeta(titulo, cal, audio, peso, url, cabeceras, subtitulos) {
   const s = { name: FUENTE, title: titulo, url, quality: `Calidad: ${cal}`, language: `Audio: ${audio}`, headers: cabeceras, provider: FUENTE };
   if (peso) s.size = `Tamaño: ${peso}`;
+  if (subtitulos && subtitulos.length) s.subtitles = subtitulos;
   if (typeof __plugin_sleep !== 'function' && typeof __cheerio_load === 'function') {
     s.size = [s.quality, s.size].filter(Boolean).join(' • ');
     s.quality = s.name;
   }
   return s;
+}
+
+async function subtitulos(subjectId, streamId) {
+  const rutas = [
+    `${API}/wefeed-mobile-bff/subject-api/get-stream-captions?subjectId=${encodeURIComponent(subjectId)}&streamId=${encodeURIComponent(streamId)}`,
+    `${API}/wefeed-mobile-bff/subject-api/get-ext-captions?subjectId=${encodeURIComponent(subjectId)}&resourceId=${encodeURIComponent(streamId)}&episode=0`
+  ];
+  const respuestas = await Promise.all(rutas.map((r) => pedir('GET', r).catch(() => null)));
+  const lista = [];
+  const vistos = new Set();
+  for (const r of respuestas) {
+    const pistas = r && r.datos && r.datos.data && r.datos.data.extCaptions;
+    for (const p of Array.isArray(pistas) ? pistas : []) {
+      if (!p.url || vistos.has(p.url)) continue;
+      vistos.add(p.url);
+      lista.push({ url: p.url, language: p.lan || p.language || p.lanName || 'en', name: p.lanName || p.language || p.lan || 'Subtítulo', headers: { Referer: API } });
+    }
+  }
+  return lista;
 }
 
 function idiomasEnEspanol(sujeto, subjectId) {
@@ -387,7 +408,7 @@ async function enlaces(subjectId, temporada, episodio, titulo) {
   const detalle = await pedir('GET', `${API}/wefeed-mobile-bff/subject-api/get?subjectId=${subjectId}`);
   const sujeto = detalle && detalle.datos && detalle.datos.data;
   if (!sujeto) return [];
-  const pagina = paginaWeb(sujeto);
+  const pagina = paginaWeb(sujeto, subjectId);
   const versiones = idiomasEnEspanol(sujeto, subjectId);
   if (!versiones.length) return [];
   const cabecerasWeb = {
@@ -408,7 +429,9 @@ async function enlaces(subjectId, temporada, episodio, titulo) {
       const datos = play && play.datos && play.datos.data;
       if (!datos) continue;
       let encontrados = 0;
-      for (const s of recolectar(datos)) {
+      const corrientes = recolectar(datos);
+      const pistas = await Promise.all(corrientes.map((s) => conLimite(subtitulos(version.id, s.id || `${version.id}|${temporada}|${episodio}`), 8000).catch(() => [])));
+      for (const [n, s] of corrientes.entries()) {
         const original = s.url || s.playUrl || s.resourceLink || s.streamUrl || '';
         const cookie = s.signCookie || null;
         const url = urlDePoliza(cookie) || original;
@@ -417,7 +440,7 @@ async function enlaces(subjectId, temporada, episodio, titulo) {
         const etiqueta = [s.languageName, s.lanName, s.language, s.lan].filter(Boolean).join(' ');
         const cabeceras = Object.assign({}, cabecerasWeb);
         if (cookie) cabeceras[s.signHeaderKey || s.sign_header_key || 'Cookie'] = cookie;
-        salida.push(tarjeta(titulo, calidad(s.resolutions || s.resolution || s.quality), idioma(esEspanol(etiqueta) ? etiqueta : version.idioma), tamano(s.size), url, cabeceras));
+        salida.push(tarjeta(titulo, calidad(s.resolutions || s.resolution || s.quality), idioma(esEspanol(etiqueta) ? etiqueta : version.idioma), tamano(s.size), url, cabeceras, pistas[n]));
         encontrados++;
       }
       if (encontrados) continue;
