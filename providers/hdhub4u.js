@@ -1,6 +1,11 @@
-// HDHub4u Scraper for Nuvio Local Scrapers
-// React Native compatible version
-
+if (typeof setTimeout === "undefined") {
+  globalThis.setTimeout = function(fn, ms) {
+    if (typeof fn === "function" && (Number(ms) || 0) < 5e3) Promise.resolve().then(fn);
+    return 0;
+  };
+  globalThis.clearTimeout = function() {
+  };
+}
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -33,10 +38,6 @@ var __copyProps = (to, from, except, desc) => {
   return to;
 };
 var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
@@ -60,18 +61,14 @@ var __async = (__this, __arguments, generator) => {
     step((generator = generator.apply(__this, __arguments)).next());
   });
 };
-
-// src/hdhub4u/index.js
 var import_cheerio_without_node_native2 = __toESM(require("cheerio-without-node-native"));
-
-// src/hdhub4u/constants.js
-var TMDB_API_KEY = "1c29a5198ee1854bd5eb45dbe8d17d92";
+var TMDB_API_KEY = "439c478a771f35c05022f9feabcca01c";
 var TMDB_BASE_URL = "https://api.themoviedb.org/3";
-var MAIN_URL = "https://new2.hdhub4u.cl";
+var MAIN_URL = "https://new6.hdhub4u.cl";
 var DOMAINS_URL = "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json";
 var DOMAIN_CACHE_TTL = 4 * 60 * 60 * 1e3;
 var HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/131.0.0.0",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
   "Cookie": "xla=s4t",
   "Referer": `${MAIN_URL}/`
 };
@@ -79,8 +76,6 @@ function updateMainUrl(url) {
   MAIN_URL = url;
   HEADERS.Referer = `${url}/`;
 }
-
-// src/hdhub4u/utils.js
 var domainCacheTimestamp = 0;
 function formatBytes(bytes) {
   if (!bytes || bytes === 0)
@@ -136,11 +131,11 @@ function cleanTitle(title) {
   let name = title.replace(/\.[a-zA-Z0-9]{2,4}$/, "");
   const normalized = name.replace(/WEB[-_. ]?DL/gi, "WEB-DL").replace(/WEB[-_. ]?RIP/gi, "WEBRIP").replace(/H[ .]?265/gi, "H265").replace(/H[ .]?264/gi, "H264").replace(/DDP[ .]?([0-9]\.[0-9])/gi, "DDP$1");
   const parts = normalized.split(/[\s_.]/);
-  const sourceTags = /* @__PURE__ */ new Set(["WEB-DL", "WEBRIP", "BLURAY", "HDRIP", "DVDRIP", "HDTV", "CAM", "TS", "BRRIP", "BDRIP"]);
-  const codecTags = /* @__PURE__ */ new Set(["H264", "H265", "X264", "X265", "HEVC", "AVC"]);
+  const sourceTags =   new Set(["WEB-DL", "WEBRIP", "BLURAY", "HDRIP", "DVDRIP", "HDTV", "CAM", "TS", "BRRIP", "BDRIP"]);
+  const codecTags =   new Set(["H264", "H265", "X264", "X265", "HEVC", "AVC"]);
   const audioTags = ["AAC", "AC3", "DTS", "MP3", "FLAC", "DD", "DDP", "EAC3"];
-  const audioExtras = /* @__PURE__ */ new Set(["ATMOS"]);
-  const hdrTags = /* @__PURE__ */ new Set(["SDR", "HDR", "HDR10", "HDR10+", "DV", "DOLBYVISION"]);
+  const audioExtras =   new Set(["ATMOS"]);
+  const hdrTags =   new Set(["SDR", "HDR", "HDR10", "HDR10+", "DV", "DOLBYVISION"]);
   const filtered = parts.map((part) => {
     const p = part.toUpperCase();
     if (sourceTags.has(p))
@@ -209,7 +204,7 @@ function calculateTitleSimilarity(title1, title2) {
   const set1 = new Set(words1);
   const set2 = new Set(words2);
   const intersection = words1.filter((w) => set2.has(w));
-  const union = /* @__PURE__ */ new Set([...words1, ...words2]);
+  const union =   new Set([...words1, ...words2]);
   const jaccard = intersection.length / union.size;
   const extraWordsCount = words2.filter((w) => !set1.has(w)).length;
   let score = jaccard - extraWordsCount * 0.05;
@@ -285,8 +280,6 @@ function getTMDBDetails(tmdbId, mediaType) {
     return { title, year, imdbId: ((_a = data.external_ids) == null ? void 0 : _a.imdb_id) || null };
   });
 }
-
-// src/hdhub4u/extractors.js
 var import_cheerio_without_node_native = __toESM(require("cheerio-without-node-native"));
 var import_crypto_js = __toESM(require("crypto-js"));
 function getRedirectLinks(url) {
@@ -399,7 +392,7 @@ function hbLinksExtractor(url) {
       const response = yield fetch(url, { headers: __spreadProps(__spreadValues({}, HEADERS), { Referer: url }) });
       const data = yield response.text();
       const $ = import_cheerio_without_node_native.default.load(data);
-      const links = $("h3 a, h5 a, div.entry-content p a").map((i, el) => $(el).attr("href")).get();
+      const links = [...new Set($("h3 a, h5 a, div.entry-content p a, div.entry-content a").map((i, el) => $(el).attr("href")).get().filter(Boolean))];
       const results = yield Promise.all(links.map((l) => loadExtractor(l, url)));
       return results.flat().map((link) => __spreadProps(__spreadValues({}, link), {
         source: `${link.source} Hblinks`
@@ -640,11 +633,9 @@ function loadExtractor(_0) {
     }
   });
 }
-
-// src/hdhub4u/index.js
 function search(query) {
   return __async(this, null, function* () {
-    const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    const today = (  new Date()).toISOString().split("T")[0];
     const searchUrl = `https://search.hdhub4u.glass/collections/post/documents/search?q=${encodeURIComponent(query)}&query_by=post_title,category&query_by_weights=4,2&sort_by=sort_by_date:desc&limit=15&highlight_fields=none&use_cache=true&page=1&analytics_tag=${today}`;
     const response = yield fetch(searchUrl, { headers: HEADERS });
     const data = yield response.json();
@@ -691,13 +682,13 @@ function getDownloadLinks(mediaUrl) {
         const href = $(el).attr("href");
         return href && (href.includes("hdstream4u") || href.includes("hubstream"));
       });
-      const initialLinks = [.../* @__PURE__ */ new Set([
+      const initialLinks = [...  new Set([
         ...qualityLinks.map((i, el) => $(el).attr("href")).get(),
         ...bodyLinks.map((i, el) => $(el).attr("href")).get()
       ])];
       const results = yield Promise.all(initialLinks.map((url) => loadExtractor(url, mediaUrl)));
       const allFinalLinks = results.flat();
-      const seenUrls = /* @__PURE__ */ new Set();
+      const seenUrls =   new Set();
       const uniqueFinalLinks = allFinalLinks.filter((link) => {
         var _a;
         if (!link.url || link.url.includes(".zip") || ((_a = link.name) == null ? void 0 : _a.toLowerCase().includes(".zip")))
@@ -709,7 +700,7 @@ function getDownloadLinks(mediaUrl) {
       });
       return { finalLinks: uniqueFinalLinks, isMovie };
     } else {
-      const episodeLinksMap = /* @__PURE__ */ new Map();
+      const episodeLinksMap =   new Map();
       const directLinkBlocks = [];
       $("h3, h4").each((i, element) => {
         const $el = $(element);
@@ -773,7 +764,7 @@ function getDownloadLinks(mediaUrl) {
         }
       })));
       const allFinalLinks = results.flat();
-      const seenUrls = /* @__PURE__ */ new Set();
+      const seenUrls =   new Set();
       const uniqueFinalLinks = allFinalLinks.filter((link) => {
         if (!link.url || link.url.includes(".zip"))
           return false;
@@ -843,3 +834,136 @@ function getStreams(tmdbId, mediaType = "movie", season = null, episode = null) 
   });
 }
 module.exports = { getStreams };
+;
+(function() {
+  async function adaptar(s, contexto) {
+    const headers = cabecerasDe(s);
+    const texto = [s.name, s.title, s.description, s.language, s.fileName, s.filename].filter(Boolean).join(" ");
+    let audio = idiomaDe(texto);
+    if (!audio) audio = textoAudios(await audiosHls(s.url, headers));
+    if (!audio) audio = await idiomaOriginal(contexto);
+    if (!audio) return null;
+    const nombre = limpiar(s.name);
+    return tarjeta({ fuente: "HDHub4u", servidor: ((n) => n.replace(/^HDHub4u\s*/i, "").replace(/\s+(AAC|AC3|DTS|DDP?|EAC3|ATMOS|HEVC|x26[45]).*$/i, "").trim())(nombre), calidad: calidadDe(s.quality || nombre), tamano: tamanoDe(String(s.size || "") + " " + String(s.title || "")), audio, url: s.url, headers, subtitles: s.subtitles, titulo: String(s.title || "").split("\n")[0] });
+  }
+  const original = module.exports && module.exports.getStreams;
+  if (typeof original !== "function") return;
+  const TELE = typeof __plugin_sleep !== "function" && typeof __cheerio_load === "function";
+  const ESPANOL = /(^|[^a-z])(latino|latin|latam|spanish|espa[nñ]ol|castellano|castilian|spa|esp|es-419|es-mx|es-la|es-es|es_419|es_es)([^a-z]|$)/i;
+  const CASTELLANO = /castellano|castilian|es-es|es_es|spain|espa[nñ]a|\bcast\b/i;
+  function limpiar(t) {
+    return String(t || "").replace(/[\u200b\ufeff]/g, "").trim();
+  }
+  function idiomaDe(texto) {
+    const t = limpiar(texto);
+    if (!t || !ESPANOL.test(t)) return "";
+    return CASTELLANO.test(t) ? "Castellano" : "Latino";
+  }
+  function calidadDe(texto) {
+    const t = limpiar(texto);
+    if (/2160|\b4k\b/i.test(t)) return "4K";
+    const m = t.match(/(\d{3,4})\s*p?/i);
+    if (m && Number(m[1]) >= 240 && Number(m[1]) <= 4320) return `${m[1]}p`;
+    if (/\bhd\b/i.test(t)) return "HD";
+    return "Auto";
+  }
+  function cabecerasDe(s) {
+    if (s && s.headers && Object.keys(s.headers).length) return s.headers;
+    const h = s && s.behaviorHints && s.behaviorHints.proxyHeaders && s.behaviorHints.proxyHeaders.request;
+    return h && Object.keys(h).length ? h : null;
+  }
+  function tarjeta(d) {
+    const nombre = d.servidor ? `${d.fuente} (${d.servidor})` : d.fuente;
+    const s = { name: nombre, title: limpiar(d.titulo) || nombre, url: d.url, quality: `Calidad: ${d.calidad || "Auto"}`, provider: d.fuente };
+    if (d.tamano) s.size = `Tama\xF1o: ${d.tamano}`;
+    if (d.audio) s.language = `Audio: ${d.audio}`;
+    if (TELE) {
+      s.size = [s.quality, s.size].filter(Boolean).join(" \u2022 ");
+      s.quality = s.name;
+    }
+    if (d.headers && Object.keys(d.headers).length) s.headers = d.headers;
+    if (d.subtitles && d.subtitles.length) s.subtitles = d.subtitles;
+    if (d.infoHash) s.infoHash = d.infoHash;
+    return s;
+  }
+  function nombreAudio(atributos) {
+    const idioma = (atributos.match(/LANGUAGE="([^"]*)"/i) || [])[1] || "";
+    const nombre = (atributos.match(/NAME="([^"]*)"/i) || [])[1] || "";
+    if (/^(es|spa)$/i.test(idioma)) return CASTELLANO.test(nombre) ? "Castellano" : "Latino";
+    return idiomaDe(`${idioma} ${nombre}`);
+  }
+  async function audiosHls(url, headers) {
+    if (!/\.m3u8|\/hls|master|playlist/i.test(String(url || ""))) return [];
+    try {
+      const r = await fetch(url, { headers: headers || {} });
+      if (!r || !r.ok) return [];
+      const texto = await r.text();
+      const lista = [];
+      for (const linea of String(texto || "").split(/\r?\n/)) {
+        if (!/^#EXT-X-MEDIA:/i.test(linea) || !/TYPE=AUDIO/i.test(linea)) continue;
+        const idioma = nombreAudio(linea);
+        if (idioma && !lista.includes(idioma)) lista.push(idioma);
+      }
+      return lista;
+    } catch (e) {
+      return [];
+    }
+  }
+  const originales = {};
+  async function idiomaOriginal(contexto) {
+    const id = String(contexto && contexto.tmdbId || "").replace(/\D/g, "");
+    if (!id) return "";
+    const tipo = contexto.tipo === "tv" || contexto.tipo === "series" ? "tv" : "movie";
+    const clave = `${tipo}/${id}`;
+    if (!(clave in originales)) {
+      originales[clave] = (async () => {
+        try {
+          const r = await fetch(`https://api.themoviedb.org/3/${clave}?api_key=439c478a771f35c05022f9feabcca01c`);
+          const d = r && r.ok ? await r.json() : null;
+          const codigo = String(d && d.original_language || "").toLowerCase();
+          const paises = [].concat(d && d.origin_country || [], (d && d.production_countries || []).map((x) => x.iso_3166_1));
+          if (codigo === "es") return paises.length && paises.every((p) => p === "ES") ? "Castellano" : "Latino";
+          return "";
+        } catch (e) {
+          return "";
+        }
+      })();
+    }
+    return originales[clave];
+  }
+  function textoAudios(lista) {
+    return lista.join(", ");
+  }
+  function tamanoDe(texto) {
+    const m = limpiar(texto).match(/(\d+(?:[.,]\d+)?)\s*(GB|MB|GiB|MiB)/i);
+    return m ? `${m[1].replace(",", ".")} ${m[2].toUpperCase().replace("I", "")}` : "";
+  }
+  function lineaCon(texto, simbolo) {
+    return String(texto || "").split("\n").find((l) => l.includes(simbolo)) || "";
+  }
+  module.exports.getStreams = async function() {
+    const contexto = { tmdbId: arguments[0], tipo: arguments[1] };
+    let lista = [];
+    try {
+      lista = await original.apply(this, arguments) || [];
+    } catch (e) {
+      lista = [];
+    }
+    const salida = [];
+    const vistos =   new Set();
+    for (const s of Array.isArray(lista) ? lista : []) {
+      if (!s || !s.url) continue;
+      let t = null;
+      try {
+        t = await adaptar(s, contexto);
+      } catch (e) {
+        t = null;
+      }
+      if (t && !vistos.has(t.url + t.name + (t.language || ""))) {
+        vistos.add(t.url + t.name + (t.language || ""));
+        salida.push(t);
+      }
+    }
+    return salida;
+  };
+})();
