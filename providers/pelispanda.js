@@ -15306,7 +15306,99 @@ async function getStreamsInternal(tmdbId, mediaType, season, episode, title) {
     return [];
   }
 }
-module.exports = { getStreams };
+var __FORMATO_FUENTE = "PelisPanda";
+var __FORMATO_TV = typeof __plugin_sleep !== "function" && typeof __cheerio_load === "function";
+var __FORMATO_TMDB = "439c478a771f35c05022f9feabcca01c";
+function __formatoTexto(valores, patron) {
+  for (var i = 0; i < valores.length; i++) {
+    var m = String(valores[i] || "").match(patron);
+    if (m) return m[1] || m[0];
+  }
+  return "";
+}
+function __formatoAudio(s) {
+  var a = __formatoTexto([s.language, s.quality, s.title, s.description, s.name], /latino|castellano|espa(?:ñ|\xF1)ol|subtitulado|vose|dual/i).toLowerCase();
+  if (!a) return "";
+  if (a === "latino") return "Latino";
+  if (a === "castellano" || a.indexOf("espa") === 0) return "Castellano";
+  if (a === "dual") return "Latino";
+  return "Subtitulado";
+}
+function __formatoCalidad(s) {
+  var c = __formatoTexto([s.quality, s.name, s.description, s.title], /\b(2160p|4k|1440p|1080p|720p|480p|360p|240p)\b/i);
+  if (!c) return "Auto";
+  return /4k|2160/i.test(c) ? "4K" : c.toLowerCase();
+}
+function __formatoServidor(s) {
+  var partes = String(s.name || "").split(/\s*\xB7\s*/).filter(Boolean);
+  var candidatos = [s.provider, partes.length > 2 ? partes[partes.length - 1] : "", String(s.title || "").split(/\s*\xB7\s*/).pop()];
+  for (var i = 0; i < candidatos.length; i++) {
+    var c = String(candidatos[i] || "").trim();
+    if (!c || c.toLowerCase() === __FORMATO_FUENTE.toLowerCase() || /^(latino|castellano|subtitulado|torrent|online|hd|\d{3,4}p)$/i.test(c)) continue;
+    return c;
+  }
+  return "";
+}
+function __formatoPeso(c, a) {
+  var audio = { Latino: 3, Castellano: 1 }[a] || 0;
+  var calidad = c === "4K" ? 2160 : Number((c.match(/(\d{3,4})p/) || [])[1]) || 0;
+  return audio * 10000 + calidad;
+}
+async function __formatoEncabezado(tmdbId, mediaType, season, episode) {
+  try {
+    var id = String(tmdbId || "").trim();
+    var tipo = mediaType === "movie" ? "movie" : "tv";
+    if (/^tt\d+$/.test(id)) {
+      var f = await fetch("https://api.themoviedb.org/3/find/" + id + "?api_key=" + __FORMATO_TMDB + "&external_source=imdb_id").then(function(r) { return r.json(); });
+      var lista = f && (tipo === "movie" ? f.movie_results : f.tv_results);
+      if (!lista || !lista[0]) return "";
+      id = String(lista[0].id);
+    }
+    var d = await fetch("https://api.themoviedb.org/3/" + tipo + "/" + id + "?api_key=" + __FORMATO_TMDB + "&language=es-MX").then(function(r) { return r.json(); });
+    var titulo = d && (d.title || d.name);
+    if (!titulo) return "";
+    if (tipo === "tv") return titulo + " - T" + (parseInt(season) || 1) + " E" + (parseInt(episode) || 1);
+    var anio = String(d.release_date || "").slice(0, 4);
+    return anio ? titulo + " (" + anio + ")" : titulo;
+  } catch (e) {
+    return "";
+  }
+}
+var __formatoOriginal = getStreams;
+async function __formatoGetStreams(tmdbId, mediaType, season, episode) {
+  var argumentos = [].slice.call(arguments);
+  var datos = await Promise.all([
+    Promise.resolve().then(function() { return __formatoOriginal.apply(null, argumentos); }).catch(function() { return []; }),
+    __formatoEncabezado(tmdbId, mediaType, season, episode)
+  ]);
+  var vistos = {};
+  var tarjetas = [];
+  (datos[0] || []).forEach(function(s) {
+    if (!s || !s.url || vistos[s.url]) return;
+    if (/^magnet:|\.torrent(\?|$)/i.test(s.url) || /torrent/i.test(String(s.language || "") + " " + String(s.provider || "") + " " + String(s.title || ""))) return;
+    vistos[s.url] = true;
+    var servidor = __formatoServidor(s);
+    var calidad = __formatoCalidad(s);
+    var audio = __formatoAudio(s);
+    var t = {
+      name: servidor ? __FORMATO_FUENTE + " (" + servidor + ")" : __FORMATO_FUENTE,
+      title: datos[1] || __FORMATO_FUENTE,
+      url: s.url,
+      quality: "Calidad: " + calidad,
+      provider: __FORMATO_FUENTE
+    };
+    if (audio) t.language = "Audio: " + audio;
+    if (__FORMATO_TV) {
+      t.size = t.quality;
+      t.quality = t.name;
+    }
+    if (s.headers && Object.keys(s.headers).length) t.headers = s.headers;
+    tarjetas.push({ orden: __formatoPeso(calidad, audio), t: t });
+  });
+  tarjetas.sort(function(a, b) { return b.orden - a.orden; });
+  return tarjetas.map(function(x) { return x.t; });
+}
+module.exports = { getStreams: __formatoGetStreams };
 /*! Bundled license information:
 
 @noble/ciphers/utils.js:
