@@ -1,6 +1,6 @@
 {
   "name": "Addon Latam Plugin",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "scrapers": [
     {
       "id": "lamovie",
@@ -145,22 +145,6 @@
       ]
     },
     {
-      "id": "brazucaplay",
-      "name": "BrazucaPlay",
-      "description": "Streams de peliculas y series via BrazucaPlay/cineby.",
-      "version": "2.6.8",
-      "author": "Doyrd",
-      "supportedTypes": [
-        "movie",
-        "tv"
-      ],
-      "filename": "providers/brazucaplay.js",
-      "enabled": true,
-      "contentLanguage": [
-        "es"
-      ]
-    },
-    {
       "id": "cuevana",
       "name": "Cuevana",
       "description": "Peliculas y series en Latino desde Cuevana.",
@@ -259,8 +243,8 @@
     {
       "id": "videasy",
       "name": "VidEasy",
-      "description": "Peliculas y series en Español desde VidEasy.",
-      "version": "2.6.8",
+      "description": "VidEasy filtrado: servidor LaMovie en Latino y videos con pista de audio en Latino o Castellano.",
+      "version": "2.7.0",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -353,21 +337,6 @@
       ]
     },
     {
-      "id": "documaniatv",
-      "name": "DocumaniaTV",
-      "description": "Documentales y series documentales en Español desde DocumaniaTV (video directo, sin embeds de terceros).",
-      "version": "2.7.8",
-      "author": "Doyrd",
-      "supportedTypes": [
-        "movie"
-      ],
-      "filename": "providers/documaniatv.js",
-      "enabled": true,
-      "contentLanguage": [
-        "es"
-      ]
-    },
-    {
       "id": "doramasyt",
       "name": "DoramasYT",
       "description": "Doramas asiaticos en Latino desde DoramasYT.",
@@ -415,22 +384,6 @@
       ]
     },
     {
-      "id": "cinehdplus",
-      "name": "CineHdPlus",
-      "description": "Peliculas y series en Latino desde CineHdPlus.",
-      "version": "1.7.8",
-      "author": "AdrianJael",
-      "supportedTypes": [
-        "movie",
-        "tv"
-      ],
-      "filename": "providers/cinehdplus.js",
-      "enabled": true,
-      "contentLanguage": [
-        "es"
-      ]
-    },
-    {
       "id": "seriesflix",
       "name": "SeriesFlix",
       "description": "Series y peliculas en Latino desde SeriesFlix.",
@@ -441,22 +394,6 @@
         "tv"
       ],
       "filename": "providers/seriesflix.js",
-      "enabled": true,
-      "contentLanguage": [
-        "es"
-      ]
-    },
-    {
-      "id": "hdfull",
-      "name": "HDFull",
-      "description": "Peliculas y series en Español desde HDFull. Usa una cuenta compartida propia del sitio original; si vence, puede fallar hasta que se actualice.",
-      "version": "2.6.8",
-      "author": "Doyrd",
-      "supportedTypes": [
-        "movie",
-        "tv"
-      ],
-      "filename": "providers/hdfull.js",
       "enabled": true,
       "contentLanguage": [
         "es"
@@ -742,6 +679,150 @@
         "tv"
       ],
       "filename": "providers/danimados.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "pelishax",
+      "name": "PelisHax",
+      "description": "Peliculas y series en Latino, Castellano y Subtitulado desde PelisHax (pelishaxpro.com).",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/pelishax.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "unlimplay",
+      "name": "UnlimPlay",
+      "description": "Peliculas y series en Latino, Castellano y Subtitulado desde UnlimPlay.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/unlimplay.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "pelispanda",
+      "name": "PelisPanda",
+      "description": "Peliculas y series en Latino desde PelisPanda, solo servidores en linea (sin torrents).",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/pelispanda.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "4khdhub",
+      "name": "4KHDHub",
+      "description": "4KHDHub filtrado: solo archivos con audio en Latino o Castellano.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/4khdhub.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "hdhub4u",
+      "name": "HDHub4u",
+      "description": "HDHub4u filtrado: solo archivos con audio en Latino o Castellano.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/hdhub4u.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "uhdmovies",
+      "name": "UHDMovies",
+      "description": "UHDMovies filtrado: solo archivos con audio en Latino o Castellano.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/uhdmovies.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "showbox",
+      "name": "ShowBox",
+      "description": "ShowBox filtrado: solo archivos con audio en Latino o Castellano.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/showbox.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "vidfast",
+      "name": "VidFast",
+      "description": "VidFast filtrado: solo videos con pista de audio en Latino o Castellano.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/vidfast.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "vidlink",
+      "name": "VidLink",
+      "description": "VidLink filtrado: solo videos con pista de audio en Latino o Castellano.",
+      "version": "1.0.0",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/vidlink.js",
       "enabled": true,
       "contentLanguage": [
         "es"
