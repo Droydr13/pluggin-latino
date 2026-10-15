@@ -1,6 +1,6 @@
 {
   "name": "Addon Latam Plugin",
-  "version": "2.1.3",
+  "version": "2.1.5",
   "scrapers": [
     {
       "id": "lamovie",
@@ -163,8 +163,8 @@
     {
       "id": "pelisgo",
       "name": "PelisGo",
-      "description": "Peliculas y series de PelisGo (pelisgo.online) con su propia API y sesion: Latino y Castellano por separado, con Pixeldrain cuando esta disponible.",
-      "version": "3.1.13",
+      "description": "Peliculas y series de PelisGo (pelisgo.online) con su propia API: Latino y Castellano por separado, solo servidores que responden.",
+      "version": "3.1.14",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -688,7 +688,7 @@
       "id": "pelishax",
       "name": "PelisHax",
       "description": "Peliculas y series en Latino, Castellano y Subtitulado desde PelisHax (pelishaxpro.com).",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -704,7 +704,7 @@
       "id": "unlimplay",
       "name": "UnlimPlay",
       "description": "Peliculas y series en Latino, Castellano y Subtitulado desde UnlimPlay.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
@@ -720,7 +720,7 @@
       "id": "pelispanda",
       "name": "PelisPanda",
       "description": "Peliculas y series en Latino desde PelisPanda, solo servidores en linea (sin torrents).",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
