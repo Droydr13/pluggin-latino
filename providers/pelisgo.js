@@ -1364,6 +1364,7 @@ const FUENTE = 'PelisGo';
 const BASE = 'https://pelisgo.online';
 const EVITAR = /hqq\.|netu|waaw|youtube|youtu\.be/i;
 let interesante = false;
+let paginaVacia = false;
 const NAVEGADOR = {
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
   'Accept-Language': 'es-US,es;q=0.9,en-US;q=0.8,en;q=0.7,es-419;q=0.6',
@@ -1534,16 +1535,29 @@ async function paginaNavegador(datos, tipo, temporada, episodio) {
 }
 
 
-function aleatorioHex(n) {
-  let t = '';
-  for (let i = 0; i < n; i++) t += Math.floor(Math.random() * 16).toString(16);
-  return t;
+let sesion = null;
+
+function cabecerasApi(referer, sid) {
+  const cabeceras = { Accept: '*/*', Referer: referer || `${BASE}/`, 'Cache-Control': 'no-cache', Pragma: 'no-cache' };
+  if (sid) cabeceras['x-session-id'] = sid;
+  return cabeceras;
 }
 
-const SESION = `${Date.now()}.${aleatorioHex(16)}.${aleatorioHex(64)}`;
+function sesionApi(referer) {
+  if (!sesion || Date.now() >= sesion.vence) sesion = { vence: Date.now() + 540000, promesa: sincronizar(referer) };
+  return sesion.promesa;
+}
 
-function cabecerasApi(referer) {
-  return { Accept: 'application/json, */*', Referer: referer || `${BASE}/`, 'x-session-id': SESION };
+async function sincronizar(referer) {
+  const r = await json(`${BASE}/api/session/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: '*/*', Origin: BASE, Referer: referer || `${BASE}/`, 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+    body: ''
+  });
+  const valor = r && (r.sid || r.sessionId || r.token);
+  anotar(`sesión: ${valor ? 'lista' : 'sin respuesta'}`);
+  if (!valor) sesion = null;
+  return valor || '';
 }
 
 function vuelo(html) {
@@ -1623,6 +1637,26 @@ function arreglo(texto, clave) {
   return null;
 }
 
+function momento(id) {
+  return /^c[a-z0-9]{8}/.test(id || '') ? parseInt(id.slice(1, 9), 36) : 0;
+}
+
+function idiomaVideo(video, descargas) {
+  const t = momento(video.id);
+  let cercano = null;
+  let distancia = Infinity;
+  for (const d of descargas) {
+    const x = momento(d.id);
+    if (t && x && Math.abs(x - t) < distancia) {
+      distancia = Math.abs(x - t);
+      cercano = d;
+    }
+  }
+  if (cercano && distancia <= 43200000) return cercano.language || '';
+  const idiomas = [...new Set(descargas.map((d) => idiomaPelisGo(d.language)))];
+  return idiomas.length === 1 ? idiomas[0] : '';
+}
+
 async function episodioSerie(serie, temporada, episodio) {
   const ficha = `${BASE}/series/${serie.slug}`;
   const temporadas = arreglo(vuelo(await texto(ficha, { headers: { Referer: `${BASE}/` } })), 'seasons') || [];
@@ -1630,8 +1664,10 @@ async function episodioSerie(serie, temporada, episodio) {
   const e = t && (t.episodes || []).find((x) => x && Number(x.number) === episodio);
   anotar(`serie: ${temporadas.length} temporadas · T${temporada}E${episodio}: ${(e && e.id) || 'sin id'}`);
   if (!e || !e.id) return null;
-  const descargas = (e.downloadLinks || []).filter((d) => d && /pixeldrain\.com\/(?:u|l)\//i.test(d.url || ''));
-  return { id: e.id, pagina: `${ficha}/temporada/${temporada}/episodio/${episodio}`, descargas };
+  const todas = (e.downloadLinks || []).filter((d) => d && d.url);
+  const descargas = todas.filter((d) => /pixeldrain\.com\/(?:u|l)\//i.test(d.url));
+  const videos = (e.videoLinks || []).filter((v) => v && /^https?:/.test(v.url || '')).map((v) => ({ url: v.url, server: '', language: idiomaVideo(v, todas), quality: '' }));
+  return { id: e.id, pagina: `${ficha}/temporada/${temporada}/episodio/${episodio}`, descargas, videos };
 }
 
 async function idEpisodio(serie, temporada, episodio) {
@@ -1687,6 +1723,27 @@ async function lista(enlaces, pagina) {
   return salida;
 }
 
+async function pedirApi(url, pagina, clave, intento) {
+  const sid = await sesionApi(pagina);
+  const r = await pedir(url, { headers: cabecerasApi(pagina, sid) });
+  if (!r || !r.status) return [];
+  const cuerpo = (await conLimite(r.text(), 10000, '')) || '';
+  if (!r.ok) {
+    anotar(`respuesta de la API: ${cuerpo.replace(/\s+/g, ' ').slice(0, 90) || 'vacía'}`);
+    if ((r.status === 401 || r.status === 403) && sid && !intento) {
+      sesion = null;
+      return pedirApi(url, pagina, clave, true);
+    }
+    return [];
+  }
+  try {
+    const d = JSON.parse(cuerpo);
+    return (d && d[clave || 'links']) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
 async function metodoApi(datos, tipo, temporada, episodio) {
   const elegido = await buscar(datos, tipo);
   if (!elegido) return [];
@@ -1694,6 +1751,7 @@ async function metodoApi(datos, tipo, temporada, episodio) {
   let pagina = '';
   let api = '';
   let descargas = [];
+  let videos = [];
   if (tipo === 'movie') {
     pagina = `${BASE}/movies/${elegido.slug}`;
     if (elegido.id) api = `${BASE}/api/movies/${elegido.id}/stream`;
@@ -1703,15 +1761,26 @@ async function metodoApi(datos, tipo, temporada, episodio) {
     pagina = ep.pagina;
     api = `${BASE}/api/series/episode/${ep.id}/stream`;
     descargas = ep.descargas || [];
+    videos = ep.videos || [];
   }
   let enlaces = [];
   if (api) {
-    const r = await json(api, { headers: cabecerasApi(pagina) });
-    enlaces = (r && r.links) || [];
+    const [lista, bajadas] = await Promise.all([
+      pedirApi(api, pagina),
+      tipo === 'movie' ? pedirApi(api.replace(/\/stream$/, '/downloads'), pagina, 'downloads') : Promise.resolve([])
+    ]);
+    enlaces = lista;
+    descargas = descargas.concat(bajadas.filter((d) => d && /pixeldrain\.com\/(?:u|l)\//i.test(d.url || '')));
     anotar(`enlaces de la API: ${enlaces.length}`);
   }
+  if (!enlaces.length && videos.length) {
+    enlaces = videos;
+    anotar(`enlaces de la ficha de la serie: ${videos.length}`);
+  }
   if (!enlaces.length) {
-    enlaces = enlacesPagina(vuelo(await texto(pagina, { headers: { Referer: `${BASE}/` } })));
+    const datosPagina = vuelo(await texto(pagina, { headers: { Referer: `${BASE}/` } }));
+    enlaces = enlacesPagina(datosPagina);
+    paginaVacia = !/"server"\s*:/.test(datosPagina);
     anotar(`enlaces en la página: ${enlaces.length}`);
   }
   const vistos = new Set(enlaces.map((e) => e.url));
@@ -1721,6 +1790,7 @@ async function metodoApi(datos, tipo, temporada, episodio) {
 
 async function getStreams(tmdbId, mediaType, season, episode) {
   interesante = false;
+  paginaVacia = false;
   mostrado = false;
   try {
     const tipo = mediaType === 'movie' ? 'movie' : 'tv';
@@ -1737,6 +1807,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
       const salida = await armar(items, titulo, FUENTE);
       if (salida.length) return salida;
     }
+    if (paginaVacia) return [];
     return await enOrden([
       () => paginaDirecta(datos, tipo, temporada, episodio).then((html) => (html ? servidores(html) : [])),
       () => paginaNavegador(datos, tipo, temporada, episodio).then((html) => (html ? servidores(html) : []))
