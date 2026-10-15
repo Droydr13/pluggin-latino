@@ -1188,6 +1188,7 @@ async function datosTmdb(tmdbId, tipo) {
     original: a.original_title || a.original_name || b.original_title || b.original_name || '',
     anio: String(a.release_date || a.first_air_date || b.release_date || b.first_air_date || '').slice(0, 4),
     imdb: (a.external_ids && a.external_ids.imdb_id) || a.imdb_id || b.imdb_id || '',
+    paises: [].concat(a.origin_country || b.origin_country || [], ((a.production_countries || b.production_countries || []).map((x) => x.iso_3166_1))).filter(Boolean),
     alternos: ((a.alternative_titles && (a.alternative_titles.results || a.alternative_titles.titles)) || []).map((x) => ({ pais: x.iso_3166_1 || '', titulo: x.title || '' })),
     temporadas: (a.seasons || b.seasons || []).map((x) => ({ numero: Number(x.season_number), episodios: Number(x.episode_count) || 0 }))
   };
@@ -1431,6 +1432,7 @@ async function flujoAnime(sitio, tmdbId, mediaType, season, episode) {
   const tipo = mediaType === 'movie' ? 'movie' : 'tv';
   const datos = await datosTmdb(tmdbId, tipo);
   if (!datos) return [];
+  if (sitio.revisar) sitio.revisar(datos);
   const temporada = tipo === 'tv' ? Number(season) || 1 : 1;
   const episodio = tipo === 'tv' ? Number(episode) || 1 : 1;
   const elegidos = await elegirAnime(sitio.buscar, datos, tipo, temporada, episodio);
@@ -1446,9 +1448,36 @@ async function flujoAnime(sitio, tmdbId, mediaType, season, episode) {
   return armar([].concat(...listas), encabezado(datos, tipo, temporada, episodio), sitio.fuente);
 }
 
+function muestra(html, patron, ancho) {
+  const t = String(html || '');
+  const m = patron.exec(t);
+  if (!m) return '';
+  const desde = Math.max(0, m.index - Math.floor((ancho || 160) / 3));
+  return t.slice(desde, desde + (ancho || 160)).replace(/\s+/g, ' ').trim();
+}
+
+function contar(html, patron) {
+  return (String(html || '').match(patron) || []).length;
+}
+
+function tarjetaRastro(fuente, agotado) {
+  let lineas = registro.slice();
+  if (lineas.length > 22) lineas = lineas.slice(0, 10).concat(['…'], lineas.slice(-11));
+  if (agotado) lineas.push('se acabó el tiempo antes de terminar');
+  const texto = lineas.length ? lineas.map((l) => `› ${l}`).join('\n') : 'no se hizo ninguna petición';
+  return [{
+    name: `${fuente} (Diagnóstico)`,
+    title: texto,
+    url: 'https://example.com/diagnostico',
+    quality: texto,
+    provider: fuente
+  }];
+}
+
 const FUENTE = 'DonghuaLife';
 const BASE = 'https://donghualife.com';
 let pedido = { temporada: 1, episodio: 1 };
+let interesante = false;
 
 function vuelo(html) {
   const crudo = String(html || '');
@@ -1466,7 +1495,7 @@ async function paginaVuelo(url, referer) {
   if (/self\.__next_f/.test(html)) return vuelo(html);
   if (/"(?:seasons|sources|episodes)"|poster-grid/.test(html)) return html;
   const rsc = await texto(url, { headers: { RSC: '1', Accept: '*/*', Referer: referer || `${BASE}/` } });
-  return rsc || datos;
+  return rsc || html;
 }
 
 function arreglo(texto, clave) {
@@ -1530,6 +1559,7 @@ function numeroTemporada(t) {
 }
 
 async function episodio(url, numero) {
+  interesante = true;
   const datos = await paginaVuelo(url);
   const temporadas = (arreglo(datos, 'seasons') || []).filter((t) => t && t.slug && !t.isSpecial);
   anotar(`temporadas: ${temporadas.length}`);
@@ -1563,20 +1593,26 @@ async function enlaces(pagina) {
       headers: { 'Content-Type': 'application/json', Accept: '*/*', Origin: BASE, Referer: pagina },
       body: JSON.stringify({ token: f.token })
     });
+    anotar(`${f.provider || f.name || 'servidor'}: ${r && r.url ? dominio(r.url) : 'sin enlace'}`);
     return r && r.url ? r.url : '';
   }));
   const vistos = new Set();
   return urls.filter((u) => /^https?:\/\//.test(u) && !vistos.has(u) && vistos.add(u)).map((url) => ({ url, audio: 'Subtitulado', referer: `${BASE}/` }));
 }
 
+function revisar(datos) {
+  if ((datos.paises || []).includes('CN') || (/[\u4e00-\u9fff]/.test(datos.original) && !/[\u3040-\u30ff\uac00-\ud7af]/.test(datos.original))) interesante = true;
+}
+
 async function getStreams(tmdbId, mediaType, season, episode) {
   pedido = { temporada: Number(season) || 1, episodio: Number(episode) || 1 };
+  interesante = false;
   try {
-    return await flujoAnime({ fuente: FUENTE, buscar, episodio, enlaces }, tmdbId, mediaType, season, episode);
+    return await flujoAnime({ fuente: FUENTE, buscar, episodio, enlaces, revisar }, tmdbId, mediaType, season, episode);
   } catch (e) {
     console.log(`[${FUENTE}] ${e.message}`);
     return [];
   }
 }
 
-module.exports = { getStreams: limitar(getStreams) };
+module.exports = { getStreams: limitar(getStreams, (agotado) => (interesante || agotado ? tarjetaRastro(FUENTE, agotado) : [])) };
