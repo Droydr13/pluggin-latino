@@ -1,6 +1,6 @@
 {
   "name": "Addon Latam Plugin",
-  "version": "2.1.11",
+  "version": "2.2.0",
   "scrapers": [
     {
       "id": "lamovie",
@@ -823,6 +823,37 @@
         "tv"
       ],
       "filename": "providers/vidlink.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "cinehdplus",
+      "name": "CineHdPlus",
+      "description": "Peliculas y series en Latino y Castellano desde CineHdPlus.",
+      "version": "1.7.2",
+      "author": "AdrianJael",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/cinehdplus.js",
+      "enabled": true,
+      "contentLanguage": [
+        "es"
+      ]
+    },
+    {
+      "id": "documaniatv",
+      "name": "DocumaniaTV",
+      "description": "Documentales en Español desde DocumaniaTV (video directo, sin embeds de terceros).",
+      "version": "2.7.2",
+      "author": "Doyrd",
+      "supportedTypes": [
+        "movie"
+      ],
+      "filename": "providers/documaniatv.js",
       "enabled": true,
       "contentLanguage": [
         "es"
