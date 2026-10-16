@@ -163,7 +163,7 @@
     {
       "id": "pelisgo",
       "name": "PelisGo",
-      "description": "Peliculas y series de PelisGo (pelisgo.online) con su propia API: Latino y Castellano por separado, solo servidores que responden.",
+      "description": "Peliculas y series de PelisGo (pelisgo.online) con su propia API y sesion: Latino y Castellano por separado, con Pixeldrain cuando esta disponible.",
       "version": "3.1.14",
       "author": "Doyrd",
       "supportedTypes": [
