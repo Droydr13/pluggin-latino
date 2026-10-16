@@ -1373,6 +1373,48 @@ const TRES = BigInt(3);
 const CUATRO = BigInt(4);
 const OCHO = BigInt(8);
 let dispositivoLuna = '';
+let visorLuna = '';
+let llaveLuna = null;
+const UA_LUNA = 'Mozilla/5.0 (Linux; Android 16; Pixel 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Mobile Safari/537.36';
+const NAVEGADOR_LUNA = {
+  'User-Agent': UA_LUNA,
+  'Accept-Language': 'es-ES,es;q=0.9',
+  'sec-ch-ua': '"Chromium";v="152", "Not?A_Brand";v="24", "Google Chrome";v="152"',
+  'sec-ch-ua-mobile': '?1',
+  'sec-ch-ua-platform': '"Android"',
+  'Sec-Fetch-Dest': 'empty',
+  'Sec-Fetch-Mode': 'cors',
+  'Sec-Fetch-Site': 'same-origin'
+};
+const CLIENTE_LUNA = {
+  user_agent: UA_LUNA,
+  architecture: '',
+  bitness: '64',
+  platform: 'Android',
+  platform_version: '16',
+  model: 'Pixel 10',
+  ua_full_version: '152.0.7977.132',
+  brand_full_versions: [{ brand: 'Chromium', version: '152.0.7977.132' }, { brand: 'Not?A_Brand', version: '24.0.0.0' }, { brand: 'Google Chrome', version: '152.0.7977.132' }],
+  pixel_ratio: 0.9004614353179932,
+  screen_width: 1517,
+  screen_height: 852,
+  color_depth: 24,
+  languages: ['es-ES', 'es'],
+  timezone: 'America/Mexico_City',
+  hardware_concurrency: 4,
+  device_memory: 4,
+  touch_points: 1,
+  webgl_vendor: 'Google Inc. (Intel)',
+  webgl_renderer: 'ANGLE (Intel, Mesa Intel(R) UHD Graphics 600 (GLK 2), OpenGL ES 3.2)',
+  canvas_hash: 'ziArhzCs61c8-4NE3RN9IokSDXygiLWfYAWc4_nSyI8',
+  audio_hash: 'Q6FIrN6OYk4-8qILTIDrwcAVs_cBZ_9oao7-UJIYBF0',
+  webgl_params_hash: 'nDMFz00r2AnRtyhZ4DxXxt7qXk5rtn0Jc-5QCeoiE4I',
+  fonts_hash: 'MJLQMnY3gnWbA-3d1lqZ6ZzwSkuSoT1eVkUYUCVibSo',
+  codecs_hash: 'qJye5DfMLC0co_nw835Vyx_VcUOEnA01Coov9OtwHZs',
+  media_devices: 'ai1ao1vi1',
+  pointer_type: 'coarse,touch',
+  extra: { vendor: 'Google Inc.', appVersion: UA_LUNA.replace(/^Mozilla\//, '') }
+};
 
 function resto(a, m) {
   const r = a % m;
@@ -1472,8 +1514,11 @@ function idLuna() {
 }
 
 function firmarLuna(texto) {
-  const privada = escalarAzar();
-  const publica = multiplicar(privada);
+  if (!llaveLuna) {
+    const nueva = escalarAzar();
+    llaveLuna = { privada: nueva, publica: multiplicar(nueva) };
+  }
+  const { privada, publica } = llaveLuna;
   const e = BigInt(`0x${CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(texto)).toString(CryptoJS.enc.Hex)}`);
   for (let intento = 0; intento < 8; intento++) {
     const k = escalarAzar();
@@ -1591,7 +1636,7 @@ async function trabajoLuna(nonce, dificultad, tope) {
   const comienzo = Date.now();
   for (let n = 0; ; n++) {
     if (cerosLuna(hashLuna(prefijo + n)) >= dificultad) return String(n);
-    if ((n & 127) === 127) {
+    if ((n & 1023) === 1023) {
       if (Date.now() - comienzo > tope) return null;
       if (RELOJ) await esperar(0);
     }
@@ -1619,7 +1664,7 @@ async function captchaLuna(baseMarco, codigo, huella, cabeceras, pasos) {
 }
 
 async function enviarLuna(url, cuerpo, cabeceras, pasos) {
-  const r = await pedir(url, { method: 'POST', headers: Object.assign({ Accept: '*/*' }, cuerpo === '' ? {} : { 'Content-Type': 'application/json' }, cabeceras), body: cuerpo === '' ? '' : JSON.stringify(cuerpo) });
+  const r = await pedir(url, { method: 'POST', headers: Object.assign({ Accept: '*/*' }, NAVEGADOR_LUNA, cuerpo === '' ? {} : { 'Content-Type': 'application/json' }, cabeceras), body: cuerpo === '' ? '' : JSON.stringify(cuerpo) });
   const paso = url.replace(/^.*\/api\/videos\//, '').replace(/^[\w-]+\/embed\//, '').replace(/^access\//, '');
   if (!r || !r.status) {
     pasos.push(`${paso} sin respuesta`);
@@ -1644,7 +1689,7 @@ async function resolverLuna(url) {
   const pasos = [];
   const base = origen(url);
   const embed = `${base}/e/${m[1]}`;
-  const detalle = await json(`${base}/api/videos/${m[1]}/embed/details`, { headers: { Accept: '*/*', Referer: embed, 'X-Embed-Parent': embed } });
+  const detalle = await json(`${base}/api/videos/${m[1]}/embed/details`, { headers: Object.assign({}, NAVEGADOR_LUNA, { Accept: '*/*', Referer: embed, 'X-Embed-Parent': embed }) });
   const marco = detalle && detalle.embed_frame_url;
   if (!marco) {
     anotar(`Filemoon ${m[1]}: sin marco`);
@@ -1652,46 +1697,38 @@ async function resolverLuna(url) {
   }
   const baseMarco = origen(marco);
   const cabeceras = { Referer: marco, Origin: baseMarco };
-  const reto = await enviarLuna(`${baseMarco}/api/videos/access/challenge`, '', cabeceras, pasos);
-  if (!reto || !reto.nonce || !reto.challenge_id) {
-    anotar(`Filemoon ${m[1]}: sin reto`);
+  let acceso = null;
+  for (let vuelta = 0; vuelta < 3; vuelta++) {
+    const reto = await enviarLuna(`${baseMarco}/api/videos/access/challenge`, '', cabeceras, pasos);
+    if (!reto || !reto.nonce || !reto.challenge_id) break;
+    const prueba = firmarLuna(reto.nonce);
+    if (!prueba) break;
+    const conocido = visorLuna && dispositivoLuna;
+    const respuesta = await enviarLuna(`${baseMarco}/api/videos/access/attest`, {
+      viewer_id: conocido ? visorLuna : '',
+      device_id: conocido ? dispositivoLuna : '',
+      challenge_id: reto.challenge_id,
+      nonce: reto.nonce,
+      signature: prueba.firma,
+      public_key: prueba.clave,
+      client: CLIENTE_LUNA,
+      storage: conocido ? { local_storage: visorLuna, indexed_db: `${visorLuna}:${dispositivoLuna}`, cache_storage: `${visorLuna}:${dispositivoLuna}` } : {},
+      attributes: { entropy: 'high' }
+    }, cabeceras, pasos);
+    if (!respuesta || !respuesta.token) break;
+    acceso = respuesta;
+    if (respuesta.viewer_id) visorLuna = respuesta.viewer_id;
+    if (respuesta.device_id) dispositivoLuna = respuesta.device_id;
+    pasos.push(`confianza ${Math.round((Number(respuesta.confidence) || 0) * 100)}%`);
+    if (conocido && Number(respuesta.confidence) >= 0.85) break;
+    if (vuelta > 0 && !conocido) break;
+  }
+  if (!acceso) {
+    anotar(`Filemoon ${m[1]}: sin permiso · ${pasos.join(' → ')}`);
     return [];
   }
-  const prueba = firmarLuna(reto.nonce);
-  if (!prueba) return [];
-  const visor = idLuna();
-  const equipo = dispositivoLuna || idLuna();
-  const acceso = await enviarLuna(`${baseMarco}/api/videos/access/attest`, {
-    viewer_id: visor,
-    device_id: equipo,
-    challenge_id: reto.challenge_id,
-    nonce: reto.nonce,
-    signature: prueba.firma,
-    public_key: prueba.clave,
-    client: {
-      user_agent: UA,
-      architecture: 'x86',
-      bitness: '64',
-      platform: 'Windows',
-      platform_version: '10.0.0',
-      pixel_ratio: 1,
-      screen_width: 1920,
-      screen_height: 1080,
-      color_depth: 24,
-      languages: ['es-MX', 'es'],
-      timezone: 'America/Mexico_City',
-      hardware_concurrency: 8,
-      device_memory: 8,
-      touch_points: 0
-    },
-    storage: { cookie: visor, local_storage: visor, indexed_db: `${visor}:${equipo}`, cache_storage: `${visor}:${equipo}` },
-    attributes: { entropy: 'high' }
-  }, cabeceras, pasos);
-  if (!acceso || !acceso.token) {
-    anotar(`Filemoon ${m[1]}: sin permiso`);
-    return [];
-  }
-  if (acceso.device_id) dispositivoLuna = acceso.device_id;
+  const visor = visorLuna;
+  const equipo = dispositivoLuna;
   const huella = { token: acceso.token, viewer_id: acceso.viewer_id || visor, device_id: acceso.device_id || equipo, confidence: acceso.confidence };
   const cabecerasVideo = Object.assign({ 'X-Embed-Parent': embed }, cabeceras);
   let play = await enviarLuna(`${baseMarco}/api/videos/${m[1]}/embed/playback`, { fingerprint: huella }, cabecerasVideo, pasos);
@@ -1700,7 +1737,7 @@ async function resolverLuna(url) {
     if (pase) play = await enviarLuna(`${baseMarco}/api/videos/${m[1]}/embed/playback`, { fingerprint: huella }, Object.assign({ 'X-Captcha-Token': pase }, cabecerasVideo), pasos);
   }
   if (!play || !play.playback) {
-    anotar(`Filemoon ${m[1]} (confianza ${acceso.confidence}): ${pasos.join(' → ')}`);
+    anotar(`Filemoon ${m[1]}: ${pasos.join(' → ')}`);
     return [];
   }
   const claro = abrirLuna(play.playback);
@@ -1712,9 +1749,10 @@ async function resolverLuna(url) {
     anotar(`Filemoon ${m[1]}: no se pudo descifrar`);
     return [];
   }
+  anotar(`Filemoon ${m[1]}: ${pasos.join(' → ')} → video listo`);
   const fuente = fuentes.find((f) => f && /m3u8/.test(f.url || '')) || fuentes[0];
   const destino = typeof fuente === 'string' ? fuente : fuente && fuente.url;
-  return enlace(destino, 'Filemoon', { Referer: `${baseMarco}/`, Origin: baseMarco, 'User-Agent': UA }, calidadTexto(fuente && fuente.label));
+  return enlace(destino, 'Filemoon', { Referer: `${baseMarco}/`, Origin: baseMarco, 'User-Agent': UA_LUNA }, calidadTexto(fuente && fuente.label));
 }
 
 const FUENTE = 'PelisGo';
