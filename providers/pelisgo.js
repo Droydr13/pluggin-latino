@@ -1375,6 +1375,8 @@ const OCHO = BigInt(8);
 let dispositivoLuna = '';
 let visorLuna = '';
 let llaveLuna = null;
+let paseLuna = null;
+let pendienteLuna = null;
 const UA_LUNA = 'Mozilla/5.0 (Linux; Android 16; Pixel 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Mobile Safari/537.36';
 const NAVEGADOR_LUNA = {
   'User-Agent': UA_LUNA,
@@ -1630,13 +1632,14 @@ function cerosLuna(p) {
   return n;
 }
 
-async function trabajoLuna(nonce, dificultad, tope) {
-  if (!(dificultad > 0)) return '0';
-  const prefijo = `${nonce}:`;
+async function trabajoLuna(tarea, tope) {
+  if (!(tarea.dificultad > 0)) return '0';
+  const prefijo = `${tarea.nonce}:`;
   const comienzo = Date.now();
-  for (let n = 0; ; n++) {
-    if (cerosLuna(hashLuna(prefijo + n)) >= dificultad) return String(n);
+  for (let n = tarea.siguiente; ; n++) {
+    if (cerosLuna(hashLuna(prefijo + n)) >= tarea.dificultad) return String(n);
     if ((n & 1023) === 1023) {
+      tarea.siguiente = n + 1;
       if (Date.now() - comienzo > tope) return null;
       if (RELOJ) await esperar(0);
     }
@@ -1644,23 +1647,40 @@ async function trabajoLuna(nonce, dificultad, tope) {
 }
 
 async function captchaLuna(baseMarco, codigo, huella, cabeceras, pasos) {
-  const reto = await enviarLuna(`${baseMarco}/api/videos/${codigo}/embed/captcha`, { fingerprint: huella }, cabeceras, pasos);
-  if (!reto || !reto.pow_token) {
-    anotar(`Filemoon ${codigo}: sin prueba`);
-    return '';
+  let tarea = pendienteLuna && pendienteLuna.base === baseMarco && Date.now() < pendienteLuna.vence ? pendienteLuna : null;
+  if (tarea) {
+    pasos.push(`retomando prueba desde ${tarea.siguiente}`);
+  } else {
+    const reto = await enviarLuna(`${baseMarco}/api/videos/${codigo}/embed/captcha`, { fingerprint: huella }, cabeceras, pasos);
+    if (!reto || !reto.pow_token) return '';
+    tarea = { base: baseMarco, codigo, token: reto.pow_token, nonce: String(reto.pow_nonce || ''), dificultad: Number(reto.pow_difficulty) || 0, siguiente: 0, vence: Date.now() + (Number(reto.expires_in) || 25) * 1000 - 4000 };
+    pendienteLuna = tarea;
   }
-  const vence = (Number(reto.expires_in) || 25) * 1000 - 3000;
-  const tope = Math.max(3000, Math.min(vence, restante() - 8000));
+  const tope = Math.max(3000, Math.min(tarea.vence - Date.now(), restante() - 8000));
   const comienzo = Date.now();
-  const solucion = await trabajoLuna(String(reto.pow_nonce || ''), Number(reto.pow_difficulty) || 0, tope);
-  pasos.push(`prueba ${reto.pow_difficulty} ${solucion === null ? 'sin resolver' : 'resuelta'} en ${((Date.now() - comienzo) / 1000).toFixed(1)}s`);
+  const desde = tarea.siguiente;
+  const solucion = await trabajoLuna(tarea, tope);
+  pasos.push(`prueba ${tarea.dificultad} ${solucion === null ? 'sin resolver' : 'resuelta'} en ${((Date.now() - comienzo) / 1000).toFixed(1)}s (${(solucion === null ? tarea.siguiente : Number(solucion) + 1) - desde} intentos)`);
   if (solucion === null) return '';
-  const r = await enviarLuna(`${baseMarco}/api/videos/${codigo}/embed/captcha/verify`, { pow_token: reto.pow_token, solution: solucion, fingerprint: huella }, cabeceras, pasos);
-  if (!r || r.status !== 'ok' || !r.token) {
-    anotar(`Filemoon ${codigo}: prueba rechazada`);
-    return '';
-  }
+  pendienteLuna = null;
+  const r = await enviarLuna(`${baseMarco}/api/videos/${tarea.codigo}/embed/captcha/verify`, { pow_token: tarea.token, solution: solucion, fingerprint: huella }, cabeceras, pasos);
+  if (!r || r.status !== 'ok' || !r.token) return '';
+  paseLuna = { token: r.token, vence: Date.now() + Math.max(60, (Number(r.expires_in) || 600) - 30) * 1000 };
   return r.token;
+}
+
+function paseCompartido(baseMarco, codigo, huella, cabeceras, pasos) {
+  if (paseLuna && paseLuna.token && Date.now() < paseLuna.vence) return Promise.resolve(paseLuna.token);
+  if (paseLuna && paseLuna.promesa) {
+    pasos.push('esperando la prueba de otro servidor');
+    return paseLuna.promesa;
+  }
+  const promesa = captchaLuna(baseMarco, codigo, huella, cabeceras, pasos).catch(() => '');
+  paseLuna = { promesa };
+  promesa.then((t) => {
+    if (!t && paseLuna && paseLuna.promesa === promesa) paseLuna = null;
+  });
+  return promesa;
 }
 
 async function enviarLuna(url, cuerpo, cabeceras, pasos) {
@@ -1731,9 +1751,12 @@ async function resolverLuna(url) {
   const equipo = dispositivoLuna;
   const huella = { token: acceso.token, viewer_id: acceso.viewer_id || visor, device_id: acceso.device_id || equipo, confidence: acceso.confidence };
   const cabecerasVideo = Object.assign({ 'X-Embed-Parent': embed }, cabeceras);
-  let play = await enviarLuna(`${baseMarco}/api/videos/${m[1]}/embed/playback`, { fingerprint: huella }, cabecerasVideo, pasos);
+  const guardado = paseLuna && paseLuna.token && Date.now() < paseLuna.vence ? paseLuna.token : '';
+  if (guardado) pasos.push('pase guardado');
+  let play = await enviarLuna(`${baseMarco}/api/videos/${m[1]}/embed/playback`, { fingerprint: huella }, guardado ? Object.assign({ 'X-Captcha-Token': guardado }, cabecerasVideo) : cabecerasVideo, pasos);
+  if ((!play || !play.playback) && guardado) paseLuna = null;
   if (!play || !play.playback) {
-    const pase = await captchaLuna(baseMarco, m[1], huella, cabecerasVideo, pasos);
+    const pase = await paseCompartido(baseMarco, m[1], huella, cabecerasVideo, pasos);
     if (pase) play = await enviarLuna(`${baseMarco}/api/videos/${m[1]}/embed/playback`, { fingerprint: huella }, Object.assign({ 'X-Captcha-Token': pase }, cabecerasVideo), pasos);
   }
   if (!play || !play.playback) {
