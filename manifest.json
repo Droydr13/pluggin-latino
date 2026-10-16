@@ -1,6 +1,6 @@
 {
   "name": "Addon Latam Plugin",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "scrapers": [
     {
       "id": "lamovie",
@@ -164,7 +164,7 @@
       "id": "pelisgo",
       "name": "PelisGo",
       "description": "Peliculas y series de PelisGo (pelisgo.online) con su propia API y sesion: Latino y Castellano por separado, con Pixeldrain cuando esta disponible.",
-      "version": "3.1.14",
+      "version": "3.1.15",
       "author": "Doyrd",
       "supportedTypes": [
         "movie",
