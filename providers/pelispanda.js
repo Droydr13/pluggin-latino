@@ -6364,6 +6364,116 @@ var require_filemoon = __commonJS({
       console.log(`[FileMoon] All ${keyAttempts.length} key attempts failed`);
       throw lastError || new Error("No key worked");
     }
+    const TABLA_LUNA = new Int32Array(512);
+    
+    function hashLuna(texto) {
+      let a = 1779033703 | 0;
+      let b = 3144134277 | 0;
+      let c = 1013904242 | 0;
+      let d = 2773480762 | 0;
+      let x;
+      for (let i = 0; i < texto.length; i++) {
+        a = (a + (texto.charCodeAt(i) & 255)) | 0;
+        a = (a << 7) | (a >>> 25);
+        a = (a + b) | 0; x = d ^ a; d = (x << 16) | (x >>> 16);
+        c = (c + d) | 0; x = b ^ c; b = (x << 12) | (x >>> 20);
+        a = (a + b) | 0; x = d ^ a; d = (x << 8) | (x >>> 24);
+        c = (c + d) | 0; x = b ^ c; b = (x << 7) | (x >>> 25);
+      }
+      for (let i = 0; i < 8; i++) {
+        a = (a + b) | 0; x = d ^ a; d = (x << 16) | (x >>> 16);
+        c = (c + d) | 0; x = b ^ c; b = (x << 12) | (x >>> 20);
+        a = (a + b) | 0; x = d ^ a; d = (x << 8) | (x >>> 24);
+        c = (c + d) | 0; x = b ^ c; b = (x << 7) | (x >>> 25);
+      }
+      const r = TABLA_LUNA;
+      for (let i = 0; i < 512; i++) {
+        a = (a + b) | 0; x = d ^ a; d = (x << 16) | (x >>> 16);
+        c = (c + d) | 0; x = b ^ c; b = (x << 12) | (x >>> 20);
+        a = (a + b) | 0; x = d ^ a; d = (x << 8) | (x >>> 24);
+        c = (c + d) | 0; x = b ^ c; b = (x << 7) | (x >>> 25);
+        r[i] = a ^ c;
+      }
+      for (let vuelta = 0; vuelta < 2; vuelta++) {
+        for (let s = 0; s < 512; s++) {
+          let v = (r[s] + r[r[s] & 511]) | 0;
+          v = (v << 13) | (v >>> 19);
+          v ^= Math.imul(r[(s + 1) & 511], -1640531535);
+          r[s] = v;
+          a ^= v;
+          a = (a + b) | 0; x = d ^ a; d = (x << 16) | (x >>> 16);
+          c = (c + d) | 0; x = b ^ c; b = (x << 12) | (x >>> 20);
+          a = (a + b) | 0; x = d ^ a; d = (x << 8) | (x >>> 24);
+          c = (c + d) | 0; x = b ^ c; b = (x << 7) | (x >>> 25);
+        }
+      }
+      const salida = [];
+      for (let i = 0; i < 8; i++) {
+        a = (a + b) | 0; x = d ^ a; d = (x << 16) | (x >>> 16);
+        c = (c + d) | 0; x = b ^ c; b = (x << 12) | (x >>> 20);
+        a = (a + b) | 0; x = d ^ a; d = (x << 8) | (x >>> 24);
+        c = (c + d) | 0; x = b ^ c; b = (x << 7) | (x >>> 25);
+        let s = a;
+        const base = i * 64;
+        for (let k = 0; k < 64; k++) {
+          const v = r[base + k];
+          s = (s + v) | 0;
+          s = (s << 5) | (s >>> 27);
+          s ^= Math.imul(v, -2048144777);
+        }
+        salida.push((s ^ c) >>> 0);
+      }
+      return salida;
+    }
+    function cerosLuna(p) {
+      let n = 0;
+      for (let i = 0; i < p.length; i++) {
+        if (p[i] === 0) {
+          n += 32;
+          continue;
+        }
+        return n + Math.clz32(p[i]);
+      }
+      return n;
+    }
+    var paseLuna = null;
+    async function pruebaLuna(nonce, dificultad, tope) {
+      if (!(dificultad > 0)) return "0";
+      const prefijo = nonce + ":";
+      const comienzo = Date.now();
+      for (let n = 0; ; n++) {
+        if (cerosLuna(hashLuna(prefijo + n)) >= dificultad) return String(n);
+        if ((n & 1023) === 1023) {
+          if (Date.now() - comienzo > tope) return null;
+          if (typeof setTimeout === "function") await new Promise((r) => setTimeout(r, 0));
+        }
+      }
+    }
+    async function pedirVideoLuna(playbackDomain, videoId, huella, cabeceras) {
+      const ruta = `${playbackDomain}/api/videos/${videoId}/embed/playback`;
+      if (paseLuna && Date.now() < paseLuna.vence) {
+        try {
+          const r = await postJSON(ruta, { fingerprint: huella }, { ...cabeceras, "X-Captcha-Token": paseLuna.token });
+          if (r && r.playback) return r;
+        } catch (e) {
+        }
+        paseLuna = null;
+      }
+      try {
+        const r = await postJSON(ruta, { fingerprint: huella }, cabeceras);
+        if (r && r.playback) return r;
+      } catch (e) {
+        if (!/428|captcha/i.test(e.message)) throw e;
+      }
+      const reto = await postJSON(`${playbackDomain}/api/videos/${videoId}/embed/captcha`, { fingerprint: huella }, cabeceras);
+      const tope = Math.max(3000, Math.min(20000, (Number(reto.expires_in) || 25) * 1000 - 4000));
+      const solucion = await pruebaLuna(String(reto.pow_nonce || ""), Number(reto.pow_difficulty) || 0, tope);
+      if (solucion === null) throw new Error("Prueba sin resolver");
+      const ok = await postJSON(`${playbackDomain}/api/videos/${videoId}/embed/captcha/verify`, { pow_token: reto.pow_token, solution: solucion, fingerprint: huella }, cabeceras);
+      if (!ok || ok.status !== "ok" || !ok.token) throw new Error("Prueba rechazada");
+      paseLuna = { token: ok.token, vence: Date.now() + Math.max(60, (Number(ok.expires_in) || 600) - 30) * 1000 };
+      return postJSON(ruta, { fingerprint: huella }, { ...cabeceras, "X-Captcha-Token": ok.token });
+    }
     var _byseDeviceId = generateUUID();
     async function resolveFileMoon(url) {
       try {
@@ -6432,9 +6542,10 @@ var require_filemoon = __commonJS({
         const finalDeviceId = attest.device_id || _byseDeviceId;
         if (attest.device_id)
           _byseDeviceId = attest.device_id;
-        const playbackResp = await postJSON(
-          `${playbackDomain}/api/videos/${videoId}/embed/playback`,
-          { fingerprint: { token, viewer_id: finalViewerId, device_id: finalDeviceId, confidence } },
+        const playbackResp = await pedirVideoLuna(
+          playbackDomain,
+          videoId,
+          { token, viewer_id: finalViewerId, device_id: finalDeviceId, confidence },
           { ...authHeaders, "X-Embed-Parent": linkType === "e" ? url : "" }
         );
         if (!playbackResp.playback)

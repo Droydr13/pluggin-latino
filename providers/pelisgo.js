@@ -2212,7 +2212,7 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     if (items.length) {
       const salida = await armar(items, titulo, FUENTE);
       anotar(`tarjetas: ${salida.length} de ${items.length} servidores · ${salida.map((t) => t.name).join(', ').slice(0, 160)}`);
-      if (salida.length) return salida.concat(tarjetaRastro(FUENTE, false));
+      if (salida.length) return salida;
     }
     if (paginaVacia) return [];
     return await enOrden([
@@ -2225,4 +2225,4 @@ async function getStreams(tmdbId, mediaType, season, episode) {
   }
 }
 
-module.exports = { getStreams: limitar(getStreams, (agotado) => tarjetaRastro(FUENTE, agotado)) };
+module.exports = { getStreams: limitar(getStreams) };

@@ -667,7 +667,433 @@ function bytesBase64Url(t) {
   return CryptoJS.enc.Base64.parse(b);
 }
 
+const resolverLuna = (() => {
+  const CURVA = {
+    p: BigInt('0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff'),
+    n: BigInt('0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551'),
+    x: BigInt('0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296'),
+    y: BigInt('0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5')
+  };
+  const CERO = BigInt(0);
+  const UNO = BigInt(1);
+  const DOS = BigInt(2);
+  const TRES = BigInt(3);
+  const CUATRO = BigInt(4);
+  const OCHO = BigInt(8);
+  let dispositivoLuna = '';
+  let visorLuna = '';
+  let llaveLuna = null;
+  let paseLuna = null;
+  let pendienteLuna = null;
+  const UA_LUNA = 'Mozilla/5.0 (Linux; Android 16; Pixel 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Mobile Safari/537.36';
+  const NAVEGADOR_LUNA = {
+    'User-Agent': UA_LUNA,
+    'Accept-Language': 'es-ES,es;q=0.9',
+    'sec-ch-ua': '"Chromium";v="152", "Not?A_Brand";v="24", "Google Chrome";v="152"',
+    'sec-ch-ua-mobile': '?1',
+    'sec-ch-ua-platform': '"Android"',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin'
+  };
+  const CLIENTE_LUNA = {
+    user_agent: UA_LUNA,
+    architecture: '',
+    bitness: '64',
+    platform: 'Android',
+    platform_version: '16',
+    model: 'Pixel 10',
+    ua_full_version: '152.0.7977.132',
+    brand_full_versions: [{ brand: 'Chromium', version: '152.0.7977.132' }, { brand: 'Not?A_Brand', version: '24.0.0.0' }, { brand: 'Google Chrome', version: '152.0.7977.132' }],
+    pixel_ratio: 0.9004614353179932,
+    screen_width: 1517,
+    screen_height: 852,
+    color_depth: 24,
+    languages: ['es-ES', 'es'],
+    timezone: 'America/Mexico_City',
+    hardware_concurrency: 4,
+    device_memory: 4,
+    touch_points: 1,
+    webgl_vendor: 'Google Inc. (Intel)',
+    webgl_renderer: 'ANGLE (Intel, Mesa Intel(R) UHD Graphics 600 (GLK 2), OpenGL ES 3.2)',
+    canvas_hash: 'ziArhzCs61c8-4NE3RN9IokSDXygiLWfYAWc4_nSyI8',
+    audio_hash: 'Q6FIrN6OYk4-8qILTIDrwcAVs_cBZ_9oao7-UJIYBF0',
+    webgl_params_hash: 'nDMFz00r2AnRtyhZ4DxXxt7qXk5rtn0Jc-5QCeoiE4I',
+    fonts_hash: 'MJLQMnY3gnWbA-3d1lqZ6ZzwSkuSoT1eVkUYUCVibSo',
+    codecs_hash: 'qJye5DfMLC0co_nw835Vyx_VcUOEnA01Coov9OtwHZs',
+    media_devices: 'ai1ao1vi1',
+    pointer_type: 'coarse,touch',
+    extra: { vendor: 'Google Inc.', appVersion: UA_LUNA.replace(/^Mozilla\//, '') }
+  };
+
+  function resto(a, m) {
+    const r = a % m;
+    return r < CERO ? r + m : r;
+  }
+
+  function potencia(base, exponente, m) {
+    let r = UNO;
+    let b = resto(base, m);
+    let e = exponente;
+    while (e > CERO) {
+      if (e & UNO) r = (r * b) % m;
+      b = (b * b) % m;
+      e >>= UNO;
+    }
+    return r;
+  }
+
+  function inversoMod(a, m) {
+    return potencia(a, m - DOS, m);
+  }
+
+  function doblar(q) {
+    const { p } = CURVA;
+    if (!q || q[1] === CERO) return null;
+    const [x, y, z] = q;
+    const delta = (z * z) % p;
+    const gamma = (y * y) % p;
+    const beta = (x * gamma) % p;
+    const alfa = resto(TRES * (x - delta) * (x + delta), p);
+    const x3 = resto(alfa * alfa - OCHO * beta, p);
+    const z3 = resto((y + z) * (y + z) - gamma - delta, p);
+    const y3 = resto(alfa * (CUATRO * beta - x3) - OCHO * gamma * gamma, p);
+    return [x3, y3, z3];
+  }
+
+  function sumar(a, b) {
+    const { p } = CURVA;
+    if (!a) return b;
+    if (!b) return a;
+    const z1 = (a[2] * a[2]) % p;
+    const z2 = (b[2] * b[2]) % p;
+    const u1 = (a[0] * z2) % p;
+    const u2 = (b[0] * z1) % p;
+    const s1 = (((a[1] * z2) % p) * b[2]) % p;
+    const s2 = (((b[1] * z1) % p) * a[2]) % p;
+    if (u1 === u2) return s1 === s2 ? doblar(a) : null;
+    const h = resto(u2 - u1, p);
+    const r = resto(s2 - s1, p);
+    const h2 = (h * h) % p;
+    const h3 = (h2 * h) % p;
+    const x3 = resto(r * r - h3 - DOS * u1 * h2, p);
+    const y3 = resto(r * (u1 * h2 - x3) - s1 * h3, p);
+    const z3 = (((h * a[2]) % p) * b[2]) % p;
+    return [x3, y3, z3];
+  }
+
+  function multiplicar(k) {
+    let r = null;
+    let q = [CURVA.x, CURVA.y, UNO];
+    let e = k;
+    while (e > CERO) {
+      if (e & UNO) r = sumar(r, q);
+      q = doblar(q);
+      e >>= UNO;
+    }
+    if (!r) return null;
+    const zi = inversoMod(r[2], CURVA.p);
+    const zi2 = (zi * zi) % CURVA.p;
+    return [(r[0] * zi2) % CURVA.p, (((r[1] * zi2) % CURVA.p) * zi) % CURVA.p];
+  }
+
+  function hexAzar(bytes) {
+    let t = '';
+    for (let i = 0; i < bytes; i++) t += Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
+    return t;
+  }
+
+  function escalarAzar() {
+    return resto(BigInt(`0x${hexAzar(40)}`), CURVA.n - UNO) + UNO;
+  }
+
+  function hex32(v) {
+    return v.toString(16).padStart(64, '0');
+  }
+
+  function base64Url(palabras) {
+    return palabras.toString(CryptoJS.enc.Base64).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function hexUrl(hex) {
+    return base64Url(CryptoJS.enc.Hex.parse(hex));
+  }
+
+  function idLuna() {
+    return hexUrl(hexAzar(16));
+  }
+
+  function firmarLuna(texto) {
+    if (!llaveLuna) {
+      const nueva = escalarAzar();
+      llaveLuna = { privada: nueva, publica: multiplicar(nueva) };
+    }
+    const { privada, publica } = llaveLuna;
+    const e = BigInt(`0x${CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(texto)).toString(CryptoJS.enc.Hex)}`);
+    for (let intento = 0; intento < 8; intento++) {
+      const k = escalarAzar();
+      const punto = multiplicar(k);
+      const r = resto(punto[0], CURVA.n);
+      if (r === CERO) continue;
+      const s = resto(inversoMod(k, CURVA.n) * (e + r * privada), CURVA.n);
+      if (s === CERO) continue;
+      return {
+        firma: hexUrl(hex32(r) + hex32(s)),
+        clave: { crv: 'P-256', ext: true, key_ops: ['verify'], kty: 'EC', x: hexUrl(hex32(publica[0])), y: hexUrl(hex32(publica[1])) }
+      };
+    }
+    return null;
+  }
+
+  function abrirLuna(datos) {
+    const partes = (datos.key_parts || []).map(bytesBase64Url);
+    const cortas = partes.filter((x) => x.sigBytes === 16);
+    if (cortas.length < 2 || !datos.iv || !datos.payload) return '';
+    const clave = cortas[0].clone().concat(cortas[1]);
+    const vector = bytesBase64Url(datos.iv);
+    if (vector.sigBytes !== 12) return '';
+    const todo = bytesBase64Url(datos.payload);
+    try {
+      if (CryptoJS.mode.CTR) {
+        const contador = vector.clone().concat(CryptoJS.lib.WordArray.create([2], 4));
+        const cifrado = CryptoJS.lib.WordArray.create(todo.words.slice(0, Math.ceil((todo.sigBytes - 16) / 4)), todo.sigBytes - 16);
+        return CryptoJS.AES.decrypt({ ciphertext: cifrado }, clave, { iv: contador, mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.NoPadding }).toString(CryptoJS.enc.Utf8);
+      }
+      if (CryptoJS.mode.GCM) return CryptoJS.AES.decrypt({ ciphertext: todo }, clave, { iv: vector, mode: CryptoJS.mode.GCM, padding: CryptoJS.pad.NoPadding }).toString(CryptoJS.enc.Utf8);
+    } catch (e) {
+      return '';
+    }
+    return '';
+  }
+
+  const TABLA_LUNA = new Int32Array(512);
+
+  function hashLuna(texto) {
+    let a = 1779033703 | 0;
+    let b = 3144134277 | 0;
+    let c = 1013904242 | 0;
+    let d = 2773480762 | 0;
+    let x;
+    for (let i = 0; i < texto.length; i++) {
+      a = (a + (texto.charCodeAt(i) & 255)) | 0;
+      a = (a << 7) | (a >>> 25);
+      a = (a + b) | 0; x = d ^ a; d = (x << 16) | (x >>> 16);
+      c = (c + d) | 0; x = b ^ c; b = (x << 12) | (x >>> 20);
+      a = (a + b) | 0; x = d ^ a; d = (x << 8) | (x >>> 24);
+      c = (c + d) | 0; x = b ^ c; b = (x << 7) | (x >>> 25);
+    }
+    for (let i = 0; i < 8; i++) {
+      a = (a + b) | 0; x = d ^ a; d = (x << 16) | (x >>> 16);
+      c = (c + d) | 0; x = b ^ c; b = (x << 12) | (x >>> 20);
+      a = (a + b) | 0; x = d ^ a; d = (x << 8) | (x >>> 24);
+      c = (c + d) | 0; x = b ^ c; b = (x << 7) | (x >>> 25);
+    }
+    const r = TABLA_LUNA;
+    for (let i = 0; i < 512; i++) {
+      a = (a + b) | 0; x = d ^ a; d = (x << 16) | (x >>> 16);
+      c = (c + d) | 0; x = b ^ c; b = (x << 12) | (x >>> 20);
+      a = (a + b) | 0; x = d ^ a; d = (x << 8) | (x >>> 24);
+      c = (c + d) | 0; x = b ^ c; b = (x << 7) | (x >>> 25);
+      r[i] = a ^ c;
+    }
+    for (let vuelta = 0; vuelta < 2; vuelta++) {
+      for (let s = 0; s < 512; s++) {
+        let v = (r[s] + r[r[s] & 511]) | 0;
+        v = (v << 13) | (v >>> 19);
+        v ^= Math.imul(r[(s + 1) & 511], -1640531535);
+        r[s] = v;
+        a ^= v;
+        a = (a + b) | 0; x = d ^ a; d = (x << 16) | (x >>> 16);
+        c = (c + d) | 0; x = b ^ c; b = (x << 12) | (x >>> 20);
+        a = (a + b) | 0; x = d ^ a; d = (x << 8) | (x >>> 24);
+        c = (c + d) | 0; x = b ^ c; b = (x << 7) | (x >>> 25);
+      }
+    }
+    const salida = [];
+    for (let i = 0; i < 8; i++) {
+      a = (a + b) | 0; x = d ^ a; d = (x << 16) | (x >>> 16);
+      c = (c + d) | 0; x = b ^ c; b = (x << 12) | (x >>> 20);
+      a = (a + b) | 0; x = d ^ a; d = (x << 8) | (x >>> 24);
+      c = (c + d) | 0; x = b ^ c; b = (x << 7) | (x >>> 25);
+      let s = a;
+      const base = i * 64;
+      for (let k = 0; k < 64; k++) {
+        const v = r[base + k];
+        s = (s + v) | 0;
+        s = (s << 5) | (s >>> 27);
+        s ^= Math.imul(v, -2048144777);
+      }
+      salida.push((s ^ c) >>> 0);
+    }
+    return salida;
+  }
+
+  function cerosLuna(p) {
+    let n = 0;
+    for (let i = 0; i < p.length; i++) {
+      if (p[i] === 0) {
+        n += 32;
+        continue;
+      }
+      return n + Math.clz32(p[i]);
+    }
+    return n;
+  }
+
+  async function trabajoLuna(tarea, tope) {
+    if (!(tarea.dificultad > 0)) return '0';
+    const prefijo = `${tarea.nonce}:`;
+    const comienzo = Date.now();
+    for (let n = tarea.siguiente; ; n++) {
+      if (cerosLuna(hashLuna(prefijo + n)) >= tarea.dificultad) return String(n);
+      if ((n & 1023) === 1023) {
+        tarea.siguiente = n + 1;
+        if (Date.now() - comienzo > tope) return null;
+        if (RELOJ) await esperar(0);
+      }
+    }
+  }
+
+  async function captchaLuna(baseMarco, codigo, huella, cabeceras, pasos) {
+    let tarea = pendienteLuna && pendienteLuna.base === baseMarco && Date.now() < pendienteLuna.vence ? pendienteLuna : null;
+    if (tarea) {
+      pasos.push(`retomando prueba desde ${tarea.siguiente}`);
+    } else {
+      const reto = await enviarLuna(`${baseMarco}/api/videos/${codigo}/embed/captcha`, { fingerprint: huella }, cabeceras, pasos);
+      if (!reto || !reto.pow_token) return '';
+      tarea = { base: baseMarco, codigo, token: reto.pow_token, nonce: String(reto.pow_nonce || ''), dificultad: Number(reto.pow_difficulty) || 0, siguiente: 0, vence: Date.now() + (Number(reto.expires_in) || 25) * 1000 - 4000 };
+      pendienteLuna = tarea;
+    }
+    const tope = Math.max(3000, Math.min(tarea.vence - Date.now(), restante() - 8000));
+    const comienzo = Date.now();
+    const desde = tarea.siguiente;
+    const solucion = await trabajoLuna(tarea, tope);
+    pasos.push(`prueba ${tarea.dificultad} ${solucion === null ? 'sin resolver' : 'resuelta'} en ${((Date.now() - comienzo) / 1000).toFixed(1)}s (${(solucion === null ? tarea.siguiente : Number(solucion) + 1) - desde} intentos)`);
+    if (solucion === null) return '';
+    pendienteLuna = null;
+    const r = await enviarLuna(`${baseMarco}/api/videos/${tarea.codigo}/embed/captcha/verify`, { pow_token: tarea.token, solution: solucion, fingerprint: huella }, cabeceras, pasos);
+    if (!r || r.status !== 'ok' || !r.token) return '';
+    paseLuna = { token: r.token, vence: Date.now() + Math.max(60, (Number(r.expires_in) || 600) - 30) * 1000 };
+    return r.token;
+  }
+
+  function paseCompartido(baseMarco, codigo, huella, cabeceras, pasos) {
+    if (paseLuna && paseLuna.token && Date.now() < paseLuna.vence) return Promise.resolve(paseLuna.token);
+    if (paseLuna && paseLuna.promesa) {
+      pasos.push('esperando la prueba de otro servidor');
+      return paseLuna.promesa;
+    }
+    const promesa = captchaLuna(baseMarco, codigo, huella, cabeceras, pasos).catch(() => '');
+    paseLuna = { promesa };
+    promesa.then((t) => {
+      if (!t && paseLuna && paseLuna.promesa === promesa) paseLuna = null;
+    });
+    return promesa;
+  }
+
+  async function enviarLuna(url, cuerpo, cabeceras, pasos) {
+    const r = await pedir(url, { method: 'POST', headers: Object.assign({ Accept: '*/*' }, NAVEGADOR_LUNA, cuerpo === '' ? {} : { 'Content-Type': 'application/json' }, cabeceras), body: cuerpo === '' ? '' : JSON.stringify(cuerpo) });
+    const paso = url.replace(/^.*\/api\/videos\//, '').replace(/^[\w-]+\/embed\//, '').replace(/^access\//, '');
+    if (!r || !r.status) {
+      pasos.push(`${paso} sin respuesta`);
+      return null;
+    }
+    const texto = (await conLimite(r.text(), 10000, '')) || '';
+    if (!r.ok) {
+      pasos.push(`${paso} ${r.status} ${texto.replace(/\s+/g, ' ').slice(0, 60)}`);
+      return null;
+    }
+    pasos.push(`${paso} ok`);
+    try {
+      return JSON.parse(texto);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function resolverLuna(url) {
+    const m = url.match(/\/(?:e|d|download)\/([a-zA-Z0-9]+)/);
+    if (!m) return [];
+    const pasos = [];
+    const base = origen(url);
+    const embed = `${base}/e/${m[1]}`;
+    const detalle = await json(`${base}/api/videos/${m[1]}/embed/details`, { headers: Object.assign({}, NAVEGADOR_LUNA, { Accept: '*/*', Referer: embed, 'X-Embed-Parent': embed }) });
+    const marco = detalle && detalle.embed_frame_url;
+    if (!marco) {
+      anotar(`Filemoon ${m[1]}: sin marco`);
+      return [];
+    }
+    const baseMarco = origen(marco);
+    const cabeceras = { Referer: marco, Origin: baseMarco };
+    let acceso = null;
+    for (let vuelta = 0; vuelta < 3; vuelta++) {
+      const reto = await enviarLuna(`${baseMarco}/api/videos/access/challenge`, '', cabeceras, pasos);
+      if (!reto || !reto.nonce || !reto.challenge_id) break;
+      const prueba = firmarLuna(reto.nonce);
+      if (!prueba) break;
+      const conocido = visorLuna && dispositivoLuna;
+      const respuesta = await enviarLuna(`${baseMarco}/api/videos/access/attest`, {
+        viewer_id: conocido ? visorLuna : '',
+        device_id: conocido ? dispositivoLuna : '',
+        challenge_id: reto.challenge_id,
+        nonce: reto.nonce,
+        signature: prueba.firma,
+        public_key: prueba.clave,
+        client: CLIENTE_LUNA,
+        storage: conocido ? { local_storage: visorLuna, indexed_db: `${visorLuna}:${dispositivoLuna}`, cache_storage: `${visorLuna}:${dispositivoLuna}` } : {},
+        attributes: { entropy: 'high' }
+      }, cabeceras, pasos);
+      if (!respuesta || !respuesta.token) break;
+      acceso = respuesta;
+      if (respuesta.viewer_id) visorLuna = respuesta.viewer_id;
+      if (respuesta.device_id) dispositivoLuna = respuesta.device_id;
+      pasos.push(`confianza ${Math.round((Number(respuesta.confidence) || 0) * 100)}%`);
+      if (conocido && Number(respuesta.confidence) >= 0.85) break;
+      if (vuelta > 0 && !conocido) break;
+    }
+    if (!acceso) {
+      anotar(`Filemoon ${m[1]}: sin permiso · ${pasos.join(' → ')}`);
+      return [];
+    }
+    const visor = visorLuna;
+    const equipo = dispositivoLuna;
+    const huella = { token: acceso.token, viewer_id: acceso.viewer_id || visor, device_id: acceso.device_id || equipo, confidence: acceso.confidence };
+    const cabecerasVideo = Object.assign({ 'X-Embed-Parent': embed }, cabeceras);
+    const guardado = paseLuna && paseLuna.token && Date.now() < paseLuna.vence ? paseLuna.token : '';
+    if (guardado) pasos.push('pase guardado');
+    let play = await enviarLuna(`${baseMarco}/api/videos/${m[1]}/embed/playback`, { fingerprint: huella }, guardado ? Object.assign({ 'X-Captcha-Token': guardado }, cabecerasVideo) : cabecerasVideo, pasos);
+    if ((!play || !play.playback) && guardado) paseLuna = null;
+    if (!play || !play.playback) {
+      const pase = await paseCompartido(baseMarco, m[1], huella, cabecerasVideo, pasos);
+      if (pase) play = await enviarLuna(`${baseMarco}/api/videos/${m[1]}/embed/playback`, { fingerprint: huella }, Object.assign({ 'X-Captcha-Token': pase }, cabecerasVideo), pasos);
+    }
+    if (!play || !play.playback) {
+      anotar(`Filemoon ${m[1]}: ${pasos.join(' → ')}`);
+      return [];
+    }
+    const claro = abrirLuna(play.playback);
+    let fuentes = [];
+    try {
+      const datos = JSON.parse(claro.replace(/^﻿/, ''));
+      fuentes = [].concat(datos.sources || datos.source || []);
+    } catch (e) {
+      anotar(`Filemoon ${m[1]}: no se pudo descifrar`);
+      return [];
+    }
+    anotar(`Filemoon ${m[1]}: ${pasos.join(' → ')} → video listo`);
+    const fuente = fuentes.find((f) => f && /m3u8/.test(f.url || '')) || fuentes[0];
+    const destino = typeof fuente === 'string' ? fuente : fuente && fuente.url;
+    return enlace(destino, 'Filemoon', { Referer: `${baseMarco}/`, Origin: baseMarco, 'User-Agent': UA_LUNA }, calidadTexto(fuente && fuente.label));
+  }
+  return resolverLuna;
+})();
+
 async function resolverByse(url) {
+  const nuevo = await resolverLuna(url).catch(() => []);
+  return nuevo.length ? nuevo : resolverByseViejo(url);
+}
+
+async function resolverByseViejo(url) {
   const base = origen(url);
   const codigo = url.replace(/[?#].*$/, '').replace(/\/+$/, '').split('/').pop();
   const detalle = await json(`${base}/api/videos/${codigo}/embed/details`, { headers: { Referer: url, 'X-Requested-With': 'XMLHttpRequest' } });
