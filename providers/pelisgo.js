@@ -2024,39 +2024,42 @@ function idiomaPelisGo(t) {
   return 'Latino';
 }
 
-async function lista(enlaces, pagina) {
-  const salida = [];
-  for (const e of enlaces) {
-    const url = String(e.url || '').trim();
-    if (!/^https?:\/\//.test(url) || EVITAR.test(`${url} ${e.server || ''}`)) continue;
-    const audio = idiomaPelisGo(e.language);
-    if (/\.m3u8(\?|$)/i.test(url)) {
-      const cabeceras = { Referer: `${BASE}/`, Origin: BASE, 'User-Agent': UA };
-      const maestro = await texto(url, { headers: cabeceras, limite: 8000 });
-      if (!/#EXTM3U/.test(maestro)) {
-        anotar(`${e.server || 'directo'} sin archivo`);
-        continue;
-      }
-      let alto = 0;
-      for (const m of maestro.matchAll(/RESOLUTION=\d+x(\d+)/gi)) alto = Math.max(alto, parseInt(m[1], 10));
-      salida.push({ url, audio, directo: true, servidor: e.server || 'Directo', headers: cabeceras, calidad: etiquetaAltura(alto) || calidadTexto(e.quality) });
-      continue;
+async function unEnlace(e, pagina) {
+  const url = String(e.url || '').trim();
+  if (!/^https?:\/\//.test(url) || EVITAR.test(`${url} ${e.server || ''}`)) return [];
+  const audio = idiomaPelisGo(e.language);
+  const nombre = `${e.server || dominio(url)} ${audio}`;
+  if (/\.m3u8(\?|$)/i.test(url)) {
+    const cabeceras = { Referer: `${BASE}/`, Origin: BASE, 'User-Agent': UA };
+    const maestro = await texto(url, { headers: cabeceras, limite: 8000 });
+    if (!/#EXTM3U/.test(maestro)) {
+      anotar(`${nombre}: sin archivo`);
+      return [];
     }
-    if (/filemoon|byse/i.test(`${url} ${e.server || ''}`)) {
-      const lunas = await resolverLuna(url).catch(() => []);
-      if (lunas.length) {
-        for (const l of lunas) salida.push({ url: l.url, audio, directo: true, servidor: 'Filemoon', headers: l.headers, calidad: l.calidad || calidadTexto(e.quality) });
-        continue;
-      }
-    }
-    if (/tplayer\./i.test(url)) {
-      const d = await tplayer(url).catch(() => null);
-      if (d) salida.push(Object.assign(d, { audio, calidad: calidadTexto(e.quality), servidor: e.server || 'Magi' }));
-      continue;
-    }
-    salida.push({ url, audio, referer: pagina, calidad: calidadTexto(e.quality) });
+    let alto = 0;
+    for (const m of maestro.matchAll(/RESOLUTION=\d+x(\d+)/gi)) alto = Math.max(alto, parseInt(m[1], 10));
+    return [{ url, audio, directo: true, servidor: e.server || 'Directo', headers: cabeceras, calidad: etiquetaAltura(alto) || calidadTexto(e.quality) }];
   }
-  return salida;
+  if (/filemoon|byse/i.test(`${url} ${e.server || ''}`)) {
+    const lunas = await resolverLuna(url).catch((err) => {
+      anotar(`${nombre}: ${err.message}`);
+      return [];
+    });
+    if (lunas.length) return lunas.map((l) => ({ url: l.url, audio, directo: true, servidor: 'Filemoon', headers: l.headers, calidad: l.calidad || calidadTexto(e.quality) }));
+    anotar(`${nombre}: no se pudo abrir`);
+    return [];
+  }
+  if (/tplayer\./i.test(url)) {
+    const d = await tplayer(url).catch(() => null);
+    return d ? [Object.assign(d, { audio, calidad: calidadTexto(e.quality), servidor: e.server || 'Magi' })] : [];
+  }
+  return [{ url, audio, referer: pagina, calidad: calidadTexto(e.quality) }];
+}
+
+async function lista(enlaces, pagina) {
+  anotar(`servidores: ${enlaces.map((e) => `${e.server || dominio(e.url)} ${idiomaPelisGo(e.language)}`).join(' · ').slice(0, 200)}`);
+  const grupos = await Promise.all(enlaces.map((e) => unEnlace(e, pagina).catch(() => [])));
+  return [].concat(...grupos);
 }
 
 async function pedirApi(url, pagina, clave, intento) {
@@ -2131,7 +2134,8 @@ async function getStreams(tmdbId, mediaType, season, episode) {
     });
     if (items.length) {
       const salida = await armar(items, titulo, FUENTE);
-      if (salida.length) return salida;
+      anotar(`tarjetas: ${salida.length} de ${items.length} servidores · ${salida.map((t) => t.name).join(', ').slice(0, 160)}`);
+      if (salida.length) return salida.concat(tarjetaRastro(FUENTE, false));
     }
     if (paginaVacia) return [];
     return await enOrden([
@@ -2144,4 +2148,4 @@ async function getStreams(tmdbId, mediaType, season, episode) {
   }
 }
 
-module.exports = { getStreams: limitar(getStreams) };
+module.exports = { getStreams: limitar(getStreams, (agotado) => tarjetaRastro(FUENTE, agotado)) };
