@@ -2115,37 +2115,6 @@ async function metodoApi(datos, tipo, temporada, episodio) {
   return await lista(enlaces, pagina);
 }
 
-async function funciona(t) {
-  if (!t || !t.url || EVITAR.test(t.url)) return false;
-  const cabeceras = Object.assign({}, t.headers || {});
-  const lista = /\.m3u8|\/hls|master|playlist/i.test(t.url);
-  if (!lista) cabeceras.Range = 'bytes=0-1';
-  const r = await pedir(t.url, { headers: cabeceras, limite: 8000 });
-  if (!r || !r.status) return true;
-  const servidor = (String(t.name || '').match(/\(([^)]+)\)/) || [])[1] || 'servidor';
-  if (!r.ok && r.status !== 206) {
-    anotar(`${servidor}: no responde (${r.status})`);
-    return false;
-  }
-  const tipo = String((r.headers && r.headers.get && r.headers.get('content-type')) || '').toLowerCase();
-  if (lista || /mpegurl/.test(tipo)) {
-    const cuerpo = (await conLimite(r.text(), 6000, '')) || '';
-    const ok = /#EXTM3U/.test(cuerpo);
-    if (!ok) anotar(`${servidor}: la lista no es un video`);
-    return ok;
-  }
-  if (/text\/html/.test(tipo)) {
-    anotar(`${servidor}: devuelve una página en vez de video`);
-    return false;
-  }
-  return true;
-}
-
-async function soloBuenos(tarjetas) {
-  const pruebas = await Promise.all(tarjetas.map((t) => funciona(t).catch(() => true)));
-  return tarjetas.filter((t, i) => pruebas[i]);
-}
-
 async function getStreams(tmdbId, mediaType, season, episode) {
   paginaVacia = false;
   mostrado = false;
@@ -2161,14 +2130,14 @@ async function getStreams(tmdbId, mediaType, season, episode) {
       return [];
     });
     if (items.length) {
-      const salida = await soloBuenos(await armar(items, titulo, FUENTE));
+      const salida = await armar(items, titulo, FUENTE);
       if (salida.length) return salida;
     }
     if (paginaVacia) return [];
     return await enOrden([
       () => paginaDirecta(datos, tipo, temporada, episodio).then((html) => (html ? servidores(html) : [])),
       () => paginaNavegador(datos, tipo, temporada, episodio).then((html) => (html ? servidores(html) : []))
-    ], async (grupo) => soloBuenos(await armar(grupo, titulo, FUENTE, true)));
+    ], (grupo) => armar(grupo, titulo, FUENTE, true));
   } catch (e) {
     anotar(`error: ${e.message}`);
     return [];
