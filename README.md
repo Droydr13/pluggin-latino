@@ -9,7 +9,7 @@ series, anime y donghuas de distintos sitios.
  
 - Página de "Addon Latam": https://addonlatampagina.duckdns.org
 - Instalar "Addon Latam" desde Stremio Addons: https://stremio-addons.net/addons/addon-latam
-- Nuestra sitio web de contenio: https://latam-stream.onrender.com
+- Nuestro sitio web de contenio: https://latam-stream.onrender.com
 
 ## Instalar en Nuvio
 
