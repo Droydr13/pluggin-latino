@@ -7,9 +7,9 @@ series, anime y donghuas de distintos sitios.
 [![JavaScript](https://img.shields.io/badge/JavaScript-Runtime-black?style=for-the-badge&logo=javascript&logoColor=white&color=F7DF1E)](https://developer.mozilla.org/docs/Web/JavaScript)
 [![Nuvio](https://img.shields.io/badge/Nuvio-Plugin-black?style=for-the-badge&color=8A2BE2)](https://github.com/NuvioMedia/NuvioMobile)
  
-- Página de Addon Latam: https://addonlatampagina.duckdns.org
-- Instalar el addon "Addon Latam" desde Stremio Addons: https://stremio-addons.net/addons/addon-latam
-
+- Página de "Addon Latam": https://addonlatampagina.duckdns.org
+- Instalar "Addon Latam" desde Stremio Addons: https://stremio-addons.net/addons/addon-latam
+- Nuestra sitio web de contenio: https://latam-stream.onrender.com
 
 ## Instalar en Nuvio
 
